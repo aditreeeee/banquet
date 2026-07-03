@@ -86,7 +86,7 @@ banquet-booking-system/
 
 ```bash
 # 1. Clone and install dependencies
-git clone <repo-url>
+git clone https://github.com/aditreeeee/banquet.git
 cd banquet-booking-system/backend
 npm install
 

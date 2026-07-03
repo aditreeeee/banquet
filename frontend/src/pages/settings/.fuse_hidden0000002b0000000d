@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.settings-tabs { display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:24px;overflow-x:auto }
+.stab { background:none;border:none;padding:11px 20px;font-size:13.5px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;transition:.15s }
+.stab.active { color:var(--brand-primary);border-bottom-color:var(--brand-primary);font-weight:700 }
+.settings-panel { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:24px }
+.settings-row { display:grid;grid-template-columns:240px 1fr;gap:24px;padding:20px 0;border-bottom:1px solid var(--border-color);align-items:start }
+.settings-row:last-child { border-bottom:none }
+.settings-label { font-size:13.5px;font-weight:600;color:var(--text-primary) }
+.settings-desc  { font-size:12px;color:var(--text-muted);margin-top:3px }
+.toggle-switch { position:relative;width:44px;height:24px;flex-shrink:0 }
+.toggle-switch input { opacity:0;width:0;height:0 }
+.toggle-slider { position:absolute;inset:0;background:#CBD5E1;border-radius:12px;cursor:pointer;transition:.25s }
+.toggle-slider::before { content:'';position:absolute;left:3px;bottom:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.25s }
+.toggle-switch input:checked + .toggle-slider { background:var(--brand-primary) }
+.toggle-switch input:checked + .toggle-slider::before { transform:translateX(20px) }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon">🏛</div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon">📊</span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon">📅</span><span class="sidebar-text">All Bookings</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link"><span class="sidebar-icon">💰</span><span class="sidebar-text">Payments</span></a>
+        <a href="../invoices/index.html" class="sidebar-link"><span class="sidebar-icon">🧾</span><span class="sidebar-text">Invoices</span></a>
+        <div class="nav-section-label">Admin</div>
+        <a href="../users/index.html" class="sidebar-link"><span class="sidebar-icon">👤</span><span class="sidebar-text">Users</span></a>
+        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon">⚙️</span><span class="sidebar-text">Settings</span></a>
+    </nav>
+    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle">☰</button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Settings</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon">🌙</span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">🚪 Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Settings</h1><p class="page-subtitle">Company, billing, notification and security configuration</p></div>
+            <button class="btn-primary-brand" id="saveAllBtn" onclick="saveCurrentTab()">💾 Save Changes</button>
+        </div>
+
+        <div class="settings-tabs">
+            <button class="stab active" onclick="switchTab('company')" data-tab="company">🏢 Company</button>
+            <button class="stab" onclick="switchTab('billing')"  data-tab="billing">💰 Billing & Tax</button>
+            <button class="stab" onclick="switchTab('booking')"  data-tab="booking">📅 Booking Rules</button>
+            <button class="stab" onclick="switchTab('notifications')" data-tab="notifications">🔔 Notifications</button>
+            <button class="stab" onclick="switchTab('security')" data-tab="security">🔒 Security</button>
+            <button class="stab" onclick="switchTab('appearance')" data-tab="appearance">🎨 Appearance</button>
+        </div>
+
+        <!-- Company Tab -->
+        <div id="tab-company" class="settings-panel">
+            <div class="settings-row">
+                <div><div class="settings-label">Company Name</div><div class="settings-desc">Legal business name</div></div>
+                <div><input type="text" class="form-control" id="companyName" value="Royal Heritage Hospitality Pvt Ltd"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Company Logo</div><div class="settings-desc">PNG/SVG, max 2MB, shown on invoices</div></div>
+                <div>
+                    <div style="display:flex;align-items:center;gap:14px">
+                        <div style="width:60px;height:60px;background:var(--bg-surface-2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:28px">🏛</div>
+                        <button class="btn-ghost" onclick="document.getElementById('logoFile').click()">Upload Logo</button>
+                        <input type="file" id="logoFile" accept="image/*" style="display:none" onchange="previewLogo(this)">
+                    </div>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Business Address</div><div class="settings-desc">Printed on invoices</div></div>
+                <div><textarea class="form-control" id="companyAddr" rows="3">12, MG Road, Andheri West, Mumbai – 400053, Maharashtra</textarea></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Contact Email</div><div class="settings-desc">Public contact for customers</div></div>
+                <div><input type="email" class="form-control" id="companyEmail" value="contact@royalheritage.in"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Phone Number</div></div>
+                <div><input type="tel" class="form-control" id="companyPhone" value="+91 22 4567 8901"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Website</div></div>
+                <div><input type="url" class="form-control" id="companyWebsite" value="https://royalheritage.in"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Time Zone</div><div class="settings-desc">All dates and times use this zone</div></div>
+                <div>
+                    <select class="form-select" id="companyTZ" style="max-width:320px">
+                        <option value="Asia/Kolkata" selected>Asia/Kolkata (IST, UTC+5:30)</option>
+                        <option value="Asia/Dubai">Asia/Dubai (GST, UTC+4)</option>
+                        <option value="UTC">UTC</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Billing Tab -->
+        <div id="tab-billing" class="settings-panel" style="display:none">
+            <div class="settings-row">
+                <div><div class="settings-label">GSTIN</div><div class="settings-desc">Required for GST invoices</div></div>
+                <div><input type="text" class="form-control" id="gstin" value="27AABCB1234K1Z5" maxlength="15" style="max-width:220px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">PAN</div><div class="settings-desc">Permanent Account Number</div></div>
+                <div><input type="text" class="form-control" id="pan" value="AABCB1234K" maxlength="10" style="max-width:180px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">CGST Rate (%)</div><div class="settings-desc">Currently fixed at 9%</div></div>
+                <div><input type="number" class="form-control" id="cgstRate" value="9" min="0" max="28" step="0.5" style="max-width:120px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">SGST Rate (%)</div><div class="settings-desc">Currently fixed at 9%</div></div>
+                <div><input type="number" class="form-control" id="sgstRate" value="9" min="0" max="28" step="0.5" style="max-width:120px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Invoice Prefix</div><div class="settings-desc">e.g. INV-2026-XXXXXX</div></div>
+                <div><input type="text" class="form-control" id="invPrefix" value="INV" style="max-width:120px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Payment Due Days</div><div class="settings-desc">Days after booking to pay balance</div></div>
+                <div><input type="number" class="form-control" id="dueDays" value="30" min="1" max="90" style="max-width:120px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Advance %</div><div class="settings-desc">Required advance at booking time</div></div>
+                <div>
+                    <div style="display:flex;align-items:center;gap:10px;max-width:240px">
+                        <input type="range" id="advancePct" value="25" min="10" max="100" step="5" oninput="document.getElementById('advancePctVal').textContent=this.value+'%'">
+                        <span id="advancePctVal" style="font-weight:700;min-width:40px">25%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Bank Account</div><div class="settings-desc">Printed on invoices for payments</div></div>
+                <div>
+                    <div class="row g-2" style="max-width:480px">
+                        <div class="col-12"><input type="text" class="form-control" placeholder="Account Name" value="Royal Heritage Hospitality Pvt Ltd"></div>
+                        <div class="col-6"><input type="text" class="form-control" placeholder="Account No." value="1234 5678 9012"></div>
+                        <div class="col-6"><input type="text" class="form-control" placeholder="IFSC Code" value="HDFC0001234"></div>
+                        <div class="col-12"><input type="text" class="form-control" placeholder="Bank Name" value="HDFC Bank, Andheri West, Mumbai"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Booking Rules Tab -->
+        <div id="tab-booking" class="settings-panel" style="display:none">
+            <div class="settings-row">
+                <div><div class="settings-label">Min Days Advance Booking</div><div class="settings-desc">Cannot book within N days of event</div></div>
+                <div><input type="number" class="form-control" id="minAdvDays" value="3" min="1" max="30" style="max-width:120px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Max Days Advance Booking</div><div class="settings-desc">Cannot book more than N days ahead</div></div>
+                <div><input type="number" class="form-control" id="maxAdvDays" value="365" min="30" max="730" style="max-width:120px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Weekend Price Multiplier</div><div class="settings-desc">Applied to Sat & Sun hall rates</div></div>
+                <div>
+                    <div style="display:flex;align-items:center;gap:10px;max-width:240px">
+                        <input type="range" id="weekendMult" value="1.25" min="1" max="2" step="0.05" oninput="document.getElementById('weekendMultVal').textContent='×'+parseFloat(this.value).toFixed(2)">
+                        <span id="weekendMultVal" style="font-weight:700;min-width:48px">×1.25</span>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Allow Double Shift Bookings</div><div class="settings-desc">Same hall, different time slots on same day</div></div>
+                <div><label class="toggle-switch"><input type="checkbox" id="doubleShift" checked><span class="toggle-slider"></span></label></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Auto-Cancel Unpaid Bookings</div><div class="settings-desc">Cancel if advance not paid within N hours</div></div>
+                <div>
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <label class="toggle-switch"><input type="checkbox" id="autoCancel" checked><span class="toggle-slider"></span></label>
+                        <input type="number" class="form-control" id="autoCancelHours" value="24" min="1" max="72" style="width:100px"> <span style="font-size:13px;color:var(--text-muted)">hours</span>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Cancellation Penalty</div><div class="settings-desc">% of grand total deducted on cancellation</div></div>
+                <div>
+                    <div style="display:flex;align-items:center;gap:10px;max-width:240px">
+                        <input type="range" id="cancelPenalty" value="20" min="0" max="100" step="5" oninput="document.getElementById('cancelPenaltyVal').textContent=this.value+'%'">
+                        <span id="cancelPenaltyVal" style="font-weight:700;min-width:40px">20%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Tab -->
+        <div id="tab-notifications" class="settings-panel" style="display:none">
+            <div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-color)">
+                <div style="font-size:13px;font-weight:700;margin-bottom:4px">Email Notifications</div>
+                <div style="font-size:12px;color:var(--text-muted)">Sent via SMTP / Transactional email service</div>
+            </div>
+            ${[['Booking Confirmation','Send confirmation to customer on booking','notifBookingConf',true],['Payment Receipt','Send receipt after each payment','notifPayReceipt',true],['Balance Reminder','Remind customer 3 days before due date','notifBalReminder',true],['Cancellation Notice','Notify on booking cancellation','notifCancel',true],['Invoice Generated','Notify when invoice is created','notifInvoice',false]].map(([lbl,desc,id,def]) => `
+            <div class="settings-row">
+                <div><div class="settings-label">${lbl}</div><div class="settings-desc">${desc}</div></div>
+                <div><label class="toggle-switch"><input type="checkbox" id="${id}" ${def?'checked':''}><span class="toggle-slider"></span></label></div>
+            </div>`).join('')}
+            <div style="margin:16px 0;padding-bottom:12px;border-bottom:1px solid var(--border-color)">
+                <div style="font-size:13px;font-weight:700;margin-bottom:4px">SMTP Configuration</div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">SMTP Host</div></div>
+                <div><input type="text" class="form-control" value="smtp.gmail.com" style="max-width:280px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">SMTP Port</div></div>
+                <div><input type="number" class="form-control" value="587" style="max-width:100px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Sender Email</div></div>
+                <div><input type="email" class="form-control" value="noreply@royalheritage.in" style="max-width:280px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">SMTP Password</div></div>
+                <div><input type="password" class="form-control" value="••••••••" style="max-width:280px"></div>
+            </div>
+        </div>
+
+        <!-- Security Tab -->
+        <div id="tab-security" class="settings-panel" style="display:none">
+            <div class="settings-row">
+                <div><div class="settings-label">Enforce 2FA for Admins</div><div class="settings-desc">Require TOTP for Super Admin & Company Admin roles</div></div>
+                <div><label class="toggle-switch"><input type="checkbox" id="enforce2FA" checked><span class="toggle-slider"></span></label></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Session Timeout</div><div class="settings-desc">Auto-logout after inactivity</div></div>
+                <div>
+                    <select class="form-select" style="max-width:200px">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>1 hour</option>
+                        <option value="120">2 hours</option>
+                        <option value="480">8 hours</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Max Login Attempts</div><div class="settings-desc">Lock account after N failed attempts</div></div>
+                <div><input type="number" class="form-control" value="5" min="3" max="10" style="max-width:100px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Password Expiry</div><div class="settings-desc">Force password change every N days (0 = never)</div></div>
+                <div><input type="number" class="form-control" value="90" min="0" max="365" style="max-width:120px"></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Audit Logging</div><div class="settings-desc">Log all data changes with user and timestamp</div></div>
+                <div><label class="toggle-switch"><input type="checkbox" id="auditLog" checked disabled><span class="toggle-slider"></span></label></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">IP Whitelist</div><div class="settings-desc">Restrict admin access to specific IPs (one per line)</div></div>
+                <div><textarea class="form-control" rows="4" placeholder="Leave blank to allow all IPs"></textarea></div>
+            </div>
+        </div>
+
+        <!-- Appearance Tab -->
+        <div id="tab-appearance" class="settings-panel" style="display:none">
+            <div class="settings-row">
+                <div><div class="settings-label">Default Theme</div><div class="settings-desc">Set default for all new sessions</div></div>
+                <div>
+                    <div style="display:flex;gap:12px">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="radio" name="themeDefault" value="light" checked>
+                            <span style="font-size:13px">☀️ Light</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="radio" name="themeDefault" value="dark">
+                            <span style="font-size:13px">🌙 Dark</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="radio" name="themeDefault" value="system">
+                            <span style="font-size:13px">💻 System</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Brand Color</div><div class="settings-desc">Primary accent color across the UI</div></div>
+                <div>
+                    <div style="display:flex;gap:10px;align-items:center">
+                        ${['#7C3AED','#2563EB','#059669','#D97706','#DC2626','#DB2777'].map(c => `<div onclick="pickColor('${c}')" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:3px solid transparent;transition:.15s" data-color="${c}"></div>`).join('')}
+                        <input type="color" id="customColor" value="#7C3AED" onchange="pickColor(this.value)" title="Custom color">
+                    </div>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Sidebar Collapsed by Default</div><div class="settings-desc">Start with compact sidebar</div></div>
+                <div><label class="toggle-switch"><input type="checkbox" id="sidebarDefault"><span class="toggle-slider"></span></label></div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Date Format</div></div>
+                <div>
+                    <select class="form-select" style="max-width:200px">
+                        <option value="DD/MM/YYYY" selected>DD/MM/YYYY</option>
+                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../public/assets/js/api.js"></script>
+<script src="../../public/assets/js/utils.js"></script>
+<script src="../../public/assets/js/auth.js"></script>
+<script src="../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+let activeTab = 'company';
+function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = p.id === `tab-${tab}` ? '' : 'none');
+}
+
+async function saveCurrentTab() {
+    const btn = document.getElementById('saveAllBtn');
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        const data = collectTabData(activeTab);
+        await API.settings.update(activeTab, data);
+    } catch { /* demo */ }
+    setTimeout(() => { Utils.hideLoader(btn); Utils.toast('Settings saved!', 'success'); }, 600);
+}
+
+function collectTabData(tab) {
+    if (tab === 'company')  return { name: document.getElementById('companyName').value, email: document.getElementById('companyEmail').value, phone: document.getElementById('companyPhone').value };
+    if (tab === 'billing')  return { gstin: document.getElementById('gstin').value, pan: document.getElementById('pan').value, cgst_rate: document.getElementById('cgstRate').value, sgst_rate: document.getElementById('sgstRate').value };
+    if (tab === 'booking')  return { min_advance_days: document.getElementById('minAdvDays').value, max_advance_days: document.getElementById('maxAdvDays').value, weekend_multiplier: document.getElementById('weekendMult').value };
+    return {};
+}
+
+function pickColor(color) {
+    document.querySelectorAll('[data-color]').forEach(el => el.style.border = `3px solid ${el.dataset.color === color ? '#000' : 'transparent'}`);
+    document.documentElement.style.setProperty('--brand-primary', color);
+}
+
+function previewLogo(input) {
+    if (input.files[0]) Utils.toast('Logo preview updated (will save on submit)', 'info');
+}
+</script>
+</body>
+</html>

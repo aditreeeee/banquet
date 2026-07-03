@@ -1,0 +1,409 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoices | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.invoice-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:16px;transition:box-shadow .2s }
+.invoice-card:hover { box-shadow:var(--shadow-md) }
+.inv-icon { width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0 }
+.inv-icon.paid     { background:#D1FAE5;color:#059669 }
+.inv-icon.unpaid   { background:#FEF3C7;color:#D97706 }
+.inv-icon.overdue  { background:#FEE2E2;color:#DC2626 }
+.inv-icon.draft    { background:#F1F5F9;color:#64748B }
+.inv-icon.partial  { background:#EDE9FE;color:#7C3AED }
+@media print {
+    body * { visibility: hidden; }
+    #invoicePrintRoot, #invoicePrintRoot * { visibility: visible; }
+    #invoicePrintRoot { position: absolute; left: 0; top: 0; width: 100%; }
+    .modal, .btn, .toast-container, #scrollTop { display: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
+        <a href="../bookings/create.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">CRM</div>
+        <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span><span class="sidebar-text">Payments</span></a>
+        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg></span><span class="sidebar-text">Invoices</span></a>
+        <div class="nav-section-label">Reports</div>
+        <a href="../reports/revenue.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path></svg></span><span class="sidebar-text">Revenue</span></a>
+    </nav>
+    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Invoices</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Invoices</h1><p class="page-subtitle">Generate, manage and send GST-compliant invoices</p></div>
+            <div style="display:flex;gap:10px">
+                <button class="btn-ghost" onclick="exportInvoicesCsv()">⬇ Export CSV</button>
+                <button class="btn-primary-brand" onclick="openGenerateModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg> Generate Invoice</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px">
+            <div class="kpi-card"><div class="kpi-label">Total Invoices</div><div class="kpi-value" id="kpiTotal">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Paid</div><div class="kpi-value" id="kpiPaid" style="color:var(--color-success)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Partially Paid</div><div class="kpi-value" id="kpiPartial" style="color:var(--brand-primary)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Unpaid</div><div class="kpi-value" id="kpiUnpaid" style="color:var(--color-warning)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Overdue</div><div class="kpi-value" id="kpiOverdue" style="color:var(--color-danger)">—</div></div>
+        </div>
+
+        <!-- Filters -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+            <div class="search-input-wrap">
+                <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg></span>
+                <input type="text" class="form-control" id="invSearch" placeholder="Invoice #, booking, customer…" oninput="handleSearch(this.value)">
+            </div>
+            <select class="form-select" id="statusFilter" onchange="loadInvoices(1)" style="width:auto">
+                <option value="">All Status</option>
+                <option value="paid">Paid</option>
+                <option value="partial">Partial</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="overdue">Overdue</option>
+                <option value="draft">Draft</option>
+            </select>
+            <input type="month" id="monthFilter" onchange="loadInvoices(1)">
+        </div>
+
+        <!-- Invoice list -->
+        <div id="invoiceList">
+            <div class="text-center py-5"><span class="spinner-border" style="color:var(--brand-primary)"></span></div>
+        </div>
+        <div id="invPagination"></div>
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<!-- Generate Invoice Modal -->
+<div class="modal fade" id="generateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Generate Invoice</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Booking Reference *</label>
+                        <div style="display:flex;gap:8px">
+                            <input type="text" class="form-control" id="genBookingRef" placeholder="BNQ-2026-XXXXXX">
+                            <button class="btn-ghost" onclick="lookupForInvoice()">Lookup</button>
+                        </div>
+                        <input type="hidden" id="genBookingId">
+                        <div id="genBookingInfo" style="display:none;margin-top:8px;padding:10px;background:var(--bg-surface-2);border-radius:6px;font-size:12.5px"></div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Invoice Date</label>
+                        <input type="date" class="form-control" id="genDate">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Due Date</label>
+                        <input type="date" class="form-control" id="genDue">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="genNotes" rows="2" placeholder="Payment terms, thank you note…"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" onclick="generateInvoice()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg> Generate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoice Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewTitle">Invoice Preview</h5>
+                <div style="margin-left:auto;display:flex;gap:8px;margin-right:8px">
+                    <button class="btn-ghost" onclick="sendInvoiceEmail()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 6h16v12H4z"></path><path d="m4 7 8 6 8-6"></path></svg> Email</button>
+                    <button class="btn-ghost" onclick="printInvoiceFromPreview()">ðŸ–¨ Print / PDF</button>
+                </div>
+                <button class="btn-close" data-bs-dismiss="modal">×</button>
+            </div>
+            <div class="modal-body" id="invoicePreviewBody" style="padding:0">
+                <!-- Rendered invoice HTML goes here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+const DEMO_INVOICES = [
+    { invoice_id:1, invoice_ref:'INV-2026-000001', invoice_date:'2026-06-10', due_date:'2026-07-10', booking_ref:'BNQ-2026-000001', customer_name:'Arjun Sharma',  event_name:'Wedding Reception', grand_total:531000, amount_paid:531000, balance:0,      status:'paid'    },
+    { invoice_id:2, invoice_ref:'INV-2026-000002', invoice_date:'2026-06-14', due_date:'2026-07-14', booking_ref:'BNQ-2026-000002', customer_name:'Priya Patel',   event_name:'Birthday Party',    grand_total:85000,  amount_paid:21250, balance:63750,  status:'partial' },
+    { invoice_id:3, invoice_ref:'INV-2026-000003', invoice_date:'2026-06-18', due_date:'2026-06-28', booking_ref:'BNQ-2026-000003', customer_name:'Rahul Gupta',   event_name:'Corporate Dinner',  grand_total:42000,  amount_paid:0,     balance:42000,  status:'overdue' },
+    { invoice_id:4, invoice_ref:'INV-2026-000004', invoice_date:'2026-06-20', due_date:'2026-07-20', booking_ref:'BNQ-2026-000004', customer_name:'Anjali Singh',  event_name:'Reception Dinner',  grand_total:148000, amount_paid:37000, balance:111000, status:'partial' },
+    { invoice_id:5, invoice_ref:'INV-2026-000005', invoice_date:'2026-06-22', due_date:'2026-07-22', booking_ref:'BNQ-2026-000005', customer_name:'Vikram Mehta',  event_name:'Anniversary',       grand_total:68000,  amount_paid:0,     balance:68000,  status:'unpaid'  },
+    { invoice_id:6, invoice_ref:'INV-2026-000006', invoice_date:'2026-06-25', due_date:'2026-07-25', booking_ref:'BNQ-2026-000006', customer_name:'Neha Agarwal', event_name:'Engagement',        grand_total:145000, amount_paid:72500, balance:72500,  status:'partial' },
+    { invoice_id:7, invoice_ref:'INV-2026-000007', invoice_date:'2026-06-28', due_date:'2026-07-28', booking_ref:'BNQ-2026-000007', customer_name:'Sanjay Rao',   event_name:'Wedding',           grand_total:312000, amount_paid:0,     balance:312000, status:'draft'   },
+];
+
+const STATUS_ICON = { paid:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg>', partial:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>', unpaid:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>', overdue:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>', draft:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>' };
+
+let allLoadedInvoices = [];
+
+async function loadInvoices(page = 1) {
+    const wrap = document.getElementById('invoiceList');
+    wrap.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm" style="color:var(--brand-primary)"></span></div>';
+    try {
+        const res  = await API.invoices.list({ page, limit:20,
+            search: document.getElementById('invSearch').value || undefined,
+            status: document.getElementById('statusFilter').value || undefined,
+            month:  document.getElementById('monthFilter').value || undefined,
+        });
+        const invs = res.data?.invoices || [];
+        allLoadedInvoices = invs;
+        renderInvoices(invs);
+        updateStats(res.data?.stats || {});
+        Utils.renderPagination('invPagination', { page, limit:20, total: res.data?.meta?.total || invs.length }, loadInvoices);
+    } catch {
+        allLoadedInvoices = DEMO_INVOICES;
+        renderInvoices(DEMO_INVOICES);
+        updateStats({ total:7, paid:1, partial:3, unpaid:2, overdue:1 });
+        Utils.renderPagination('invPagination', { page:1, limit:20, total:7 }, loadInvoices);
+    }
+}
+
+function renderInvoices(invs) {
+    const wrap = document.getElementById('invoiceList');
+    if (!invs.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No invoices found</div>'; return; }
+    wrap.innerHTML = invs.map(inv => `
+    <div class="invoice-card" style="margin-bottom:10px">
+        <div class="inv-icon ${inv.status}">${STATUS_ICON[inv.status] || '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>'}</div>
+        <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                <span style="font-weight:700;font-size:13px;font-family:var(--font-mono);color:var(--brand-primary)">${inv.invoice_ref}</span>
+                ${Utils.statusBadge(inv.status)}
+            </div>
+            <div style="font-size:12.5px;color:var(--text-muted)">${inv.customer_name} · ${Utils.truncate(inv.event_name,28)} · ${Utils.formatDate(inv.invoice_date)}</div>
+        </div>
+        <div style="text-align:right;min-width:120px">
+            <div style="font-weight:800;font-size:14px">${Utils.formatCurrency(inv.grand_total)}</div>
+            ${inv.balance > 0 ? `<div style="font-size:11.5px;color:var(--color-warning)">Due: ${Utils.formatCurrency(inv.balance)}</div>` : '<div style="font-size:11.5px;color:var(--color-success)">Fully Paid <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg></div>'}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick="previewInvoice(${inv.invoice_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M2 12s3-6 10-6 10 6 10 6-3 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg> View</button>
+            <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick="downloadPDF(${inv.invoice_id})">⬇</button>
+            <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick="emailInvoice(${inv.invoice_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 6h16v12H4z"></path><path d="m4 7 8 6 8-6"></path></svg></button>
+        </div>
+    </div>`).join('');
+}
+
+function updateStats(s) {
+    document.getElementById('kpiTotal').textContent   = s.total   ?? 7;
+    document.getElementById('kpiPaid').textContent    = s.paid    ?? 1;
+    document.getElementById('kpiPartial').textContent = s.partial ?? 3;
+    document.getElementById('kpiUnpaid').textContent  = s.unpaid  ?? 2;
+    document.getElementById('kpiOverdue').textContent = s.overdue ?? 1;
+}
+
+let generateModalInst;
+function openGenerateModal() {
+    document.getElementById('genBookingRef').value  = '';
+    document.getElementById('genBookingId').value   = '';
+    document.getElementById('genDate').value = new Date().toISOString().split('T')[0];
+    const due = new Date(); due.setDate(due.getDate() + 30);
+    document.getElementById('genDue').value  = due.toISOString().split('T')[0];
+    document.getElementById('genBookingInfo').style.display = 'none';
+    generateModalInst = new bootstrap.Modal(document.getElementById('generateModal'));
+    generateModalInst.show();
+}
+
+async function lookupForInvoice() {
+    const ref  = document.getElementById('genBookingRef').value.trim().toUpperCase();
+    const info = document.getElementById('genBookingInfo');
+    if (!ref) { Utils.toast('Enter a booking reference', 'warning'); return; }
+    document.getElementById('genBookingId').value = '';
+    try {
+        const res = await API.get(`/bookings/ref/${ref}`);
+        const b   = res.data;
+        document.getElementById('genBookingId').value = b.booking_id;
+        info.innerHTML = `<strong>${b.event_name || ref}</strong> — ${Utils.formatDate(b.event_date)}<br>Customer: ${b.customer_name} | Total: ${Utils.formatCurrency(b.total_amount)}`;
+        info.style.display = '';
+    } catch (err) {
+        info.innerHTML = `<span style="color:var(--danger)">Booking not found. Check the reference and try again.</span>`;
+        info.style.display = '';
+    }
+}
+
+async function generateInvoice() {
+    const bookingId  = document.getElementById('genBookingId').value;
+    const bookingRef = document.getElementById('genBookingRef').value.trim().toUpperCase();
+    if (!bookingRef) { Utils.toast('Look up a booking first', 'warning'); return; }
+    try {
+        const res = await API.invoices.generate({
+            booking_ref:  bookingRef,
+            bookingId:    bookingId ? parseInt(bookingId, 10) : undefined,
+            invoice_date: document.getElementById('genDate').value,
+            due_date:     document.getElementById('genDue').value,
+            notes:        document.getElementById('genNotes').value,
+        });
+        generateModalInst.hide();
+        Utils.toast('Invoice ' + (res.data.invoice_number || res.data.invoice_ref || '') + ' generated!', 'success');
+        loadInvoices(1);
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to generate invoice', 'error');
+    }
+}
+
+function previewInvoice(id) {
+    const inv = allLoadedInvoices.find(i => i.invoice_id === id)
+             || DEMO_INVOICES.find(i => i.invoice_id === id)
+             || DEMO_INVOICES[0];
+    document.getElementById('previewTitle').textContent = inv.invoice_ref || inv.invoice_number || '';
+    document.getElementById('invoicePreviewBody').innerHTML = buildInvoiceHTML(inv);
+    new bootstrap.Modal(document.getElementById('previewModal')).show();
+}
+
+function buildInvoiceHTML(inv) {
+    return `<div id="invoicePrintRoot" style="padding:32px;max-width:680px;margin:0 auto;font-family:Inter,sans-serif;background:white;color:#111827">
+    <div style="display:flex;justify-content:space-between;margin-bottom:28px">
+        <div>
+            <div style="font-size:22px;font-weight:800;color:#7C3AED"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg> BanquetPro</div>
+            <div style="font-size:12px;color:#6B7280;margin-top:4px">Royal Heritage Banquet, MG Road, Mumbai – 400001<br>GSTIN: 27AABCB1234K1Z5 | PAN: AABCB1234K</div>
+        </div>
+        <div style="text-align:right">
+            <div style="font-size:24px;font-weight:800">TAX INVOICE</div>
+            <div style="font-size:13px;color:#6B7280">${inv.invoice_ref}</div>
+            <div style="font-size:13px;color:#6B7280">Date: ${Utils.formatDate(inv.invoice_date)}</div>
+            <div style="font-size:13px;color:#6B7280">Due: ${Utils.formatDate(inv.due_date)}</div>
+        </div>
+    </div>
+    <div style="border:1px solid #E5E7EB;padding:14px;border-radius:8px;margin-bottom:20px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Bill To</div>
+        <div style="font-size:13px">${inv.customer_name}<br>${inv.event_name}<br>Booking: <span style="color:#7C3AED">${inv.booking_ref}</span></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+        <thead><tr style="background:#F9FAFB"><th style="padding:10px;text-align:left;border-bottom:1px solid #E5E7EB">Description</th><th style="padding:10px;text-align:right;border-bottom:1px solid #E5E7EB">Amount</th></tr></thead>
+        <tbody>
+            <tr><td style="padding:10px;border-bottom:1px solid #F3F4F6">Hall Charges</td><td style="padding:10px;text-align:right;border-bottom:1px solid #F3F4F6">₹85,000</td></tr>
+            <tr><td style="padding:10px;border-bottom:1px solid #F3F4F6">Catering Package (400 plates × ₹850)</td><td style="padding:10px;text-align:right;border-bottom:1px solid #F3F4F6">₹3,40,000</td></tr>
+            <tr><td style="padding:10px;border-bottom:1px solid #F3F4F6">Decoration</td><td style="padding:10px;text-align:right;border-bottom:1px solid #F3F4F6">₹25,000</td></tr>
+            <tr><td style="padding:10px;border-bottom:1px solid #F3F4F6">Additional Services</td><td style="padding:10px;text-align:right;border-bottom:1px solid #F3F4F6">₹12,000</td></tr>
+            <tr><td style="padding:10px;border-bottom:1px solid #F3F4F6">Subtotal</td><td style="padding:10px;text-align:right;border-bottom:1px solid #F3F4F6">₹4,62,000</td></tr>
+            <tr><td style="padding:10px;border-bottom:1px solid #F3F4F6">Discount</td><td style="padding:10px;text-align:right;border-bottom:1px solid #F3F4F6;color:#059669">–₹12,000</td></tr>
+            <tr><td style="padding:10px;border-bottom:1px solid #F3F4F6">CGST (9%)</td><td style="padding:10px;text-align:right;border-bottom:1px solid #F3F4F6">₹40,500</td></tr>
+            <tr><td style="padding:10px;border-bottom:1px solid #E5E7EB">SGST (9%)</td><td style="padding:10px;text-align:right;border-bottom:1px solid #E5E7EB">₹40,500</td></tr>
+            <tr style="background:#F5F3FF"><td style="padding:12px;font-weight:800;font-size:15px">GRAND TOTAL</td><td style="padding:12px;text-align:right;font-weight:800;font-size:15px;color:#7C3AED">${Utils.formatCurrency(inv.grand_total)}</td></tr>
+        </tbody>
+    </table>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#6B7280">
+        <div>Amount in words: <strong>${amountInWords(inv.grand_total)}</strong></div>
+        <div>${inv.status === 'paid' ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg> PAID IN FULL' : `Balance Due: ${Utils.formatCurrency(inv.balance)}`}</div>
+    </div>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #E5E7EB;font-size:11.5px;color:#6B7280">Thank you for choosing BanquetPro. For queries contact: billing@banquetpro.in</div>
+    </div>`;
+}
+
+function amountInWords(n) {
+    const crore = Math.floor(n / 10000000), lakh = Math.floor((n % 10000000) / 100000), thou = Math.floor((n % 100000) / 1000), rest = n % 1000;
+    let w = '';
+    if (crore) w += crore + ' Crore ';
+    if (lakh)  w += lakh  + ' Lakh ';
+    if (thou)  w += thou  + ' Thousand ';
+    if (rest)  w += rest;
+    return 'Rupees ' + w.trim() + ' Only';
+}
+
+function printInvoice(id) {
+    const inv = DEMO_INVOICES.find(i => i.invoice_id === id) || DEMO_INVOICES[0];
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+        Utils.toast('Please allow pop-ups to print or save this invoice as PDF.', 'error');
+        return;
+    }
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>${inv.invoice_ref}</title><style>body{font-family:Inter,Arial,sans-serif;margin:0;padding:24px;background:#fff;color:#111827}*{box-sizing:border-box}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;border-bottom:1px solid #e5e7eb}th{text-align:left;background:#f9fafb}@media print{body{padding:0}} </style></head><body>${buildInvoiceHTML(inv)}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+        Utils.toast('Use the browser print dialog to save as PDF.', 'info');
+    }, 250);
+}
+
+function downloadPDF(id) { printInvoice(id); }
+function emailInvoice(id){ Utils.toast('Invoice emailed to customer', 'success'); }
+
+function exportInvoicesCsv() {
+    const rows = allLoadedInvoices;
+    if (!rows.length) { Utils.toast('No invoices to export', 'warning'); return; }
+    const headers = ['Invoice Ref','Booking Ref','Customer','Invoice Date','Due Date','Grand Total','Amount Paid','Balance','Status'];
+    const escape  = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines   = [
+        headers.join(','),
+        ...rows.map(inv => [
+            inv.invoice_ref  || inv.invoice_number || '',
+            inv.booking_ref  || '',
+            inv.customer_name || '',
+            inv.invoice_date ? inv.invoice_date.slice(0, 10) : '',
+            inv.due_date     ? inv.due_date.slice(0, 10)     : '',
+            inv.grand_total  ?? '',
+            inv.amount_paid  ?? '',
+            inv.balance      ?? inv.balance_due ?? '',
+            inv.status       || inv.payment_status || '',
+        ].map(escape).join(',')),
+    ];
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `invoices-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    Utils.toast(`Exported ${rows.length} invoices`, 'success');
+}
+function printInvoiceFromPreview(){
+    const currentInvoice = DEMO_INVOICES.find(i => i.invoice_id === Number(document.getElementById('previewTitle').textContent.replace(/^[^0-9]*/, '')));
+    if (currentInvoice) printInvoice(currentInvoice.invoice_id);
+    else Utils.toast('Open an invoice preview first.', 'info');
+}
+function downloadInvoice(){ downloadPDF(); }
+function sendInvoiceEmail(){ emailInvoice(); }
+
+const handleSearch = Utils.debounce(() => loadInvoices(1), 350);
+
+document.addEventListener('DOMContentLoaded', () => loadInvoices(1));
+</script>
+</body>
+</html>

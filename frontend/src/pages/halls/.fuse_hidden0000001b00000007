@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halls | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.hall-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+.hall-tile {
+    background:var(--bg-surface); border:1px solid var(--border-color);
+    border-radius:var(--radius-lg); overflow:hidden;
+    transition:box-shadow var(--transition-base), transform var(--transition-base);
+    box-shadow:var(--shadow-sm);
+}
+.hall-tile:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); }
+.hall-tile-img { height:160px; background:linear-gradient(135deg,#4C1D95,#7C3AED); display:flex; align-items:center; justify-content:center; font-size:56px; position:relative; }
+.hall-tile-body { padding:16px; }
+.hall-tile-name { font-size:16px; font-weight:700; color:var(--text-primary); margin-bottom:4px; }
+.hall-tile-venue { font-size:12px; color:var(--text-muted); margin-bottom:10px; }
+.hall-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.chip { font-size:11px; font-weight:500; padding:3px 8px; border-radius:20px; background:var(--bg-surface-2); color:var(--text-secondary); border:1px solid var(--border-color); }
+.hall-tile-footer { display:flex; align-items:center; justify-content:space-between; padding-top:12px; border-top:1px solid var(--border-color); }
+.hall-price-tag { font-size:15px; font-weight:700; color:var(--brand-primary); }
+.view-toggle { display:flex; gap:6px; }
+.view-btn { width:32px; height:32px; border:1px solid var(--border-color); background:var(--bg-surface); border-radius:var(--radius-sm); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:15px; transition:all var(--transition-fast); }
+.view-btn.active { background:var(--brand-primary); border-color:var(--brand-primary); color:white; }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon">🏛</div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon">📊</span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">Venues</div>
+        <a href="../banquets/index.html" class="sidebar-link"><span class="sidebar-icon">🏰</span><span class="sidebar-text">Banquets</span></a>
+        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon">🚪</span><span class="sidebar-text">Halls</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon">📅</span><span class="sidebar-text">All Bookings</span></a>
+        <a href="../bookings/create.html" class="sidebar-link"><span class="sidebar-icon">➕</span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">CRM</div>
+        <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon">👥</span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link"><span class="sidebar-icon">💰</span><span class="sidebar-text">Payments</span></a>
+    </nav>
+    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle">☰</button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Halls</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon">🌙</span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">🚪 Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Halls</h1><p class="page-subtitle">Manage banquet halls, capacity, pricing and availability</p></div>
+            <div style="display:flex;gap:10px;align-items:center">
+                <div class="view-toggle">
+                    <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')" title="Grid view">⊞</button>
+                    <button class="view-btn" id="listViewBtn" onclick="setView('list')" title="List view">☰</button>
+                </div>
+                <button class="btn-primary-brand" onclick="openHallModal()" data-require-perm="hall.create">➕ Add Hall</button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="table-card" style="border-radius:var(--radius-lg);overflow:visible;margin-bottom:20px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px">
+                <div class="search-input-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="form-control" id="hallSearch" placeholder="Search halls…" oninput="handleSearch(this.value)">
+                </div>
+                <select class="form-select" id="banquetFilter" onchange="loadHalls()" style="width:auto">
+                    <option value="">All Banquets</option>
+                </select>
+                <select class="form-select" id="typeFilter" onchange="loadHalls()" style="width:auto">
+                    <option value="">All Types</option>
+                    <option value="main_hall">Main Hall</option>
+                    <option value="lawn">Lawn / Outdoor</option>
+                    <option value="conference">Conference Room</option>
+                    <option value="terrace">Terrace</option>
+                </select>
+                <select class="form-select" id="capacityFilter" onchange="loadHalls()" style="width:auto">
+                    <option value="">Any Capacity</option>
+                    <option value="0-100">Up to 100</option>
+                    <option value="100-250">100–250</option>
+                    <option value="250-500">250–500</option>
+                    <option value="500+">500+</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Hall grid -->
+        <div id="hallsContainer">
+            <div class="hall-grid" id="hallGrid">
+                <div style="grid-column:1/-1;text-align:center;padding:48px"><span class="spinner-border spinner-border-sm me-2"></span>Loading halls…</div>
+            </div>
+        </div>
+        <div id="paginationWrap"></div>
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<!-- Hall Form Modal -->
+<div class="modal fade" id="hallModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="hallModalTitle">Add Hall</h5>
+                <button class="btn-close" data-bs-dismiss="modal">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="hallId">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Hall Name *</label>
+                        <input type="text" class="form-control" id="hallName" placeholder="e.g. Royal Ballroom">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Banquet *</label>
+                        <select class="form-select" id="hallBanquetId">
+                            <option value="">— Select banquet —</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Hall Code *</label>
+                        <input type="text" class="form-control" id="hallCode" placeholder="e.g. RB-001">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Hall Type *</label>
+                        <select class="form-select" id="hallType">
+                            <option value="main_hall">Main Hall</option>
+                            <option value="lawn">Lawn / Outdoor</option>
+                            <option value="conference">Conference</option>
+                            <option value="terrace">Terrace</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Floor</label>
+                        <input type="number" class="form-control" id="hallFloor" min="0" value="1">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Seated Capacity *</label>
+                        <input type="number" class="form-control" id="hallCapacitySeated" min="1" placeholder="e.g. 500">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Standing Capacity</label>
+                        <input type="number" class="form-control" id="hallCapacityStanding" min="0" placeholder="e.g. 800">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Area (sq ft)</label>
+                        <input type="number" class="form-control" id="hallArea" min="0" placeholder="e.g. 6000">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Base Price (₹/day) *</label>
+                        <input type="number" class="form-control" id="hallBasePrice" min="0" placeholder="e.g. 150000">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Weekend Multiplier</label>
+                        <input type="number" class="form-control" id="hallWeekendMult" min="1" max="3" step="0.05" value="1.25" placeholder="e.g. 1.25">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Amenities</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px">
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="hasAC" style="accent-color:var(--brand-primary)"> Air Conditioning</label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="hasStage" style="accent-color:var(--brand-primary)"> Stage</label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="hasKitchen" style="accent-color:var(--brand-primary)"> Kitchen</label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="hasPowerBackup" style="accent-color:var(--brand-primary)"> Power Backup</label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="hasParking" style="accent-color:var(--brand-primary)"> Parking</label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="hasWashroom" style="accent-color:var(--brand-primary)"> Washrooms</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="hallDescription" rows="3" placeholder="Brief description of the hall…"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                            <label class="form-label" style="margin:0">Active</label>
+                            <div class="form-check form-switch" style="margin:0">
+                                <input class="form-check-input" type="checkbox" id="hallActive" checked style="accent-color:var(--brand-primary)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="saveHallBtn" onclick="saveHall()">Save Hall</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../public/assets/js/api.js"></script>
+<script src="../../public/assets/js/utils.js"></script>
+<script src="../../public/assets/js/auth.js"></script>
+<script src="../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+const DEMO_HALLS = [
+    { hall_id:1, hall_name:'Royal Ballroom',  hall_code:'RB-001', hall_type:'main_hall', capacity_seated:500, capacity_standing:800, has_ac:1, has_stage:1, has_kitchen:1, has_power_backup:1, has_parking:1, base_price:150000, weekend_multiplier:1.30, banquet_name:'Grand Events Banquet', is_active:1 },
+    { hall_id:2, hall_name:'Crystal Hall',    hall_code:'CH-001', hall_type:'main_hall', capacity_seated:300, capacity_standing:500, has_ac:1, has_stage:1, has_kitchen:1, has_power_backup:1, has_parking:1, base_price:90000,  weekend_multiplier:1.25, banquet_name:'Grand Events Banquet', is_active:1 },
+    { hall_id:3, hall_name:'Garden Lawn',     hall_code:'GL-001', hall_type:'lawn',      capacity_seated:400, capacity_standing:700, has_ac:0, has_stage:0, has_kitchen:1, has_power_backup:1, has_parking:1, base_price:100000, weekend_multiplier:1.30, banquet_name:'Grand Events Banquet', is_active:1 },
+    { hall_id:4, hall_name:'Executive Suite', hall_code:'ES-001', hall_type:'conference',capacity_seated:80,  capacity_standing:120, has_ac:1, has_stage:0, has_kitchen:0, has_power_backup:1, has_parking:1, base_price:35000,  weekend_multiplier:1.20, banquet_name:'Grand Events Banquet', is_active:1 },
+    { hall_id:5, hall_name:'Terrace Lounge',  hall_code:'TL-001', hall_type:'terrace',  capacity_seated:150, capacity_standing:250, has_ac:0, has_stage:0, has_kitchen:0, has_power_backup:1, has_parking:1, base_price:45000,  weekend_multiplier:1.25, banquet_name:'Grand Events Banquet', is_active:1 },
+    { hall_id:6, hall_name:'Maharaja Hall',   hall_code:'MH-001', hall_type:'main_hall', capacity_seated:400, capacity_standing:650, has_ac:1, has_stage:1, has_kitchen:1, has_power_backup:1, has_parking:1, base_price:120000, weekend_multiplier:1.30, banquet_name:'Royal Heritage Banquet', is_active:1 },
+    { hall_id:7, hall_name:'Heritage Lawn',   hall_code:'HL-001', hall_type:'lawn',      capacity_seated:300, capacity_standing:500, has_ac:0, has_stage:0, has_kitchen:1, has_power_backup:1, has_parking:1, base_price:80000,  weekend_multiplier:1.25, banquet_name:'Royal Heritage Banquet', is_active:1 },
+    { hall_id:8, hall_name:'Diamond Hall',    hall_code:'DH-001', hall_type:'main_hall', capacity_seated:350, capacity_standing:600, has_ac:1, has_stage:1, has_kitchen:1, has_power_backup:1, has_parking:1, base_price:95000,  weekend_multiplier:1.25, banquet_name:'Emerald Convention', is_active:1 },
+];
+
+let viewMode = 'grid';
+
+function setView(mode) {
+    viewMode = mode;
+    document.getElementById('gridViewBtn').classList.toggle('active', mode === 'grid');
+    document.getElementById('listViewBtn').classList.toggle('active', mode === 'list');
+    renderHalls(currentHalls);
+}
+
+let currentHalls = [];
+
+async function loadHalls() {
+    const container = document.getElementById('hallGrid');
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</div>';
+    try {
+        const res = await API.halls.list({
+            search:      document.getElementById('hallSearch').value || undefined,
+            banquet_id:  document.getElementById('banquetFilter').value || undefined,
+            hall_type:   document.getElementById('typeFilter').value || undefined,
+        });
+        currentHalls = res.data?.halls || [];
+        renderHalls(currentHalls);
+    } catch {
+        currentHalls = DEMO_HALLS;
+        renderHalls(DEMO_HALLS);
+    }
+}
+
+function renderHalls(halls) {
+    const container = document.getElementById('hallGrid');
+    if (!halls.length) {
+        container.innerHTML = '<div style="grid-column:1/-1"><div class="empty-state"><div class="empty-state-icon">🚪</div><div class="empty-state-title">No halls found</div></div></div>';
+        return;
+    }
+
+    if (viewMode === 'grid') {
+        container.className = 'hall-grid';
+        container.innerHTML = halls.map(h => `
+        <div class="hall-tile">
+            <div class="hall-tile-img">
+                ${ ['🏛','🌿','🎭','💼','🌙','🎪'][h.hall_id % 6] }
+                ${ h.is_active ? '' : '<div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center"><span style="color:white;font-weight:700;font-size:14px;background:rgba(239,68,68,.8);padding:4px 12px;border-radius:20px">INACTIVE</span></div>' }
+            </div>
+            <div class="hall-tile-body">
+                <div class="hall-tile-name">${h.hall_name}</div>
+                <div class="hall-tile-venue">${h.banquet_name || ''}</div>
+                <div class="hall-chips">
+                    <span class="chip">👥 ${h.capacity_seated} seated</span>
+                    <span class="chip">${Utils.titleCase(h.hall_type)}</span>
+                    ${h.has_ac ? '<span class="chip">❄️ AC</span>' : ''}
+                    ${h.has_stage ? '<span class="chip">🎤 Stage</span>' : ''}
+                    ${h.has_kitchen ? '<span class="chip">🍳 Kitchen</span>' : ''}
+                </div>
+                <div class="hall-tile-footer">
+                    <div class="hall-price-tag">${Utils.formatCurrency(h.base_price)}<span style="font-size:11px;font-weight:400;color:var(--text-muted)">/day</span></div>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn-icon" title="Edit" onclick="openHallModal(${JSON.stringify(h).replace(/"/g,'&quot;')})">✏️</button>
+                        <a href="../bookings/create.html?hall=${h.hall_id}" class="btn-icon" title="Book">📅</a>
+                    </div>
+                </div>
+            </div>
+        </div>`).join('');
+    } else {
+        container.className = '';
+        container.innerHTML = `
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Hall</th><th>Banquet</th><th>Type</th><th>Seated Cap.</th><th>Base Price</th><th>Weekend</th><th>Amenities</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>
+                ${halls.map(h => `<tr>
+                    <td><div style="font-weight:600">${h.hall_name}</div><div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${h.hall_code}</div></td>
+                    <td>${h.banquet_name || '—'}</td>
+                    <td>${Utils.titleCase(h.hall_type)}</td>
+                    <td>${Utils.formatNumber(h.capacity_seated)}</td>
+                    <td style="font-weight:600">${Utils.formatCurrency(h.base_price)}</td>
+                    <td>×${h.weekend_multiplier}</td>
+                    <td>
+                        ${h.has_ac ? '❄️ ' : ''}${h.has_stage ? '🎤 ' : ''}${h.has_kitchen ? '🍳 ' : ''}${h.has_parking ? '🅿️' : ''}
+                    </td>
+                    <td>${h.is_active ? '<span class="badge-status badge-confirmed">Active</span>' : '<span class="badge-status badge-cancelled">Inactive</span>'}</td>
+                    <td><div style="display:flex;gap:4px">
+                        <button class="btn-icon" onclick="openHallModal(${JSON.stringify(h).replace(/"/g,'&quot;')})">✏️</button>
+                    </div></td>
+                </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    }
+}
+
+const handleSearch = Utils.debounce(() => loadHalls(), 350);
+
+let hallModalInstance;
+function openHallModal(hall = null) {
+    const isEdit = !!hall;
+    document.getElementById('hallModalTitle').textContent = isEdit ? 'Edit Hall' : 'Add Hall';
+    document.getElementById('hallId').value = hall?.hall_id || '';
+    document.getElementById('hallName').value = hall?.hall_name || '';
+    document.getElementById('hallCode').value = hall?.hall_code || '';
+    document.getElementById('hallType').value = hall?.hall_type || 'main_hall';
+    document.getElementById('hallFloor').value = hall?.floor_number ?? 1;
+    document.getElementById('hallCapacitySeated').value  = hall?.capacity_seated || '';
+    document.getElementById('hallCapacityStanding').value= hall?.capacity_standing || '';
+    document.getElementById('hallArea').value    = hall?.area_sqft || '';
+    document.getElementById('hallBasePrice').value = hall?.base_price || '';
+    document.getElementById('hallWeekendMult').value = hall?.weekend_multiplier || 1.25;
+    document.getElementById('hallActive').checked = hall?.is_active !== 0;
+    document.getElementById('hasAC').checked      = !!hall?.has_ac;
+    document.getElementById('hasStage').checked   = !!hall?.has_stage;
+    document.getElementById('hasKitchen').checked = !!hall?.has_kitchen;
+    document.getElementById('hasPowerBackup').checked = !!hall?.has_power_backup;
+    document.getElementById('hasParking').checked = !!hall?.has_parking;
+    document.getElementById('hasWashroom').checked= !!hall?.has_washroom;
+    hallModalInstance = new bootstrap.Modal(document.getElementById('hallModal'));
+    hallModalInstance.show();
+}
+
+async function saveHall() {
+    const btn = document.getElementById('saveHallBtn');
+    const payload = {
+        hall_id:            document.getElementById('hallId').value || null,
+        banquet_id:         document.getElementById('hallBanquetId').value,
+        hall_name:          document.getElementById('hallName').value.trim(),
+        hall_code:          document.getElementById('hallCode').value.trim().toUpperCase(),
+        hall_type:          document.getElementById('hallType').value,
+        floor_number:       parseInt(document.getElementById('hallFloor').value),
+        capacity_seated:    parseInt(document.getElementById('hallCapacitySeated').value),
+        capacity_standing:  parseInt(document.getElementById('hallCapacityStanding').value) || null,
+        area_sqft:          parseFloat(document.getElementById('hallArea').value) || null,
+        base_price:         parseFloat(document.getElementById('hallBasePrice').value),
+        weekend_multiplier: parseFloat(document.getElementById('hallWeekendMult').value),
+        has_ac:             document.getElementById('hasAC').checked ? 1 : 0,
+        has_stage:          document.getElementById('hasStage').checked ? 1 : 0,
+        has_kitchen:        document.getElementById('hasKitchen').checked ? 1 : 0,
+        has_power_backup:   document.getElementById('hasPowerBackup').checked ? 1 : 0,
+        has_parking:        document.getElementById('hasParking').checked ? 1 : 0,
+        has_washroom:       document.getElementById('hasWashroom').checked ? 1 : 0,
+        is_active:          document.getElementById('hallActive').checked ? 1 : 0,
+    };
+
+    if (!payload.hall_name || !payload.banquet_id || !payload.capacity_seated || !payload.base_price) {
+        Utils.toast('Please fill all required fields', 'error'); return;
+    }
+
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        await API.halls.upsert(payload);
+        Utils.hideLoader(btn);
+        hallModalInstance?.hide();
+        Utils.toast(`Hall ${payload.hall_id ? 'updated' : 'created'} successfully!`, 'success');
+        loadHalls();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to save hall', 'error');
+    }
+}
+
+async function loadBanquetOptions() {
+    try {
+        const res  = await API.banquets.list({ limit: 50 });
+        const list = res.data?.banquets || [];
+        const sels = [document.getElementById('banquetFilter'), document.getElementById('hallBanquetId')];
+        sels.forEach(sel => {
+            const extra = sel.options[0];
+            sel.innerHTML = '';
+            sel.appendChild(extra);
+            list.forEach(b => {
+                const o = document.createElement('option');
+                o.value = b.banquet_id; o.textContent = b.banquet_name;
+                sel.appendChild(o);
+            });
+        });
+    } catch {
+        ['Grand Events Banquet','Royal Heritage Banquet','Emerald Convention'].forEach((name, i) => {
+            [document.getElementById('banquetFilter'), document.getElementById('hallBanquetId')].forEach(sel => {
+                const o = document.createElement('option');
+                o.value = i + 1; o.textContent = name;
+                sel.appendChild(o);
+            });
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadBanquetOptions();
+    loadHalls();
+});
+</script>
+</body>
+</html>

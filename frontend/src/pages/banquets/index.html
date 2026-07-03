@@ -1,0 +1,616 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banquets | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.banquet-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: box-shadow .2s, transform .2s;
+    cursor: pointer;
+}
+.banquet-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.banquet-card-img {
+    height: 140px;
+    background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 52px;
+    position: relative;
+}
+.banquet-card-img .status-dot {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+.banquet-card-body { padding: 16px 18px; }
+.banquet-card-name { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.banquet-card-sub  { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.banquet-stat { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px }
+.banquet-stat-val { font-weight: 700; color: var(--text-primary) }
+.banquet-card-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 10px 18px;
+    display: flex;
+    gap: 8px;
+    background: var(--bg-surface-2);
+}
+.hall-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    margin: 2px;
+}
+/* star rating display */
+.stars { color: #F59E0B; letter-spacing: 1px; font-size: 13px }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand">
+        <div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div>
+        <span class="sidebar-brand-text">BanquetPro</span>
+    </a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html"  class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
+        <a href="../bookings/create.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">Venues</div>
+        <a href="index.html"              class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></span><span class="sidebar-text">Banquets</span></a>
+        <a href="../halls/index.html"     class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg></span><span class="sidebar-text">Halls</span></a>
+        <div class="nav-section-label">CRM</div>
+        <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="../payments/index.html"  class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span><span class="sidebar-text">Payments</span></a>
+        <a href="../invoices/index.html"  class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg></span><span class="sidebar-text">Invoices</span></a>
+        <div class="nav-section-label">Reports</div>
+        <a href="../reports/revenue.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path></svg></span><span class="sidebar-text">Revenue</span></a>
+        <div class="nav-section-label">Admin</div>
+        <a href="../users/index.html"     class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="8" r="4"></circle><path d="M4 20a8 8 0 0 1 16 0"></path></svg></span><span class="sidebar-text">Users</span></a>
+        <a href="../settings/index.html"  class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2.1-1.6-2-3.5-2.5 1A7 7 0 0 0 15 4.4L14 2h-4l-1 2.4a7 7 0 0 0-1.5 1.5L5 5.9l-2 3.5 2.1 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1L3 14.6l2 3.5 2.5-1a7 7 0 0 0 1.5 1.5l1 2.4h4l1-2.4a7 7 0 0 0 1.5-1.5l2.5 1 2-3.5-2.1-1.6c.1-.3.1-.7.1-1z"></path></svg></span><span class="sidebar-text">Settings</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px">
+            <div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div>
+            <div class="sidebar-text">
+                <div style="color:white;font-size:13px;font-weight:600" data-user-name></div>
+                <div style="color:rgba(255,255,255,.55);font-size:11px" data-user-role></div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li>
+                <li class="breadcrumb-item active">Banquets</li>
+            </ol>
+        </nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown">
+                <button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item danger" href="#" data-action="logout"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Log Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Banquets</h1>
+                <p class="page-subtitle">Manage all banquet properties, branches and their halls</p>
+            </div>
+            <div style="display:flex;gap:10px">
+                <button class="btn-ghost" onclick="setView('list')" id="viewList" title="List view"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+                <button class="btn-ghost" onclick="setView('grid')" id="viewGrid" title="Grid view">âŠž</button>
+                <button class="btn-primary-brand" onclick="openModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Add Banquet</button>
+            </div>
+        </div>
+
+        <!-- Stats strip -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px">
+            <div class="kpi-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><div class="kpi-label">Total Banquets</div><div class="kpi-value" id="statTotal">—</div></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-1-bg)"><span style="font-size:20px;color:var(--kpi-1)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></span></div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><div class="kpi-label">Total Halls</div><div class="kpi-value" id="statHalls">—</div></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-2-bg)"><span style="font-size:20px;color:var(--kpi-2)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg></span></div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><div class="kpi-label">Total Capacity</div><div class="kpi-value" id="statCapacity">—</div></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-3-bg)"><span style="font-size:20px;color:var(--kpi-3)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span></div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><div class="kpi-label">Avg Rating</div><div class="kpi-value" id="statRating" style="color:var(--kpi-4)">—</div></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-4-bg)"><span style="font-size:20px;color:var(--kpi-4)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="m12 2 3.2 6.5 7.2.8-5.4 5.1 1.5 7-6.5-3.6-6.5 3.6 1.5-7-5.4-5.1 7.2-.8z"></path></svg></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search / filter bar -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+            <div class="search-input-wrap" style="flex:1;min-width:200px">
+                <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg></span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Search banquets, city…" oninput="handleSearch(this.value)">
+            </div>
+            <select class="form-select" id="branchFilter" onchange="renderBanquets()" style="width:auto">
+                <option value="">All Branches</option>
+                <option value="1">Main Branch</option>
+                <option value="2">North Branch</option>
+                <option value="3">South Branch</option>
+            </select>
+            <select class="form-select" id="statusFilter" onchange="renderBanquets()" style="width:auto">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">Maintenance</option>
+            </select>
+        </div>
+
+        <!-- Grid view -->
+        <div id="gridView">
+            <div id="banquetGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px">
+                <div class="text-center py-5" style="grid-column:1/-1"><span class="spinner-border" style="color:var(--brand-primary)"></span></div>
+            </div>
+        </div>
+
+        <!-- List view -->
+        <div id="listView" style="display:none">
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Banquet</th><th>Branch</th><th>City</th><th>Halls</th><th>Capacity</th><th>Rating</th><th>Status</th><th style="width:130px">Actions</th></tr>
+                        </thead>
+                        <tbody id="banquetList">
+                            <tr><td colspan="8" class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="paginationWrap"></div>
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<!-- Add / Edit Banquet Modal -->
+<div class="modal fade" id="banquetModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Add Banquet</h5>
+                <button class="btn-close" data-bs-dismiss="modal">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="banquetId">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Banquet Name *</label>
+                        <input type="text" class="form-control" id="bName" placeholder="Royal Heritage Banquet">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="bStatus">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="maintenance">Maintenance</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Branch *</label>
+                        <select class="form-select" id="bBranch">
+                            <option value="">Select Branch</option>
+                            <option value="1">Main Branch</option>
+                            <option value="2">North Branch</option>
+                            <option value="3">South Branch</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">GST Number</label>
+                        <input type="text" class="form-control" id="bGST" placeholder="27AABCB1234K1Z5" maxlength="15">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Address *</label>
+                        <input type="text" class="form-control" id="bAddress" placeholder="Street, Area">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">City *</label>
+                        <input type="text" class="form-control" id="bCity" placeholder="Mumbai">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">State *</label>
+                        <select class="form-select" id="bState">
+                            <option value="">Select State</option>
+                            <option value="Maharashtra" selected>Maharashtra</option>
+                            <option value="Delhi">Delhi</option>
+                            <option value="Karnataka">Karnataka</option>
+                            <option value="Tamil Nadu">Tamil Nadu</option>
+                            <option value="Gujarat">Gujarat</option>
+                            <option value="Rajasthan">Rajasthan</option>
+                            <option value="Uttar Pradesh">Uttar Pradesh</option>
+                            <option value="West Bengal">West Bengal</option>
+                            <option value="Telangana">Telangana</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Pincode</label>
+                        <input type="text" class="form-control" id="bPin" placeholder="400001" maxlength="6">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Contact Phone</label>
+                        <input type="tel" class="form-control" id="bPhone" placeholder="+91 22 4567 8901">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Contact Email</label>
+                        <input type="email" class="form-control" id="bEmail" placeholder="info@banquet.com">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="bDesc" rows="3" placeholder="Briefly describe the banquet property, ambiance, specialties…"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Amenities</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Parking" style="margin:0"> Parking</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Wi-Fi" style="margin:0"> Wi-Fi</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="AC" style="margin:0"> AC</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="DJ Setup" style="margin:0"> DJ Setup</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Valet" style="margin:0"> Valet</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Bridal Room" style="margin:0"> Bridal Room</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Catering Kitchen" style="margin:0"> Catering Kitchen</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Generator Backup" style="margin:0"> Generator Backup</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="CCTV" style="margin:0"> CCTV</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Elevator" style="margin:0"> Elevator</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Outdoor Space" style="margin:0"> Outdoor Space</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="form-check-input amenity-cb" value="Swimming Pool" style="margin:0"> Swimming Pool</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="saveBanquetBtn" onclick="saveBanquet()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 3h9l4 4v14H6z"></path><path d="M14 3v5h4"></path><path d="M8 13h8"></path><path d="M8 17h8"></path></svg> Save Banquet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Banquet Detail Drawer (quick view) -->
+<div id="drawerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1040" onclick="closeDrawer()"></div>
+<div id="detailDrawer" style="display:none;position:fixed;top:0;right:0;height:100%;width:420px;background:var(--bg-surface);border-left:1px solid var(--border-color);z-index:1050;overflow-y:auto;padding:24px;box-shadow:var(--shadow-xl)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h5 style="margin:0;font-size:16px;font-weight:700" id="drawerName">—</h5>
+        <button onclick="closeDrawer()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted)">×</button>
+    </div>
+    <div id="drawerContent"></div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+/* â”€â”€ Demo data â”€â”€ */
+const DEMO_BANQUETS = [
+    {
+        banquet_id: 1, name: 'Royal Heritage Banquet', branch_name: 'Main Branch', branch_id: 1,
+        city: 'Mumbai', state: 'Maharashtra', address: '12, MG Road, Andheri West',
+        phone: '+91 22 4567 8901', email: 'royal@banquet.in',
+        status: 'active', total_halls: 4, total_capacity: 1600,
+        avg_rating: 4.7, total_reviews: 128, total_bookings: 312,
+        gst_number: '27AABCB1234K1Z5',
+        description: 'A premium heritage property with elegant halls, lush gardens and world-class catering. Perfect for weddings, receptions and corporate events.',
+        amenities: ['Parking','Wi-Fi','AC','DJ Setup','Valet','Bridal Room','Catering Kitchen','Generator Backup','CCTV'],
+        halls: [
+            { name:'Grand Ballroom',  capacity:500, price_per_day:85000 },
+            { name:'Emerald Hall',    capacity:350, price_per_day:55000 },
+            { name:'Royal Suite',     capacity:200, price_per_day:42000 },
+            { name:'Silver Terrace',  capacity:400, price_per_day:60000 },
+        ],
+        emoji: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 20V9l8-5 8 5v11"></path><path d="M8 20v-5h8v5"></path><path d="M10 9h4"></path></svg>',
+    },
+    {
+        banquet_id: 2, name: 'Emerald Convention Centre', branch_name: 'North Branch', branch_id: 2,
+        city: 'Pune', state: 'Maharashtra', address: '45, FC Road, Shivajinagar',
+        phone: '+91 20 6789 0123', email: 'emerald@convention.in',
+        status: 'active', total_halls: 3, total_capacity: 1200,
+        avg_rating: 4.5, total_reviews: 86, total_bookings: 198,
+        gst_number: '27AACCE5678M1Z2',
+        description: 'A modern convention centre with state-of-the-art AV systems, flexible hall configurations and dedicated event coordinators.',
+        amenities: ['Parking','Wi-Fi','AC','Generator Backup','CCTV','Elevator'],
+        halls: [
+            { name:'Diamond Hall',    capacity:600, price_per_day:95000 },
+            { name:'Sapphire Room',   capacity:300, price_per_day:48000 },
+            { name:'Pearl Lounge',    capacity:150, price_per_day:30000 },
+        ],
+        emoji: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>',
+    },
+    {
+        banquet_id: 3, name: 'Golden Lotus Banquet', branch_name: 'South Branch', branch_id: 3,
+        city: 'Nashik', state: 'Maharashtra', address: '8, College Road, Nashik',
+        phone: '+91 253 456 7890', email: 'lotus@banquet.in',
+        status: 'active', total_halls: 2, total_capacity: 700,
+        avg_rating: 4.2, total_reviews: 54, total_bookings: 112,
+        gst_number: '27AAACG9012N1Z9',
+        description: 'A serene banquet nestled amidst nature with a lotus pond and open-air terrace. Ideal for intimate weddings and family events.',
+        amenities: ['Parking','AC','Outdoor Space','Catering Kitchen'],
+        halls: [
+            { name:'Lotus Hall',      capacity:400, price_per_day:45000 },
+            { name:'Garden Pavilion', capacity:300, price_per_day:38000 },
+        ],
+        emoji: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>',
+    },
+];
+
+let allBanquets = [];
+let currentView = 'grid';
+
+/* â”€â”€ Load â”€â”€ */
+async function loadBanquets() {
+    try {
+        const res = await API.get('/banquets', { params: {} });
+        allBanquets = res.data?.banquets || [];
+    } catch {
+        allBanquets = DEMO_BANQUETS;
+    }
+    updateStats(allBanquets);
+    renderBanquets();
+}
+
+function updateStats(banquets) {
+    const totalHalls    = banquets.reduce((s, b) => s + (b.total_halls || 0), 0);
+    const totalCapacity = banquets.reduce((s, b) => s + (b.total_capacity || 0), 0);
+    const avgRating     = banquets.reduce((s, b) => s + (b.avg_rating || 0), 0) / (banquets.length || 1);
+    document.getElementById('statTotal').textContent    = banquets.length;
+    document.getElementById('statHalls').textContent    = totalHalls;
+    document.getElementById('statCapacity').textContent = Utils.formatNumber(totalCapacity);
+    document.getElementById('statRating').innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="m12 2 3.2 6.5 7.2.8-5.4 5.1 1.5 7-6.5-3.6-6.5 3.6 1.5-7-5.4-5.1 7.2-.8z"></path></svg><span>${avgRating.toFixed(1)}</span></span>`;
+}
+
+/* â”€â”€ Filter + render â”€â”€ */
+function renderBanquets() {
+    const q      = document.getElementById('searchInput').value.toLowerCase();
+    const branch = document.getElementById('branchFilter').value;
+    const status = document.getElementById('statusFilter').value;
+
+    const filtered = allBanquets.filter(b => {
+        if (q      && !`${b.name} ${b.city} ${b.state}`.toLowerCase().includes(q)) return false;
+        if (branch && String(b.branch_id) !== branch)                               return false;
+        if (status && b.status !== status)                                           return false;
+        return true;
+    });
+
+    if (currentView === 'grid') renderGrid(filtered);
+    else                        renderList(filtered);
+}
+
+const STATUS_COLOR = { active:'var(--color-success)', inactive:'var(--color-warning)', maintenance:'var(--color-danger)' };
+
+function renderGrid(banquets) {
+    const grid = document.getElementById('banquetGrid');
+    if (!banquets.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;padding:48px">No banquets found</div>';
+        return;
+    }
+    grid.innerHTML = banquets.map(b => `
+    <div class="banquet-card" onclick="openDrawer(${b.banquet_id})">
+        <div class="banquet-card-img" style="background:linear-gradient(135deg,${b.banquet_id===1?'#7C3AED,#4F46E5':b.banquet_id===2?'#059669,#0D9488':'#D97706,#DC2626'})">
+            <span>${b.emoji || '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg>'}</span>
+            <div class="status-dot" style="background:${STATUS_COLOR[b.status]||'gray'}"></div>
+        </div>
+        <div class="banquet-card-body">
+            <div class="banquet-card-name">${b.name}</div>
+            <div class="banquet-card-sub"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> ${b.city}, ${b.state} &nbsp;·&nbsp; ${b.branch_name}</div>
+            <div class="banquet-stat"><span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg></span><span>${b.total_halls} halls</span><span style="margin:0 8px;color:var(--border-color)">|</span><span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="banquet-stat-val">${Utils.formatNumber(b.total_capacity)} seats</span></div>
+            <div class="banquet-stat"><span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span>${b.total_bookings} bookings</span><span style="margin:0 8px;color:var(--border-color)">|</span><span class="stars">${'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>'.repeat(Math.round(b.avg_rating))}${'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>'.repeat(5-Math.round(b.avg_rating))}</span><span style="font-size:11.5px;color:var(--text-muted)">${b.avg_rating?.toFixed(1)} (${b.total_reviews})</span></div>
+            <div style="margin-top:10px;display:flex;flex-wrap:wrap">
+                ${(b.amenities||[]).slice(0,4).map(a=>`<span class="hall-chip">${a}</span>`).join('')}
+                ${(b.amenities||[]).length>4?`<span class="hall-chip">+${b.amenities.length-4}</span>`:''}
+            </div>
+        </div>
+        <div class="banquet-card-footer">
+            <button class="btn-ghost" style="flex:1;font-size:12px" onclick="event.stopPropagation();openModal(${b.banquet_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> Edit</button>
+            <button class="btn-ghost" style="flex:1;font-size:12px" onclick="event.stopPropagation();location.href='../halls/index.html?banquet=${b.banquet_id}'"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Halls</button>
+            <button class="btn-primary-brand" style="flex:1;font-size:12px" onclick="event.stopPropagation();location.href='../bookings/create.html?banquet=${b.banquet_id}'"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> Book</button>
+        </div>
+    </div>`).join('');
+}
+
+function renderList(banquets) {
+    const tbody = document.getElementById('banquetList');
+    if (!banquets.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state" style="padding:24px">No banquets found</div></td></tr>'; return; }
+    tbody.innerHTML = banquets.map(b => `
+    <tr style="cursor:pointer" onclick="openDrawer(${b.banquet_id})">
+        <td>
+            <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand-primary),#4F46E5);display:flex;align-items:center;justify-content:center;font-size:18px">${b.emoji||'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg>'}</div>
+                <div>
+                    <div style="font-weight:700;font-size:13.5px">${b.name}</div>
+                    <div style="font-size:11.5px;color:var(--text-muted)">${b.email||''}</div>
+                </div>
+            </div>
+        </td>
+        <td style="font-size:12.5px">${b.branch_name}</td>
+        <td style="font-size:12.5px">${b.city}</td>
+        <td style="font-weight:700">${b.total_halls}</td>
+        <td>${Utils.formatNumber(b.total_capacity)}</td>
+        <td><span class="stars" style="font-size:11px">${'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>'.repeat(Math.round(b.avg_rating))}</span> <span style="font-size:12px">${b.avg_rating?.toFixed(1)}</span></td>
+        <td>${Utils.statusBadge(b.status)}</td>
+        <td>
+            <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
+                <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="openModal(${b.banquet_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
+                <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="location.href='../halls/index.html?banquet=${b.banquet_id}'"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg></button>
+                <button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--color-danger)" onclick="deleteBanquet(${b.banquet_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
+            </div>
+        </td>
+    </tr>`).join('');
+}
+
+/* â”€â”€ View toggle â”€â”€ */
+function setView(v) {
+    currentView = v;
+    document.getElementById('gridView').style.display = v === 'grid' ? '' : 'none';
+    document.getElementById('listView').style.display = v === 'list' ? '' : 'none';
+    document.getElementById('viewGrid').style.fontWeight = v === 'grid' ? '800' : '400';
+    document.getElementById('viewList').style.fontWeight = v === 'list' ? '800' : '400';
+    renderBanquets();
+}
+
+/* â”€â”€ Quick-view Drawer â”€â”€ */
+function openDrawer(id) {
+    const b = allBanquets.find(x => x.banquet_id === id);
+    if (!b) return;
+    document.getElementById('drawerName').textContent = b.name;
+    document.getElementById('drawerContent').innerHTML = `
+    <div style="background:linear-gradient(135deg,var(--brand-primary),#4F46E5);border-radius:12px;padding:20px;text-align:center;font-size:48px;margin-bottom:16px">${b.emoji||'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg>'}</div>
+    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> ${b.address}, ${b.city} – ${b.state}</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">${b.description||''}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="background:var(--bg-surface-2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--brand-primary)">${b.total_halls}</div><div style="font-size:11.5px;color:var(--text-muted)">Halls</div></div>
+        <div style="background:var(--bg-surface-2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--brand-primary)">${Utils.formatNumber(b.total_capacity)}</div><div style="font-size:11.5px;color:var(--text-muted)">Total Seats</div></div>
+        <div style="background:var(--bg-surface-2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:#F59E0B;display:flex;align-items:center;justify-content:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="m12 2 3.2 6.5 7.2.8-5.4 5.1 1.5 7-6.5-3.6-6.5 3.6 1.5-7-5.4-5.1 7.2-.8z"></path></svg><span>${b.avg_rating?.toFixed(1)}</span></div><div style="font-size:11.5px;color:var(--text-muted)">${b.total_reviews} Reviews</div></div>
+        <div style="background:var(--bg-surface-2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--color-success)">${b.total_bookings}</div><div style="font-size:11.5px;color:var(--text-muted)">Bookings</div></div>
+    </div>
+    <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Halls</div>
+        ${(b.halls||[]).map(h=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:12.5px"><span>${h.name}</span><span style="color:var(--text-muted)">${h.capacity} seats · ${Utils.formatCurrency(h.price_per_day)}/day</span></div>`).join('')}
+    </div>
+    <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Amenities</div>
+        <div>${(b.amenities||[]).map(a=>`<span class="hall-chip">${a}</span>`).join('')}</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn-primary-brand" style="flex:1" onclick="location.href='../bookings/create.html?banquet=${b.banquet_id}'"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> Book Now</button>
+        <button class="btn-ghost" style="flex:1" onclick="openModal(${b.banquet_id});closeDrawer()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> Edit</button>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text-muted)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> ${b.phone||'—'} &nbsp; <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> ${b.email||'—'}</div>
+    `;
+    document.getElementById('drawerBackdrop').style.display = '';
+    document.getElementById('detailDrawer').style.display   = '';
+}
+
+function closeDrawer() {
+    document.getElementById('drawerBackdrop').style.display = 'none';
+    document.getElementById('detailDrawer').style.display   = 'none';
+}
+
+/* â”€â”€ Add / Edit Modal â”€â”€ */
+let banquetModalInst, editingId = null;
+
+function openModal(id = null) {
+    editingId = id;
+    const b   = id ? allBanquets.find(x => x.banquet_id === id) : null;
+    document.getElementById('modalTitle').textContent = b ? 'Edit Banquet' : 'Add Banquet';
+    document.getElementById('banquetId').value  = b?.banquet_id || '';
+    document.getElementById('bName').value      = b?.name        || '';
+    document.getElementById('bStatus').value    = b?.status      || 'active';
+    document.getElementById('bBranch').value    = b?.branch_id   || '';
+    document.getElementById('bGST').value       = b?.gst_number  || '';
+    document.getElementById('bAddress').value   = b?.address     || '';
+    document.getElementById('bCity').value      = b?.city        || '';
+    document.getElementById('bState').value     = b?.state       || '';
+    document.getElementById('bPin').value       = b?.pincode     || '';
+    document.getElementById('bPhone').value     = b?.phone       || '';
+    document.getElementById('bEmail').value     = b?.email       || '';
+    document.getElementById('bDesc').value      = b?.description || '';
+    document.querySelectorAll('.amenity-cb').forEach(cb => {
+        cb.checked = (b?.amenities || []).includes(cb.value);
+    });
+    banquetModalInst = new bootstrap.Modal(document.getElementById('banquetModal'));
+    banquetModalInst.show();
+}
+
+async function saveBanquet() {
+    const btn  = document.getElementById('saveBanquetBtn');
+    const name = document.getElementById('bName').value.trim();
+    if (!name) { Utils.toast('Banquet name is required', 'error'); return; }
+    const data = {
+        name,
+        status:      document.getElementById('bStatus').value,
+        branch_id:   parseInt(document.getElementById('bBranch').value) || null,
+        gst_number:  document.getElementById('bGST').value.trim()    || null,
+        address:     document.getElementById('bAddress').value.trim() || null,
+        city:        document.getElementById('bCity').value.trim()    || null,
+        state:       document.getElementById('bState').value          || null,
+        pincode:     document.getElementById('bPin').value.trim()     || null,
+        phone:       document.getElementById('bPhone').value.trim()   || null,
+        email:       document.getElementById('bEmail').value.trim()   || null,
+        description: document.getElementById('bDesc').value.trim()    || null,
+        amenities:   [...document.querySelectorAll('.amenity-cb:checked')].map(c => c.value),
+    };
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        if (editingId) await API.put(`/banquets/${editingId}`, data);
+        else           await API.post('/banquets', data);
+        Utils.hideLoader(btn);
+        banquetModalInst.hide();
+        Utils.toast(editingId ? 'Banquet updated!' : 'Banquet created!', 'success');
+        loadBanquets();
+    } catch {
+        Utils.hideLoader(btn);
+        banquetModalInst.hide();
+        Utils.toast(editingId ? 'Banquet updated (demo)' : 'Banquet created (demo)', 'success');
+        loadBanquets();
+    }
+}
+
+async function deleteBanquet(id) {
+    const ok = await Utils.confirm('Delete this banquet? All its halls and bookings will be affected.', { title: 'Delete Banquet', danger: true });
+    if (!ok) return;
+    try { await API.delete(`/banquets/${id}`); } catch { /* demo */ }
+    Utils.toast('Banquet deleted', 'success');
+    allBanquets = allBanquets.filter(b => b.banquet_id !== id);
+    updateStats(allBanquets);
+    renderBanquets();
+}
+
+const handleSearch = Utils.debounce(() => renderBanquets(), 300);
+document.addEventListener('DOMContentLoaded', () => loadBanquets());
+</script>
+</body>
+</html>

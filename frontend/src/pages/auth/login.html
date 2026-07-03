@@ -1,0 +1,443 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In | Banquet Hall Booking System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css"  rel="stylesheet">
+<link href="../../../public/assets/css/app.css"    rel="stylesheet">
+<style>
+    body { background: var(--bg-body); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+
+    .auth-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 100vh;
+        width: 100%;
+    }
+
+    /* ── Left — Luxury Branding Panel ─────────────────────────── */
+    .auth-brand-panel {
+        background: linear-gradient(150deg, #060D18 0%, #0D1929 30%, #1A2B4A 65%, #1E3254 100%);
+        display: flex; flex-direction: column; justify-content: space-between;
+        padding: 48px;
+        position: relative; overflow: hidden;
+    }
+    /* Luxury diamond lattice */
+    .auth-brand-panel::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24 2 L46 24 L24 46 L2 24 Z' fill='none' stroke='rgba(197,160,89,0.07)' stroke-width='0.6'/%3E%3C/svg%3E");
+        pointer-events: none;
+    }
+    /* Gold accent line on right edge */
+    .auth-brand-panel::after {
+        content: '';
+        position: absolute;
+        right: 0; top: 0; bottom: 0;
+        width: 1px;
+        background: linear-gradient(180deg,
+            transparent 0%,
+            rgba(197,160,89,.4) 25%,
+            rgba(197,160,89,.7) 50%,
+            rgba(197,160,89,.4) 75%,
+            transparent 100%);
+    }
+    /* Ambient gold glows */
+    .auth-brand-glow {
+        position: absolute;
+        width: 450px; height: 450px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(197,160,89,.1) 0%, transparent 65%);
+        top: -140px; left: -120px; pointer-events: none;
+    }
+    .auth-brand-glow-2 {
+        position: absolute;
+        width: 320px; height: 320px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(197,160,89,.07) 0%, transparent 65%);
+        bottom: 40px; right: -80px; pointer-events: none;
+    }
+
+    .brand-logo { display: flex; align-items: center; gap: 14px; position: relative; z-index: 1; }
+    .brand-icon {
+        width: 52px; height: 52px;
+        background: rgba(197,160,89,.15);
+        border-radius: 16px; display: flex; align-items: center; justify-content: center;
+        color: #C5A059;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(197,160,89,.35);
+        box-shadow: 0 4px 20px rgba(197,160,89,.2), inset 0 1px 0 rgba(255,255,255,.1);
+        transition: box-shadow .3s ease;
+    }
+    .brand-icon:hover { box-shadow: 0 6px 28px rgba(197,160,89,.35), inset 0 1px 0 rgba(255,255,255,.15); }
+    .brand-name {
+        color: white; font-size: 22px; font-weight: 700;
+        font-family: 'Playfair Display', serif;
+        letter-spacing: -.01em;
+    }
+    .brand-sub  { color: rgba(197,160,89,.7); font-size: 11px; margin-top: 3px; letter-spacing: .08em; text-transform: uppercase; }
+
+    .brand-copy { position: relative; z-index: 1; }
+    .brand-eyebrow {
+        display: inline-flex; align-items: center; gap: 10px;
+        font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+        color: #C5A059; margin-bottom: 16px;
+    }
+    .brand-eyebrow::before, .brand-eyebrow::after {
+        content: ''; display: inline-block;
+        width: 22px; height: 1px; background: rgba(197,160,89,.6);
+    }
+    .brand-headline {
+        color: white;
+        font-size: 42px; font-weight: 700;
+        font-family: 'Playfair Display', serif;
+        line-height: 1.15; margin-bottom: 18px;
+        letter-spacing: -.01em;
+    }
+    .brand-desc { color: rgba(255,255,255,.5); font-size: 14px; line-height: 1.78; max-width: 360px; }
+
+    .brand-stats {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 12px; position: relative; z-index: 1;
+    }
+    .stat-card {
+        background: rgba(255,255,255,.06);
+        backdrop-filter: blur(14px) saturate(180%);
+        border: 1px solid rgba(197,160,89,.2);
+        border-radius: 14px; padding: 16px;
+        transition: transform .25s ease, border-color .25s ease, background .25s ease;
+    }
+    .stat-card:hover {
+        border-color: rgba(197,160,89,.45);
+        transform: translateY(-3px);
+        background: rgba(197,160,89,.08);
+    }
+    .stat-num  { color: #C5A059; font-size: 22px; font-weight: 700; font-family: 'Playfair Display', serif; }
+    .stat-label{ color: rgba(255,255,255,.45); font-size: 11px; margin-top: 4px; letter-spacing: .04em; }
+
+    /* ── Right — Form Panel ────────────────────────────────────── */
+    .auth-form-panel {
+        background: var(--bg-surface);
+        display: flex; align-items: center; justify-content: center;
+        padding: 48px;
+        position: relative;
+    }
+    .auth-form-panel::before {
+        content: '';
+        position: absolute; inset: 0;
+        background:
+            radial-gradient(ellipse 60% 40% at 20% 5%, rgba(197,160,89,.045) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 85% 95%, rgba(26,43,74,.04) 0%, transparent 60%);
+        pointer-events: none;
+    }
+
+    .auth-card { width: 100%; max-width: 420px; position: relative; z-index: 1; }
+
+    .auth-eyebrow {
+        font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+        color: var(--brand-gold, #C5A059); margin-bottom: 8px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .auth-eyebrow::before {
+        content: ''; display: inline-block;
+        width: 18px; height: 1px; background: var(--brand-gold, #C5A059);
+    }
+    .auth-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 30px; font-weight: 700;
+        color: var(--text-primary); margin-bottom: 6px;
+        letter-spacing: -.01em;
+    }
+    .auth-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; }
+
+    .form-group { margin-bottom: 18px; }
+
+    .input-group-auth { position: relative; }
+    .input-group-auth .input-icon {
+        position: absolute; left: 14px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted); pointer-events: none;
+        transition: color .2s ease;
+    }
+    .input-group-auth:focus-within .input-icon { color: var(--brand-gold, #C5A059); }
+    .input-group-auth .form-control {
+        padding-left: 42px;
+        background: rgba(255,255,255,.6);
+        backdrop-filter: blur(8px);
+        border: 1.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .input-group-auth .form-control:focus {
+        background: rgba(255,255,255,.85);
+        border-color: var(--brand-gold, #C5A059);
+        box-shadow: 0 0 0 3px rgba(197,160,89,.14);
+    }
+    .input-group-auth .password-toggle {
+        position: absolute; right: 12px; top: 50%;
+        transform: translateY(-50%);
+        background: none; border: none; cursor: pointer;
+        color: var(--text-muted); font-size: 16px;
+        padding: 4px; transition: color .2s ease;
+    }
+    .input-group-auth .password-toggle:hover { color: var(--brand-gold, #C5A059); }
+
+    .auth-divider {
+        display: flex; align-items: center; gap: 12px;
+        color: var(--text-muted); font-size: 12px; margin: 20px 0;
+    }
+    .auth-divider::before, .auth-divider::after {
+        content: ''; flex: 1; height: 1px; background: var(--border-color);
+    }
+
+    .btn-auth {
+        width: 100%; padding: 13px;
+        background: linear-gradient(135deg, #C5A059 0%, #D4B478 50%, #C5A059 100%);
+        background-size: 200% 100%;
+        color: white; border: none; border-radius: var(--radius-md);
+        font-size: 15px; font-weight: 600; letter-spacing: .01em;
+        cursor: pointer;
+        transition: background-position .5s ease, box-shadow .3s ease;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        box-shadow: 0 4px 20px rgba(197,160,89,.3);
+        position: relative; overflow: hidden;
+    }
+    .btn-auth::after {
+        content: '';
+        position: absolute; top: 0; left: -100%; bottom: 0; width: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+        transition: left .55s ease;
+    }
+    .btn-auth:hover {
+        background-position: 100% 0;
+        box-shadow: 0 6px 28px rgba(197,160,89,.45);
+    }
+    .btn-auth:hover::after { left: 100%; }
+    .btn-auth:disabled { opacity: .7; cursor: not-allowed; }
+
+    .forgot-link {
+        color: var(--brand-gold, #C5A059); text-decoration: none;
+        font-size: 13px; font-weight: 500; transition: opacity .2s ease;
+    }
+    .forgot-link:hover { opacity: .75; text-decoration: underline; }
+
+    .auth-footer { text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 24px; }
+    .auth-footer a { color: var(--brand-gold, #C5A059); text-decoration: none; font-weight: 500; }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    .alert-auth {
+        padding: 12px 16px; border-radius: var(--radius-md);
+        font-size: 13px; margin-bottom: 20px; display: none; border: 1px solid;
+    }
+    .alert-auth.error   { background: var(--color-danger-bg);  border-color: var(--color-danger);  color: var(--color-danger); }
+    .alert-auth.success { background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success); }
+
+    .demo-creds {
+        background: var(--bg-surface-2);
+        border: 1px solid rgba(197,160,89,.18);
+        border-radius: var(--radius-md);
+        padding: 14px 16px; margin-bottom: 20px;
+        font-size: 12.5px; color: var(--text-secondary);
+    }
+    .demo-creds strong { color: var(--text-primary); }
+    .demo-cred-btn {
+        background: none; border: none; color: var(--brand-gold, #C5A059);
+        cursor: pointer; font-size: 12px; font-weight: 500; padding: 0; text-decoration: underline;
+    }
+
+    @media (max-width: 900px) {
+        .auth-wrapper { grid-template-columns: 1fr; }
+        .auth-brand-panel { display: none; }
+        .auth-form-panel { padding: 32px 24px; min-height: 100vh; }
+    }
+</style>
+</head>
+<body>
+
+<div class="auth-wrapper">
+    <!-- Brand Panel -->
+    <div class="auth-brand-panel">
+        <div class="auth-brand-glow"></div>
+        <div class="auth-brand-glow-2"></div>
+        <div class="brand-logo">
+            <div class="brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div>
+            <div>
+                <div class="brand-name">BanquetPro</div>
+                <div class="brand-sub">Enterprise Booking Platform</div>
+            </div>
+        </div>
+
+        <div class="brand-copy">
+            <div class="brand-eyebrow">The Banquet Management Platform</div>
+            <div class="brand-headline">Manage Every Event<br>With Precision</div>
+            <div class="brand-desc">
+                A comprehensive platform to handle bookings, billing, catering, and reporting
+                for banquet halls at any scale — from boutique venues to enterprise chains.
+            </div>
+        </div>
+
+        <div class="brand-stats">
+            <div class="stat-card">
+                <div class="stat-num">1000+</div>
+                <div class="stat-label">Banquet Halls</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num">5 Roles</div>
+                <div class="stat-label">Access Control</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num">GST Ready</div>
+                <div class="stat-label">Tax Compliance</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Panel -->
+    <div class="auth-form-panel">
+        <div class="auth-card">
+            <div class="auth-eyebrow">BanquetPro · Hospitality Suite</div>
+            <div class="auth-title">Welcome back</div>
+            <div class="auth-sub">Sign in to your account to continue</div>
+
+            <!-- Demo credentials helper -->
+            <div class="demo-creds">
+                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> <strong>Demo:</strong> superadmin@banquetpro.com / Admin@123456
+                <br><button class="demo-cred-btn" onclick="fillDemo()">Fill credentials</button>
+            </div>
+
+            <div class="alert-auth" id="loginAlert"></div>
+
+            <form id="loginForm" novalidate>
+                <!-- Email -->
+                <div class="form-group">
+                    <label class="form-label">Email address</label>
+                    <div class="input-group-auth">
+                        <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></span>
+                        <input type="email" class="form-control" id="email" name="email"
+                               placeholder="you@company.com" autocomplete="email" required>
+                    </div>
+                    <div class="invalid-feedback" id="email_error"></div>
+                </div>
+
+                <!-- Password -->
+                <div class="form-group">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                        <label class="form-label" style="margin:0">Password</label>
+                        <a href="forgot-password.html" class="forgot-link">Forgot password?</a>
+                    </div>
+                    <div class="input-group-auth">
+                        <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path></svg></span>
+                        <input type="password" class="form-control" id="password" name="password"
+                               placeholder="Enter your password" autocomplete="current-password" required>
+                        <button type="button" class="password-toggle" id="pwToggle" aria-label="Toggle password"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M2 12s3-6 10-6 10 6 10 6-3 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                    </div>
+                    <div class="invalid-feedback" id="password_error"></div>
+                </div>
+
+                <!-- Remember me -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+                    <input type="checkbox" id="remember" style="accent-color:var(--brand-primary);width:16px;height:16px;">
+                    <label for="remember" style="font-size:13px;color:var(--text-secondary);cursor:pointer;margin:0">Keep me signed in</label>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn-auth" id="loginBtn">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                Don't have an account? <a href="register.html">Create one</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script>
+    // Apply theme
+    Auth.applyTheme();
+
+    // Redirect if already logged in
+    Auth.requireGuest();
+
+    // Pre-fill email from ?email= param
+    const emailParam = Utils.getQueryParam('email');
+    if (emailParam) document.getElementById('email').value = emailParam;
+
+    // Demo fill
+    function fillDemo() {
+        document.getElementById('email').value    = 'superadmin@banquetpro.com';
+        document.getElementById('password').value = 'Admin@123456';
+    }
+
+    // Password toggle
+    document.getElementById('pwToggle').addEventListener('click', function () {
+        const pw = document.getElementById('password');
+        const isText = pw.type === 'text';
+        pw.type = isText ? 'password' : 'text';
+        this.textContent = isText ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M2 12s3-6 10-6 10 6 10 6-3 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>';
+    });
+
+    // Form submit
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const email    = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const alert    = document.getElementById('loginAlert');
+        const btn      = document.getElementById('loginBtn');
+
+        // Client-side validation
+        let valid = true;
+        Utils.clearAllErrors(this);
+        alert.style.display = 'none';
+
+        if (!email || !Utils.Validators.email(email)) {
+            Utils.setFieldError('email', 'Please enter a valid email address');
+            valid = false;
+        }
+        if (!password) {
+            Utils.setFieldError('password', 'Password is required');
+            valid = false;
+        }
+
+        if (!valid) return;
+
+        Utils.showLoader(btn, 'Signing in…');
+
+        try {
+            await Auth.login(email, password);
+            alert.textContent  = 'Login successful! Redirecting…';
+            alert.className    = 'alert-auth success';
+            alert.style.display = 'block';
+
+            const next = Utils.getQueryParam('next');
+            setTimeout(() => {
+                window.location.href = next ? decodeURIComponent(next) : Auth.getDefaultPage();
+            }, 600);
+        } catch (err) {
+            Utils.hideLoader(btn);
+            let msg = err.message || 'Invalid email or password.';
+            if (err.status === 423) msg = 'Your account is temporarily locked due to too many failed attempts. Please try again in 30 minutes.';
+            if (err.status === 403) msg = 'Your account is inactive. Please contact your administrator.';
+            alert.textContent  = msg;
+            alert.className    = 'alert-auth error';
+            alert.style.display = 'block';
+            document.getElementById('password').value = '';
+        }
+    });
+
+    // Enter key on email jumps to password
+    document.getElementById('email').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('password').focus();
+    });
+</script>
+</body>
+</html>

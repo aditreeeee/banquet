@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revenue Report | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.report-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px }
+.kpi-big { font-size:28px;font-weight:800;color:var(--text-primary) }
+.kpi-small-label { font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:4px }
+.kpi-change { font-size:12px;font-weight:600;margin-top:2px }
+.kpi-change.up   { color:var(--color-success) }
+.kpi-change.down { color:var(--color-danger) }
+.method-row { display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-color) }
+.method-row:last-child { border-bottom:none }
+.method-bar-wrap { flex:1;height:8px;background:var(--bg-surface-2);border-radius:4px;overflow:hidden }
+.method-bar { height:100%;border-radius:4px;transition:width .6s ease }
+.filter-bar { display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 18px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);margin-bottom:20px }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon">🏛</div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon">📊</span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon">📅</span><span class="sidebar-text">All Bookings</span></a>
+        <a href="../bookings/create.html" class="sidebar-link"><span class="sidebar-icon">➕</span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">CRM</div>
+        <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon">👥</span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link"><span class="sidebar-icon">💰</span><span class="sidebar-text">Payments</span></a>
+        <a href="../invoices/index.html" class="sidebar-link"><span class="sidebar-icon">🧾</span><span class="sidebar-text">Invoices</span></a>
+        <div class="nav-section-label">Reports</div>
+        <a href="revenue.html" class="sidebar-link active"><span class="sidebar-icon">📈</span><span class="sidebar-text">Revenue</span></a>
+        <a href="bookings.html" class="sidebar-link"><span class="sidebar-icon">📋</span><span class="sidebar-text">Bookings</span></a>
+        <a href="occupancy.html" class="sidebar-link"><span class="sidebar-icon">🏛</span><span class="sidebar-text">Occupancy</span></a>
+    </nav>
+    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle">☰</button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item">Reports</li><li class="breadcrumb-item active">Revenue</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon">🌙</span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">🚪 Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Revenue Report</h1><p class="page-subtitle">Financial overview, trends and breakdowns</p></div>
+            <div style="display:flex;gap:10px">
+                <button class="btn-ghost" onclick="exportExcel()">⬇️ Export Excel</button>
+                <button class="btn-ghost" onclick="exportPDF()">📄 Export PDF</button>
+            </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+            <div style="display:flex;gap:6px;background:var(--bg-surface-2);padding:4px;border-radius:8px">
+                <button class="range-btn active" data-range="this_month"   onclick="setRange('this_month')">This Month</button>
+                <button class="range-btn"        data-range="last_month"   onclick="setRange('last_month')">Last Month</button>
+                <button class="range-btn"        data-range="quarter"      onclick="setRange('quarter')">Quarter</button>
+                <button class="range-btn"        data-range="year"         onclick="setRange('year')">Year</button>
+                <button class="range-btn"        data-range="custom"       onclick="setRange('custom')">Custom</button>
+            </div>
+            <div id="customDates" style="display:none;gap:8px;align-items:center">
+                <input type="date" id="fromDate" class="form-control" style="width:150px" onchange="loadReport()">
+                <span style="color:var(--text-muted)">→</span>
+                <input type="date" id="toDate"   class="form-control" style="width:150px" onchange="loadReport()">
+            </div>
+            <select id="branchFilter" class="form-select" style="width:auto" onchange="loadReport()">
+                <option value="">All Branches</option>
+                <option value="1">Main Branch</option>
+                <option value="2">North Branch</option>
+                <option value="3">South Branch</option>
+            </select>
+            <select id="groupBy" class="form-select" style="width:auto" onchange="loadReport()">
+                <option value="day">Group by Day</option>
+                <option value="week">Group by Week</option>
+                <option value="month" selected>Group by Month</option>
+            </select>
+        </div>
+
+        <!-- KPI summary row -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px">
+            <div class="kpi-card"><div class="kpi-small-label">Total Revenue</div><div class="kpi-big" id="kpiTotalRev">—</div><div class="kpi-change up" id="kpiRevChange">+0%</div></div>
+            <div class="kpi-card"><div class="kpi-small-label">Total Bookings</div><div class="kpi-big" id="kpiTotalBook">—</div><div class="kpi-change up" id="kpiBookChange">+0%</div></div>
+            <div class="kpi-card"><div class="kpi-small-label">Avg Booking Value</div><div class="kpi-big" id="kpiAvgValue">—</div><div class="kpi-change" id="kpiAvgChange"></div></div>
+            <div class="kpi-card"><div class="kpi-small-label">GST Collected</div><div class="kpi-big" id="kpiGST">—</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px">CGST + SGST</div></div>
+            <div class="kpi-card"><div class="kpi-small-label">Cancellations (₹)</div><div class="kpi-big" id="kpiCancel" style="color:var(--color-danger)">—</div><div class="kpi-change down" id="kpiCancelChange"></div></div>
+        </div>
+
+        <!-- Revenue trend chart -->
+        <div class="report-card" style="margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h6 style="font-size:14px;font-weight:700;margin:0">Revenue Trend</h6>
+                <div style="display:flex;gap:12px;font-size:12px">
+                    <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#7C3AED;display:inline-block;border-radius:2px"></span> Revenue</span>
+                    <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#F59E0B;display:inline-block;border-radius:2px;border-style:dashed"></span> Target</span>
+                </div>
+            </div>
+            <div style="height:280px"><canvas id="revTrendChart"></canvas></div>
+        </div>
+
+        <!-- Row: breakdown charts -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
+
+            <!-- Payment method breakdown -->
+            <div class="report-card">
+                <h6 style="font-size:14px;font-weight:700;margin-bottom:14px">By Payment Method</h6>
+                <div id="methodBreakdown"></div>
+            </div>
+
+            <!-- Event type breakdown chart -->
+            <div class="report-card">
+                <h6 style="font-size:14px;font-weight:700;margin-bottom:14px">By Event Type</h6>
+                <div style="height:220px"><canvas id="eventTypeChart"></canvas></div>
+            </div>
+
+            <!-- Top halls by revenue -->
+            <div class="report-card">
+                <h6 style="font-size:14px;font-weight:700;margin-bottom:14px">Top Halls</h6>
+                <div id="topHalls"></div>
+            </div>
+        </div>
+
+        <!-- Monthly comparison table -->
+        <div class="report-card">
+            <h6 style="font-size:14px;font-weight:700;margin-bottom:14px">Period Breakdown</h6>
+            <div class="table-responsive">
+                <table class="table" style="font-size:13px">
+                    <thead>
+                        <tr><th>Period</th><th>Bookings</th><th>Revenue (₹)</th><th>Advance</th><th>Balance Collected</th><th>Cancellations</th><th>Net Revenue</th><th>YoY Change</th></tr>
+                    </thead>
+                    <tbody id="tableBody"><tr><td colspan="8" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="../../public/assets/js/api.js"></script>
+<script src="../../public/assets/js/utils.js"></script>
+<script src="../../public/assets/js/auth.js"></script>
+<script src="../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+/* ---------- Range presets ---------- */
+let trendChart = null, eventChart = null;
+let currentRange = 'this_month';
+
+function setRange(range) {
+    currentRange = range;
+    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-range="${range}"]`).classList.add('active');
+    document.getElementById('customDates').style.display = range === 'custom' ? 'flex' : 'none';
+
+    if (range !== 'custom') {
+        const today = new Date();
+        let from, to = today.toISOString().split('T')[0];
+        if (range === 'this_month') {
+            from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        } else if (range === 'last_month') {
+            const d = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            from = d.toISOString().split('T')[0];
+            to   = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().split('T')[0];
+        } else if (range === 'quarter') {
+            from = new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1).toISOString().split('T')[0];
+        } else if (range === 'year') {
+            from = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+        }
+        document.getElementById('fromDate').value = from || '';
+        document.getElementById('toDate').value   = to;
+        loadReport();
+    }
+}
+
+/* ---------- Demo data ---------- */
+function getDemoData() {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun'];
+    const rev    = [1820000, 2040000, 1950000, 2380000, 2610000, 2280000];
+    const target = [1900000, 2000000, 2100000, 2200000, 2500000, 2400000];
+    const books  = [38, 42, 41, 49, 54, 47];
+    return {
+        kpi: { total_revenue:13080000, total_bookings:271, avg_value:48263, gst:2354400, cancel_amount:345000,
+               rev_change:12.4, book_change:8.7, avg_change:3.4, cancel_change:-2.1 },
+        trend: { labels: months, revenue: rev, target },
+        by_method: [
+            { method:'upi',           amount:4250000, pct:32.5 },
+            { method:'bank_transfer', amount:3640000, pct:27.8 },
+            { method:'card',          amount:2940000, pct:22.5 },
+            { method:'cash',          amount:1830000, pct:14.0 },
+            { method:'online',        amount:420000,  pct:3.2  },
+        ],
+        by_event_type: { labels:['Wedding','Reception','Birthday','Corporate','Engagement','Other'], values:[4100000,2500000,1800000,2200000,1400000,1080000] },
+        top_halls: [
+            { hall_name:'Grand Ballroom',     revenue:3840000, bookings:58 },
+            { hall_name:'Emerald Hall',        revenue:2720000, bookings:44 },
+            { hall_name:'Royal Suite',         revenue:2150000, bookings:51 },
+            { hall_name:'Diamond Convention',  revenue:1980000, bookings:37 },
+            { hall_name:'Silver Terrace',      revenue:1240000, bookings:42 },
+        ],
+        table: months.map((m, i) => ({ period:m+' 2026', bookings:books[i], revenue:rev[i], advance:Math.round(rev[i]*0.25), balance:Math.round(rev[i]*0.65), cancel:Math.round(rev[i]*0.03), net:Math.round(rev[i]*0.97), yoy_change: 12+Math.random()*8 })),
+    };
+}
+
+/* ---------- Load Report ---------- */
+async function loadReport() {
+    const from   = document.getElementById('fromDate').value;
+    const to     = document.getElementById('toDate').value;
+    const branch = document.getElementById('branchFilter').value;
+    const group  = document.getElementById('groupBy').value;
+    let data;
+    try {
+        const res = await API.reports.revenue({ from_date:from, to_date:to, branch_id:branch||undefined, group_by:group });
+        data = res.data;
+    } catch {
+        data = getDemoData();
+    }
+    updateKPIs(data.kpi);
+    renderTrendChart(data.trend);
+    renderMethodBreakdown(data.by_method);
+    renderEventTypeChart(data.by_event_type);
+    renderTopHalls(data.top_halls);
+    renderTable(data.table);
+}
+
+/* ---------- KPIs ---------- */
+function updateKPIs(k) {
+    document.getElementById('kpiTotalRev').textContent  = Utils.formatCurrency(k.total_revenue);
+    document.getElementById('kpiTotalBook').textContent = Utils.formatNumber(k.total_bookings);
+    document.getElementById('kpiAvgValue').textContent  = Utils.formatCurrency(k.avg_value);
+    document.getElementById('kpiGST').textContent       = Utils.formatCurrency(k.gst);
+    document.getElementById('kpiCancel').textContent    = Utils.formatCurrency(k.cancel_amount);
+    const revChg  = document.getElementById('kpiRevChange');
+    revChg.textContent  = `${k.rev_change > 0 ? '+' : ''}${k.rev_change?.toFixed(1)}% vs prev period`;
+    revChg.className    = 'kpi-change ' + (k.rev_change >= 0 ? 'up' : 'down');
+    const bookChg = document.getElementById('kpiBookChange');
+    bookChg.textContent = `${k.book_change > 0 ? '+' : ''}${k.book_change?.toFixed(1)}% vs prev period`;
+    bookChg.className   = 'kpi-change ' + (k.book_change >= 0 ? 'up' : 'down');
+    const avgChg  = document.getElementById('kpiAvgChange');
+    avgChg.textContent  = `${k.avg_change > 0 ? '+' : ''}${k.avg_change?.toFixed(1)}%`;
+    avgChg.className    = 'kpi-change ' + (k.avg_change >= 0 ? 'up' : 'down');
+    const canChg  = document.getElementById('kpiCancelChange');
+    canChg.textContent  = `${k.cancel_change > 0 ? '+' : ''}${k.cancel_change?.toFixed(1)}%`;
+    canChg.className    = 'kpi-change ' + (k.cancel_change <= 0 ? 'up' : 'down');
+}
+
+/* ---------- Revenue trend Chart ---------- */
+function renderTrendChart(d) {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const grid   = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+    const text   = isDark ? '#9CA3AF' : '#6B7280';
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+    const ctx = document.getElementById('revTrendChart').getContext('2d');
+    trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: d.labels,
+            datasets: [
+                { label:'Revenue', data: d.revenue, borderColor:'#7C3AED', backgroundColor:'rgba(124,58,237,0.08)', borderWidth:2.5, fill:true, tension:.35, pointRadius:4, pointBackgroundColor:'#7C3AED' },
+                { label:'Target',  data: d.target,  borderColor:'#F59E0B', borderWidth:2, borderDash:[6,3], fill:false, tension:.35, pointRadius:0 },
+            ]
+        },
+        options: {
+            responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false },
+            plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ' ' + Utils.formatCurrency(ctx.raw) } } },
+            scales: {
+                x: { grid:{ color:grid }, ticks:{ color:text, font:{ size:11 } } },
+                y: { grid:{ color:grid }, ticks:{ color:text, font:{ size:11 }, callback: v => '₹' + (v/100000).toFixed(0) + 'L' } }
+            }
+        }
+    });
+}
+
+/* ---------- Payment method breakdown ---------- */
+const METHOD_COLORS = { upi:'#7C3AED', bank_transfer:'#2563EB', card:'#F59E0B', cash:'#10B981', online:'#EC4899' };
+function renderMethodBreakdown(items) {
+    const total = items.reduce((s, m) => s + m.amount, 0);
+    document.getElementById('methodBreakdown').innerHTML = items.map(m => `
+    <div class="method-row">
+        <span style="min-width:24px;font-size:13px">${{ upi:'📲', bank_transfer:'🏦', card:'💳', cash:'💵', online:'🌐' }[m.method] || '💰'}</span>
+        <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:12px;font-weight:500">${Utils.titleCase(m.method.replace('_',' '))}</span>
+                <span style="font-size:12px;color:var(--text-muted)">${m.pct}%</span>
+            </div>
+            <div class="method-bar-wrap"><div class="method-bar" style="width:${m.pct}%;background:${METHOD_COLORS[m.method]||'#7C3AED'}"></div></div>
+        </div>
+        <span style="min-width:80px;text-align:right;font-size:12px;font-weight:700">${Utils.formatCurrencyShort(m.amount)}</span>
+    </div>`).join('');
+}
+
+/* ---------- Event type chart ---------- */
+function renderEventTypeChart(d) {
+    if (eventChart) { eventChart.destroy(); eventChart = null; }
+    const ctx = document.getElementById('eventTypeChart').getContext('2d');
+    eventChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: d.labels,
+            datasets: [{ data: d.values, backgroundColor:['#7C3AED','#2563EB','#F59E0B','#10B981','#EC4899','#64748B'], borderWidth:0, hoverOffset:6 }]
+        },
+        options: {
+            responsive:true, maintainAspectRatio:false, cutout:'65%',
+            plugins: { legend:{ position:'right', labels:{ boxWidth:10, font:{ size:11 }, color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#9CA3AF' : '#6B7280' } },
+                       tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${Utils.formatCurrencyShort(ctx.raw)}` } } }
+        }
+    });
+}
+
+/* ---------- Top halls ---------- */
+function renderTopHalls(halls) {
+    const max = halls[0]?.revenue || 1;
+    document.getElementById('topHalls').innerHTML = halls.map((h, i) => `
+    <div style="padding:8px 0;border-bottom:1px solid var(--border-color)${i === halls.length-1 ? ';border:none' : ''}">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12.5px;font-weight:500">${h.hall_name}</span>
+            <span style="font-size:12px;font-weight:700">${Utils.formatCurrencyShort(h.revenue)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;height:5px;background:var(--bg-surface-2);border-radius:3px;overflow:hidden">
+                <div style="height:100%;border-radius:3px;background:var(--brand-primary);width:${(h.revenue/max*100).toFixed(0)}%"></div>
+            </div>
+            <span style="font-size:11px;color:var(--text-muted)">${h.bookings} bookings</span>
+        </div>
+    </div>`).join('');
+}
+
+/* ---------- Period table ---------- */
+function renderTable(rows) {
+    const tbody = document.getElementById('tableBody');
+    if (!rows?.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center">No data for selected period</td></tr>'; return; }
+    tbody.innerHTML = rows.map(r => `
+    <tr>
+        <td style="font-weight:600">${r.period}</td>
+        <td>${r.bookings}</td>
+        <td>${Utils.formatCurrency(r.revenue)}</td>
+        <td>${Utils.formatCurrency(r.advance)}</td>
+        <td>${Utils.formatCurrency(r.balance)}</td>
+        <td style="color:var(--color-danger)">${Utils.formatCurrency(r.cancel)}</td>
+        <td style="font-weight:700;color:var(--color-success)">${Utils.formatCurrency(r.net)}</td>
+        <td class="${r.yoy_change >= 0 ? 'text-success' : 'text-danger'}">${r.yoy_change >= 0 ? '+' : ''}${r.yoy_change?.toFixed(1)}%</td>
+    </tr>`).join('');
+}
+
+/* ---------- Export stubs ---------- */
+function exportExcel() { Utils.toast('Generating Excel report…', 'info'); }
+function exportPDF()   { Utils.toast('Generating PDF report…', 'info'); }
+
+/* ---------- Theme observer re-renders charts ---------- */
+new MutationObserver(() => {
+    const data = getDemoData();
+    renderTrendChart(data.trend);
+    renderEventTypeChart(data.by_event_type);
+}).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+/* ---------- Range button styles ---------- */
+const rangeStyle = document.createElement('style');
+rangeStyle.textContent = `.range-btn{background:transparent;border:none;padding:5px 12px;border-radius:6px;font-size:12.5px;font-weight:500;cursor:pointer;color:var(--text-secondary);transition:.15s}.range-btn.active,.range-btn:hover{background:var(--bg-surface);color:var(--brand-primary);font-weight:600;box-shadow:var(--shadow-sm)}`;
+document.head.appendChild(rangeStyle);
+
+document.addEventListener('DOMContentLoaded', () => setRange('year'));
+</script>
+</body>
+</html>

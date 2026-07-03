@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ER Diagram — Banquet Hall Booking System</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+
+  .header {
+    background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; color: #fff; }
+  .header p { font-size: 13px; color: #bfdbfe; margin-top: 4px; }
+
+  .legend {
+    display: flex; gap: 20px; padding: 14px 32px; background: #1e293b;
+    border-bottom: 1px solid #334155; flex-wrap: wrap; align-items: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
+
+  .canvas-wrap {
+    overflow: auto;
+    padding: 30px;
+    min-height: calc(100vh - 140px);
+    cursor: grab;
+  }
+  .canvas-wrap:active { cursor: grabbing; }
+
+  svg { display: block; }
+
+  /* Entity card styles */
+  .entity { cursor: pointer; }
+  .entity rect.card {
+    rx: 8; ry: 8;
+    stroke-width: 2;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+    transition: all 0.2s;
+  }
+  .entity:hover rect.card { filter: drop-shadow(0 8px 24px rgba(0,0,0,0.8)); }
+  .entity text.title { font-size: 13px; font-weight: 700; font-family: 'Segoe UI', sans-serif; }
+  .entity text.col { font-size: 11px; font-family: 'Courier New', monospace; }
+  .entity text.pk  { fill: #fbbf24; }
+  .entity text.fk  { fill: #a78bfa; }
+  .entity text.idx { fill: #34d399; }
+
+  /* Relationship lines */
+  .rel { stroke-width: 1.5; fill: none; opacity: 0.6; }
+  .rel-label { font-size: 10px; font-family: 'Segoe UI', sans-serif; }
+
+  /* Colors per domain */
+  .auth     { fill: #1d4ed8; stroke: #3b82f6; }
+  .tenant   { fill: #065f46; stroke: #10b981; }
+  .venue    { fill: #7c3aed; stroke: #a78bfa; }
+  .booking  { fill: #b91c1c; stroke: #f87171; }
+  .payment  { fill: #92400e; stroke: #f59e0b; }
+  .lookup   { fill: #374151; stroke: #6b7280; }
+  .notify   { fill: #1e3a5f; stroke: #60a5fa; }
+
+  .header-text { fill: #f8fafc; }
+
+  .info-panel {
+    position: fixed; bottom: 20px; right: 20px;
+    background: #1e293b; border: 1px solid #334155;
+    border-radius: 10px; padding: 16px 20px;
+    font-size: 12px; max-width: 280px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  .info-panel h3 { font-size: 13px; color: #60a5fa; margin-bottom: 10px; }
+  .info-panel .stat { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .info-panel .stat span:first-child { color: #94a3b8; }
+  .info-panel .stat span:last-child { color: #e2e8f0; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg> Banquet Hall Booking System — ER Diagram</h1>
+    <p>Database: Microsoft SQL Server &nbsp;|&nbsp; Version 1.0.0 &nbsp;|&nbsp; Tables: 35 &nbsp;|&nbsp; Normalization: 3NF</p>
+  </div>
+  <div style="font-size:12px;color:#bfdbfe;text-align:right;">
+    <div>PK = Primary Key</div>
+    <div>FK = Foreign Key</div>
+    <div>IX = Index</div>
+  </div>
+</div>
+
+<div class="legend">
+  <span style="font-size:12px;color:#94a3b8;margin-right:4px;">Domains:</span>
+  <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8;"></div> Auth / Users</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#065f46;"></div> Tenant / Company</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7c3aed;"></div> Venue / Halls</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#b91c1c;"></div> Booking Engine</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#92400e;"></div> Payments</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#374151;"></div> Lookups / Config</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1e3a5f;"></div> Notifications</div>
+</div>
+
+<div class="canvas-wrap">
+<svg id="ersvg" viewBox="0 0 2400 2000" width="2400" height="2000" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- ══════════════════════════════════════════════════
+       RELATIONSHIP LINES
+  ══════════════════════════════════════════════════ -->
+
+  <!-- companies → branches -->
+  <line x1="340" y1="420" x2="340" y2="520" class="rel" stroke="#10b981"/>
+  <!-- companies → banquets -->
+  <line x1="420" y1="420" x2="750" y2="520" class="rel" stroke="#a78bfa"/>
+  <!-- branches → banquets -->
+  <line x1="440" y1="580" x2="750" y2="580" class="rel" stroke="#a78bfa"/>
+  <!-- banquets → halls -->
+  <line x1="960" y1="580" x2="1100" y2="580" class="rel" stroke="#a78bfa"/>
+  <!-- halls → hall_pricing -->
+  <line x1="1300" y1="580" x2="1440" y2="580" class="rel" stroke="#a78bfa"/>
+  <!-- hall_pricing → pricing_slots -->
+  <line x1="1640" y1="580" x2="1780" y2="580" class="rel" stroke="#a78bfa"/>
+
+  <!-- users → customers -->
+  <line x1="210" y1="840" x2="340" y2="840" class="rel" stroke="#3b82f6"/>
+  <!-- customers → bookings -->
+  <line x1="550" y1="840" x2="760" y2="840" class="rel" stroke="#f87171"/>
+  <!-- halls → bookings -->
+  <line x1="1200" y1="640" x2="950" y2="840" class="rel" stroke="#f87171"/>
+  <!-- bookings → payments -->
+  <line x1="970" y1="990" x2="970" y2="1120" class="rel" stroke="#f59e0b"/>
+  <!-- bookings → invoices -->
+  <line x1="1050" y1="990" x2="1200" y2="1120" class="rel" stroke="#f59e0b"/>
+  <!-- bookings → booking_catering -->
+  <line x1="760" y1="900" x2="550" y2="1120" class="rel" stroke="#f87171"/>
+  <!-- bookings → booking_decorations -->
+  <line x1="840" y1="990" x2="760" y2="1120" class="rel" stroke="#f87171"/>
+  <!-- bookings → booking_services -->
+  <line x1="880" y1="990" x2="970" y2="1220" class="rel" stroke="#f87171" stroke-dasharray="4,3"/>
+
+  <!-- audit_logs -->
+  <line x1="200" y1="1200" x2="200" y2="1120" class="rel" stroke="#6b7280"/>
+  <!-- notifications -->
+  <line x1="1600" y1="840" x2="1600" y2="990" class="rel" stroke="#60a5fa"/>
+
+  <!-- ══════════════════════════════════════════════════
+       SECTION LABELS
+  ══════════════════════════════════════════════════ -->
+  <text x="50" y="90" fill="#334155" font-size="48" font-weight="900" font-family="Arial" opacity="0.3">LOOKUP</text>
+  <text x="50" y="490" fill="#334155" font-size="48" font-weight="900" font-family="Arial" opacity="0.3">TENANT</text>
+  <text x="700" y="490" fill="#334155" font-size="48" font-weight="900" font-family="Arial" opacity="0.3">VENUE</text>
+  <text x="50" y="810" fill="#334155" font-size="48" font-weight="900" font-family="Arial" opacity="0.3">USERS</text>
+  <text x="650" y="810" fill="#334155" font-size="48" font-weight="900" font-family="Arial" opacity="0.3">BOOKING</text>
+  <text x="700" y="1090" fill="#334155" font-size="48" font-weight="900" font-family="Arial" opacity="0.3">PAYMENT</text>
+
+
+  <!-- ═══════════════════════════════
+       LOOKUP / REFERENCE TABLES (Row 1)
+  ═══════════════════════════════ -->
+
+  <!-- roles -->
+  <g class="entity" transform="translate(50, 100)">
+    <rect class="card lookup" width="190" height="170" rx="8"/>
+    <rect fill="#374151" width="190" height="36" rx="8" ry="0"/>
+    <rect fill="#374151" width="190" height="18" y="18"/>
+    <text class="title header-text" x="95" y="23" text-anchor="middle">roles</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> role_id INT PK</text>
+    <text class="col" x="10" y="76" fill="#e2e8f0">role_name NVARCHAR(50)</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">role_slug NVARCHAR(50)</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">description NVARCHAR</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">is_system BIT</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">is_active BIT</text>
+    <text class="col" x="10" y="166" fill="#64748b">created_at DATETIME2</text>
+  </g>
+
+  <!-- permissions -->
+  <g class="entity" transform="translate(270, 100)">
+    <rect class="card lookup" width="200" height="150" rx="8"/>
+    <rect fill="#374151" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#374151" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">permissions</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> permission_id INT PK</text>
+    <text class="col" x="10" y="76" fill="#e2e8f0">module NVARCHAR(50)</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">action NVARCHAR(50)</text>
+    <text class="col idx" x="10" y="112"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> permission_key UQ</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">description NVARCHAR</text>
+    <text class="col" x="10" y="148" fill="#64748b">created_at DATETIME2</text>
+  </g>
+
+  <!-- role_permissions -->
+  <g class="entity" transform="translate(500, 100)">
+    <rect class="card lookup" width="200" height="130" rx="8"/>
+    <rect fill="#374151" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#374151" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">role_permissions</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> role_id INT PK,FK</text>
+    <text class="col pk" x="10" y="76"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> permission_id INT PK,FK</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">granted_at DATETIME2</text>
+    <text class="col fk" x="10" y="112">→ roles, permissions</text>
+    <text class="col" x="10" y="130" fill="#64748b">granted_by INT</text>
+  </g>
+
+  <!-- event_types -->
+  <g class="entity" transform="translate(730, 100)">
+    <rect class="card lookup" width="185" height="150" rx="8"/>
+    <rect fill="#374151" width="185" height="36" rx="8" ry="0"/>
+    <rect fill="#374151" width="185" height="18" y="18"/>
+    <text class="title header-text" x="92" y="23" text-anchor="middle">event_types</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> event_type_id INT PK</text>
+    <text class="col" x="10" y="76" fill="#e2e8f0">type_name NVARCHAR</text>
+    <text class="col idx" x="10" y="94"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> type_slug UQ</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">icon_class NVARCHAR</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">is_active BIT</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">sort_order INT</text>
+  </g>
+
+  <!-- amenity_types -->
+  <g class="entity" transform="translate(940, 100)">
+    <rect class="card lookup" width="185" height="130" rx="8"/>
+    <rect fill="#374151" width="185" height="36" rx="8" ry="0"/>
+    <rect fill="#374151" width="185" height="18" y="18"/>
+    <text class="title header-text" x="92" y="23" text-anchor="middle">amenity_types</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> amenity_type_id INT PK</text>
+    <text class="col" x="10" y="76" fill="#e2e8f0">amenity_name NVARCHAR</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">icon_class NVARCHAR</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">category NVARCHAR(50)</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">is_active BIT</text>
+  </g>
+
+  <!-- tax_config -->
+  <g class="entity" transform="translate(1155, 100)">
+    <rect class="card lookup" width="185" height="170" rx="8"/>
+    <rect fill="#374151" width="185" height="36" rx="8" ry="0"/>
+    <rect fill="#374151" width="185" height="18" y="18"/>
+    <text class="title header-text" x="92" y="23" text-anchor="middle">tax_config</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> tax_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ company_id INT FK</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">tax_name NVARCHAR</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">tax_type NVARCHAR</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">rate DECIMAL(5,2)</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">applies_to NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">effective_from DATE</text>
+  </g>
+
+  <!-- coupons -->
+  <g class="entity" transform="translate(1370, 100)">
+    <rect class="card lookup" width="200" height="210" rx="8"/>
+    <rect fill="#374151" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#374151" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">coupons</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> coupon_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ company_id INT FK</text>
+    <text class="col idx" x="10" y="94"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> coupon_code UQ</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">discount_type NVARCHAR</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">discount_value DECIMAL</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">max_discount_amount</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">usage_limit INT</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">valid_from DATETIME2</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">valid_to DATETIME2</text>
+  </g>
+
+
+  <!-- ═══════════════════════════════
+       TENANT TABLES (Row 2)
+  ═══════════════════════════════ -->
+
+  <!-- companies -->
+  <g class="entity" transform="translate(50, 520)">
+    <rect class="card tenant" width="200" height="270" rx="8"/>
+    <rect fill="#065f46" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#065f46" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">companies</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> company_id INT PK</text>
+    <text class="col idx" x="10" y="76"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> company_slug UQ</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">company_name NVARCHAR</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">legal_name NVARCHAR</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">gst_number NVARCHAR</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">email / phone</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">address / city / state</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">currency_code CHAR(3)</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">timezone NVARCHAR</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">subscription_plan</text>
+    <text class="col" x="10" y="238" fill="#e2e8f0">max_branches INT</text>
+    <text class="col" x="10" y="256" fill="#e2e8f0">is_active / is_verified</text>
+    <text class="col" x="10" y="268" fill="#64748b">created_at DATETIME2</text>
+  </g>
+
+  <!-- branches -->
+  <g class="entity" transform="translate(280, 520)">
+    <rect class="card tenant" width="190" height="210" rx="8"/>
+    <rect fill="#065f46" width="190" height="36" rx="8" ry="0"/>
+    <rect fill="#065f46" width="190" height="18" y="18"/>
+    <text class="title header-text" x="95" y="23" text-anchor="middle">branches</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> branch_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ company_id INT FK</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">branch_name NVARCHAR</text>
+    <text class="col idx" x="10" y="112"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> branch_code UQ</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">email / phone</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">address / city</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">latitude / longitude</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">is_main_branch BIT</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">is_active BIT</text>
+  </g>
+
+
+  <!-- ═══════════════════════════════
+       VENUE TABLES (Row 2 continued)
+  ═══════════════════════════════ -->
+
+  <!-- banquets -->
+  <g class="entity" transform="translate(750, 520)">
+    <rect class="card venue" width="210" height="290" rx="8"/>
+    <rect fill="#7c3aed" width="210" height="36" rx="8" ry="0"/>
+    <rect fill="#7c3aed" width="210" height="18" y="18"/>
+    <text class="title header-text" x="105" y="23" text-anchor="middle">banquets</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> banquet_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ company_id INT FK</text>
+    <text class="col fk" x="10" y="94">→ branch_id INT FK</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">banquet_name NVARCHAR</text>
+    <text class="col idx" x="10" y="130"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> banquet_slug UQ</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">description TEXT</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">logo / cover_image</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">address / GPS coords</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">gst_number NVARCHAR</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">total_capacity INT</text>
+    <text class="col" x="10" y="238" fill="#e2e8f0">parking_capacity INT</text>
+    <text class="col" x="10" y="256" fill="#e2e8f0">average_rating DEC(3,2)</text>
+    <text class="col" x="10" y="274" fill="#e2e8f0">total_bookings INT</text>
+    <text class="col" x="10" y="288" fill="#64748b">is_active / is_featured</text>
+  </g>
+
+  <!-- halls -->
+  <g class="entity" transform="translate(1100, 520)">
+    <rect class="card venue" width="200" height="310" rx="8"/>
+    <rect fill="#7c3aed" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#7c3aed" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">halls</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> hall_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ banquet_id INT FK</text>
+    <text class="col fk" x="10" y="94">→ company_id INT FK</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">hall_name NVARCHAR</text>
+    <text class="col idx" x="10" y="130"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> hall_code UQ</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">hall_type NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">capacity_seated INT</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">capacity_standing INT</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">area_sqft / dimensions</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">has_ac / has_stage</text>
+    <text class="col" x="10" y="238" fill="#e2e8f0">has_kitchen / has_parking</text>
+    <text class="col" x="10" y="256" fill="#e2e8f0">has_power_backup BIT</text>
+    <text class="col" x="10" y="274" fill="#e2e8f0">is_under_maintenance</text>
+    <text class="col" x="10" y="292" fill="#e2e8f0">is_active BIT</text>
+    <text class="col" x="10" y="310" fill="#64748b">created_at DATETIME2</text>
+  </g>
+
+  <!-- hall_pricing -->
+  <g class="entity" transform="translate(1440, 520)">
+    <rect class="card venue" width="200" height="210" rx="8"/>
+    <rect fill="#7c3aed" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#7c3aed" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">hall_pricing</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> pricing_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ hall_id INT FK</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">pricing_name NVARCHAR</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">pricing_type NVARCHAR</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">base_price DECIMAL</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">weekend_multiplier</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">advance_percentage</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">valid_from / valid_to</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">is_active BIT</text>
+  </g>
+
+  <!-- pricing_slots -->
+  <g class="entity" transform="translate(1780, 520)">
+    <rect class="card venue" width="185" height="170" rx="8"/>
+    <rect fill="#7c3aed" width="185" height="36" rx="8" ry="0"/>
+    <rect fill="#7c3aed" width="185" height="18" y="18"/>
+    <text class="title header-text" x="92" y="23" text-anchor="middle">pricing_slots</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> slot_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ pricing_id INT FK</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">slot_name NVARCHAR</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">start_time TIME</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">end_time TIME</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">slot_price DECIMAL</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">is_active BIT</text>
+  </g>
+
+
+  <!-- ═══════════════════════════════
+       USER TABLES (Row 3)
+  ═══════════════════════════════ -->
+
+  <!-- users -->
+  <g class="entity" transform="translate(50, 840)">
+    <rect class="card auth" width="200" height="310" rx="8"/>
+    <rect fill="#1d4ed8" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#1d4ed8" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">users</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> user_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ company_id INT FK</text>
+    <text class="col fk" x="10" y="94">→ branch_id INT FK</text>
+    <text class="col fk" x="10" y="112">→ role_id INT FK</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">first_name / last_name</text>
+    <text class="col idx" x="10" y="148"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> email UQ</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">phone / alternate_phone</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">password_hash NVARCHAR</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">is_email_verified BIT</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">is_two_factor BIT</text>
+    <text class="col" x="10" y="238" fill="#e2e8f0">failed_login_count</text>
+    <text class="col" x="10" y="256" fill="#e2e8f0">locked_until DATETIME2</text>
+    <text class="col" x="10" y="274" fill="#e2e8f0">last_login_at / ip</text>
+    <text class="col" x="10" y="292" fill="#e2e8f0">is_active BIT</text>
+    <text class="col" x="10" y="310" fill="#64748b">created_at DATETIME2</text>
+  </g>
+
+  <!-- customers -->
+  <g class="entity" transform="translate(290, 840)">
+    <rect class="card auth" width="200" height="250" rx="8"/>
+    <rect fill="#1e40af" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#1e40af" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">customers</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> customer_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ user_id INT FK</text>
+    <text class="col fk" x="10" y="94">→ company_id INT FK</text>
+    <text class="col idx" x="10" y="112"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> customer_code UQ</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">preferred_language</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">anniversary_date DATE</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">loyalty_points INT</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">total_bookings INT</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">total_spend DECIMAL</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">referral_code NVARCHAR</text>
+    <text class="col" x="10" y="238" fill="#e2e8f0">source NVARCHAR</text>
+    <text class="col" x="10" y="250" fill="#64748b">created_at DATETIME2</text>
+  </g>
+
+
+  <!-- ═══════════════════════════════
+       BOOKINGS (Row 3 center)
+  ═══════════════════════════════ -->
+
+  <!-- bookings -->
+  <g class="entity" transform="translate(760, 840)">
+    <rect class="card booking" width="230" height="350" rx="8"/>
+    <rect fill="#991b1b" width="230" height="36" rx="8" ry="0"/>
+    <rect fill="#991b1b" width="230" height="18" y="18"/>
+    <text class="title header-text" x="115" y="23" text-anchor="middle">bookings ⭐</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> booking_id BIGINT PK</text>
+    <text class="col idx" x="10" y="76"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> booking_ref UQ</text>
+    <text class="col fk" x="10" y="94">→ company_id INT FK</text>
+    <text class="col fk" x="10" y="112">→ branch_id INT FK</text>
+    <text class="col fk" x="10" y="130">→ banquet_id INT FK</text>
+    <text class="col fk" x="10" y="148">→ hall_id INT FK</text>
+    <text class="col fk" x="10" y="166">→ customer_id INT FK</text>
+    <text class="col fk" x="10" y="184">→ pricing_id INT FK</text>
+    <text class="col fk" x="10" y="202">→ event_type_id INT FK</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">booking_status NVARCHAR</text>
+    <text class="col idx" x="10" y="238"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> booking_date DATE IX</text>
+    <text class="col" x="10" y="256" fill="#e2e8f0">start_time / end_time</text>
+    <text class="col" x="10" y="274" fill="#e2e8f0">expected_guests INT</text>
+    <text class="col" x="10" y="292" fill="#e2e8f0">grand_total DECIMAL</text>
+    <text class="col" x="10" y="310" fill="#e2e8f0">advance_paid DECIMAL</text>
+    <text class="col" x="10" y="328" fill="#e2e8f0">balance_due DECIMAL</text>
+    <text class="col fk" x="10" y="346">→ coupon_id INT FK</text>
+  </g>
+
+  <!-- hall_blocked_dates -->
+  <g class="entity" transform="translate(1100, 840)">
+    <rect class="card booking" width="200" height="170" rx="8"/>
+    <rect fill="#b91c1c" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#b91c1c" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">hall_blocked_dates</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> block_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ hall_id INT FK</text>
+    <text class="col fk" x="10" y="94">→ company_id INT FK</text>
+    <text class="col idx" x="10" y="112"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> blocked_date DATE IX</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">start_time / end_time</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">reason NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">blocked_by INT</text>
+  </g>
+
+  <!-- reviews -->
+  <g class="entity" transform="translate(1340, 840)">
+    <rect class="card booking" width="195" height="210" rx="8"/>
+    <rect fill="#b91c1c" width="195" height="36" rx="8" ry="0"/>
+    <rect fill="#b91c1c" width="195" height="18" y="18"/>
+    <text class="title header-text" x="97" y="23" text-anchor="middle">reviews</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> review_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ banquet_id INT FK</text>
+    <text class="col fk" x="10" y="94">→ customer_id INT FK</text>
+    <text class="col fk" x="10" y="112">→ booking_id BIGINT FK</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">rating TINYINT (1-5)</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">review_text NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">venue/service/catering</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">is_approved BIT</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">admin_response TEXT</text>
+  </g>
+
+
+  <!-- ═══════════════════════════════
+       PAYMENT / INVOICE (Row 4)
+  ═══════════════════════════════ -->
+
+  <!-- booking_catering -->
+  <g class="entity" transform="translate(370, 1120)">
+    <rect class="card booking" width="190" height="170" rx="8"/>
+    <rect fill="#b91c1c" width="190" height="36" rx="8" ry="0"/>
+    <rect fill="#b91c1c" width="190" height="18" y="18"/>
+    <text class="title header-text" x="95" y="23" text-anchor="middle">booking_catering</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> catering_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ booking_id BIGINT FK</text>
+    <text class="col fk" x="10" y="94">→ package_id INT FK</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">plate_count INT</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">price_per_plate DEC</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">food_type NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">kitchen_notes TEXT</text>
+  </g>
+
+  <!-- booking_decorations -->
+  <g class="entity" transform="translate(590, 1120)">
+    <rect class="card booking" width="190" height="170" rx="8"/>
+    <rect fill="#b91c1c" width="190" height="36" rx="8" ry="0"/>
+    <rect fill="#b91c1c" width="190" height="18" y="18"/>
+    <text class="title header-text" x="95" y="23" text-anchor="middle">booking_decorations</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> decoration_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ booking_id BIGINT FK</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">item_name NVARCHAR</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">category NVARCHAR</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">quantity INT</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">unit_price DECIMAL</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">total_price DECIMAL</text>
+  </g>
+
+  <!-- payments -->
+  <g class="entity" transform="translate(810, 1120)">
+    <rect class="card payment" width="200" height="290" rx="8"/>
+    <rect fill="#78350f" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#78350f" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">payments</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> payment_id BIGINT PK</text>
+    <text class="col idx" x="10" y="76"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> payment_ref UQ</text>
+    <text class="col fk" x="10" y="94">→ company_id INT FK</text>
+    <text class="col fk" x="10" y="112">→ booking_id BIGINT FK</text>
+    <text class="col fk" x="10" y="130">→ customer_id INT FK</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">payment_type NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">payment_method NVARCHAR</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">amount DECIMAL(14,2)</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">transaction_id NVARCHAR</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">gateway_name NVARCHAR</text>
+    <text class="col" x="10" y="238" fill="#e2e8f0">payment_status NVARCHAR</text>
+    <text class="col idx" x="10" y="256"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> payment_date DATE IX</text>
+    <text class="col" x="10" y="274" fill="#e2e8f0">collected_by INT</text>
+    <text class="col" x="10" y="288" fill="#64748b">created_at DATETIME2</text>
+  </g>
+
+  <!-- invoices -->
+  <g class="entity" transform="translate(1050, 1120)">
+    <rect class="card payment" width="200" height="310" rx="8"/>
+    <rect fill="#78350f" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#78350f" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">invoices</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> invoice_id BIGINT PK</text>
+    <text class="col idx" x="10" y="76"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> invoice_number UQ</text>
+    <text class="col fk" x="10" y="94">→ company_id INT FK</text>
+    <text class="col fk" x="10" y="112">→ booking_id BIGINT FK</text>
+    <text class="col fk" x="10" y="130">→ customer_id INT FK</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">invoice_date / due_date</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">subtotal DECIMAL</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">cgst/sgst/igst amounts</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">grand_total DECIMAL</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">amount_paid DECIMAL</text>
+    <text class="col" x="10" y="238" fill="#e2e8f0">balance_due DECIMAL</text>
+    <text class="col" x="10" y="256" fill="#e2e8f0">payment_status NVARCHAR</text>
+    <text class="col" x="10" y="274" fill="#e2e8f0">pdf_url NVARCHAR</text>
+    <text class="col" x="10" y="292" fill="#e2e8f0">is_cancelled BIT</text>
+    <text class="col" x="10" y="310" fill="#64748b">created_at DATETIME2</text>
+  </g>
+
+  <!-- refunds -->
+  <g class="entity" transform="translate(1290, 1120)">
+    <rect class="card payment" width="185" height="210" rx="8"/>
+    <rect fill="#78350f" width="185" height="36" rx="8" ry="0"/>
+    <rect fill="#78350f" width="185" height="18" y="18"/>
+    <text class="title header-text" x="92" y="23" text-anchor="middle">refunds</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> refund_id BIGINT PK</text>
+    <text class="col fk" x="10" y="76">→ payment_id BIGINT FK</text>
+    <text class="col fk" x="10" y="94">→ booking_id BIGINT FK</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">refund_amount DECIMAL</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">refund_reason NVARCHAR</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">refund_method NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">refund_status NVARCHAR</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">requested_by INT</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">approved_by INT</text>
+  </g>
+
+
+  <!-- ═══════════════════════════════
+       AUDIT / NOTIFY (Row 4 far)
+  ═══════════════════════════════ -->
+
+  <!-- audit_logs -->
+  <g class="entity" transform="translate(50, 1120)">
+    <rect class="card lookup" width="200" height="250" rx="8"/>
+    <rect fill="#374151" width="200" height="36" rx="8" ry="0"/>
+    <rect fill="#374151" width="200" height="18" y="18"/>
+    <text class="title header-text" x="100" y="23" text-anchor="middle">audit_logs</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> log_id BIGINT PK</text>
+    <text class="col" x="10" y="76" fill="#e2e8f0">company_id INT</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">user_id INT</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">user_email (denorm.)</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">action NVARCHAR</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">entity_type NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">old_values JSON</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">new_values JSON</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">ip_address NVARCHAR</text>
+    <text class="col" x="10" y="220" fill="#e2e8f0">browser / device</text>
+    <text class="col idx" x="10" y="238"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> created_at IX</text>
+    <text class="col" x="10" y="250" fill="#64748b">request_id NVARCHAR</text>
+  </g>
+
+  <!-- notifications -->
+  <g class="entity" transform="translate(1550, 840)">
+    <rect class="card notify" width="195" height="230" rx="8"/>
+    <rect fill="#1e3a5f" width="195" height="36" rx="8" ry="0"/>
+    <rect fill="#1e3a5f" width="195" height="18" y="18"/>
+    <text class="title header-text" x="97" y="23" text-anchor="middle">notifications</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> notification_id BIGINT</text>
+    <text class="col fk" x="10" y="76">→ company_id INT FK</text>
+    <text class="col fk" x="10" y="94">→ user_id INT FK</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">notification_type</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">channel (email/sms/push)</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">title / body TEXT</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">reference_type / id</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">is_read BIT</text>
+    <text class="col" x="10" y="202" fill="#e2e8f0">delivery_status</text>
+    <text class="col idx" x="10" y="220"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> created_at IX</text>
+  </g>
+
+  <!-- refresh_tokens -->
+  <g class="entity" transform="translate(1550, 1120)">
+    <rect class="card auth" width="195" height="170" rx="8"/>
+    <rect fill="#1d4ed8" width="195" height="36" rx="8" ry="0"/>
+    <rect fill="#1d4ed8" width="195" height="18" y="18"/>
+    <text class="title header-text" x="97" y="23" text-anchor="middle">refresh_tokens</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> token_id BIGINT PK</text>
+    <text class="col fk" x="10" y="76">→ user_id INT FK</text>
+    <text class="col" x="10" y="94" fill="#e2e8f0">token_hash NVARCHAR</text>
+    <text class="col" x="10" y="112" fill="#e2e8f0">device_info NVARCHAR</text>
+    <text class="col" x="10" y="130" fill="#e2e8f0">expires_at DATETIME2</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">is_revoked BIT</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">ip_address / user_agent</text>
+  </g>
+
+  <!-- employees -->
+  <g class="entity" transform="translate(1800, 840)">
+    <rect class="card auth" width="185" height="190" rx="8"/>
+    <rect fill="#1e40af" width="185" height="36" rx="8" ry="0"/>
+    <rect fill="#1e40af" width="185" height="18" y="18"/>
+    <text class="title header-text" x="92" y="23" text-anchor="middle">employees</text>
+    <text class="col pk" x="10" y="58"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg> employee_id INT PK</text>
+    <text class="col fk" x="10" y="76">→ user_id INT FK</text>
+    <text class="col fk" x="10" y="94">→ company_id INT FK</text>
+    <text class="col fk" x="10" y="112">→ branch_id INT FK</text>
+    <text class="col idx" x="10" y="130"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> employee_code UQ</text>
+    <text class="col" x="10" y="148" fill="#e2e8f0">designation NVARCHAR</text>
+    <text class="col" x="10" y="166" fill="#e2e8f0">department NVARCHAR</text>
+    <text class="col" x="10" y="184" fill="#e2e8f0">joining_date DATE</text>
+  </g>
+
+</svg>
+</div>
+
+<div class="info-panel">
+  <h3><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg> Database Summary</h3>
+  <div class="stat"><span>Total Tables</span><span>35</span></div>
+  <div class="stat"><span>Normalization</span><span>3NF</span></div>
+  <div class="stat"><span>Database</span><span>MS SQL Server</span></div>
+  <div class="stat"><span>Auth Tables</span><span>5</span></div>
+  <div class="stat"><span>Venue Tables</span><span>8</span></div>
+  <div class="stat"><span>Booking Tables</span><span>8</span></div>
+  <div class="stat"><span>Payment Tables</span><span>4</span></div>
+  <div class="stat"><span>Lookup Tables</span><span>10</span></div>
+  <div style="margin-top:10px;padding-top:10px;border-top:1px solid #334155;font-size:11px;color:#64748b;">
+    ⭐ bookings = core transaction table<br>
+    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> = optimized composite index<br>
+    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg> = unique constraint<br>
+    → = foreign key relationship
+  </div>
+</div>
+
+</body>
+</html>

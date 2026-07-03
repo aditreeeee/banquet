@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | BanquetPro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        navy:  { DEFAULT:'#1A2B4A', light:'#243756', dark:'#0D1929' },
+        gold:  { DEFAULT:'#C5A059', light:'#D4B478', dark:'#A8844A' },
+        cream: { DEFAULT:'#F5F0E8' },
+      },
+      fontFamily: {
+        sans:  ['Inter','sans-serif'],
+        serif: ['Playfair Display','serif'],
+      },
+    }
+  }
+}
+</script>
+<style>
+:root{
+  --deep-navy:#1A2B4A;
+  --gold:#C5A059;
+  --bg-start:
+    radial-gradient(ellipse 80% 55% at 15% 0%, rgba(197,160,89,.055) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 70% at 95% 100%, rgba(26,43,74,.045) 0%, transparent 65%),
+    linear-gradient(145deg, #F5F0E8 0%, #EDE7DA 50%, #E8E2D4 100%);
+  --surface:linear-gradient(148deg,rgba(255,255,255,0.72) 0%,rgba(245,240,232,0.65) 100%);
+  --surface-strong:rgba(255,255,255,0.90);
+  --topbar-bg:linear-gradient(90deg,rgba(255,255,255,0.82) 0%,rgba(245,240,232,0.78) 100%);
+  --text-primary:#1A2B4A;
+  --text-secondary:#4B5A72;
+  --text-muted:#8A9BB0;
+  --border-color:rgba(26,43,74,.09);
+  --input-bg:rgba(255,255,255,.88);
+  --shadow-color:rgba(26,43,74,0.08);
+  --shadow-gold:rgba(197,160,89,0.14);
+}
+body.dark-mode{
+  --bg-start:
+    radial-gradient(ellipse 70% 50% at 10% 0%, rgba(197,160,89,.05) 0%, transparent 55%),
+    linear-gradient(145deg, #060D18 0%, #0D1929 35%, #111827 100%);
+  --surface:linear-gradient(148deg,rgba(13,25,41,0.95) 0%,rgba(8,15,29,0.92) 100%);
+  --surface-strong:rgba(13,25,41,0.96);
+  --topbar-bg:linear-gradient(90deg,rgba(6,13,24,0.97) 0%,rgba(13,25,41,0.97) 100%);
+  --text-primary:#F0EDD8;
+  --text-secondary:#B0BEC8;
+  --text-muted:#6A7E94;
+  --border-color:rgba(197,160,89,.11);
+  --input-bg:rgba(13,25,41,.92);
+  --shadow-color:rgba(0,0,0,0.38);
+  --shadow-gold:rgba(197,160,89,0.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attachment:fixed;color:var(--text-primary)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(197,160,89,.28);border-radius:9999px}
+::-webkit-scrollbar-thumb:hover{background:rgba(197,160,89,.5)}
+
+/* ── Playfair Display for headings ─────────────────────────── */
+#content h1,#content h2,#content h3,.kpi-val { font-family:'Playfair Display',serif; }
+
+/* ── Glass Card ─────────────────────────────────────────────── */
+.g-card{
+  background:var(--surface);
+  backdrop-filter:blur(20px) saturate(200%);
+  -webkit-backdrop-filter:blur(20px) saturate(200%);
+  border:1px solid rgba(255,255,255,0.62);
+  border-radius:18px;
+  box-shadow:
+    0 8px 32px var(--shadow-color),
+    0 2px 8px rgba(0,0,0,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.72);
+  transition:box-shadow .25s ease,transform .25s ease,border-color .25s ease;
+}
+.g-card.hoverable:hover{
+  box-shadow:
+    0 18px 52px var(--shadow-color),
+    0 4px 14px rgba(0,0,0,0.06),
+    0 0 0 1px rgba(197,160,89,.14),
+    inset 0 1px 0 rgba(255,255,255,0.72);
+  transform:translateY(-3px);
+  border-color:rgba(197,160,89,.22);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+#sidebar{
+  position:fixed;left:0;top:0;height:100vh;z-index:50;
+  background:linear-gradient(160deg,#1A2B4A 0%,#0D1929 55%,#060D18 100%);
+  box-shadow:4px 0 36px rgba(6,13,24,0.4);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);
+  width:260px;
+  isolation:isolate;
+}
+/* Subtle noise texture overlay */
+#sidebar::before{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+#sidebar>*{position:relative;z-index:1}
+#sidebar.collapsed{width:72px}
+#sidebar.mobile-hidden{transform:translateX(-100%);width:260px}
+
+.sb-label{transition:opacity .2s ease,max-width .32s ease;overflow:hidden;white-space:nowrap;max-width:200px}
+#sidebar.collapsed .sb-label{opacity:0;max-width:0}
+.sb-section{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:rgba(197,160,89,.38);padding:14px 24px 4px;white-space:nowrap;overflow:hidden;
+  transition:opacity .2s ease}
+#sidebar.collapsed .sb-section{opacity:0}
+.sb-item{display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
+  margin:1px 8px;cursor:pointer;color:rgba(255,255,255,.52);font-size:13.5px;font-weight:500;
+  transition:background .18s ease,color .18s ease;text-decoration:none;white-space:nowrap;position:relative}
+.sb-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88)}
+/* Gold active indicator */
+.sb-item.active{background:rgba(197,160,89,.14);color:#C5A059}
+.sb-item.active::before{
+  content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:58%;border-radius:0 3px 3px 0;
+  background:linear-gradient(180deg,#D4B478,#C5A059);
+  box-shadow:0 0 9px rgba(197,160,89,.65);
+}
+.sb-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.sb-footer{margin-top:auto;border-top:1px solid rgba(197,160,89,.1);padding:14px 12px}
+.sb-avatar{width:34px;height:34px;border-radius:50%;background:rgba(197,160,89,.18);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  color:#C5A059;flex-shrink:0;border:1.5px solid rgba(197,160,89,.32)}
+
+/* Overlay */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:45;backdrop-filter:blur(3px);display:none}
+#overlay.show{display:block}
+
+/* Main */
+#main{height:100vh;display:flex;flex-direction:column;overflow:hidden;
+  transition:margin-left .32s cubic-bezier(.4,0,.2,1);margin-left:260px}
+#main.collapsed{margin-left:72px}
+#main.mobile{margin-left:0}
+
+/* ── Topbar ──────────────────────────────────────────────────── */
+#topbar{
+  flex-shrink:0;height:62px;
+  background:var(--topbar-bg);
+  backdrop-filter:blur(24px) saturate(200%);
+  -webkit-backdrop-filter:blur(24px) saturate(200%);
+  border-bottom:1px solid rgba(197,160,89,.11);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.65),
+    0 8px 28px var(--shadow-color);
+  display:flex;align-items:center;gap:14px;padding:0 24px;position:relative;z-index:30;
+}
+.tb-btn{width:36px;height:36px;border-radius:10px;border:none;
+  background:rgba(26,43,74,.06);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .18s ease,box-shadow .18s ease;color:var(--text-primary)}
+.tb-btn:hover{background:rgba(26,43,74,.11);box-shadow:0 2px 8px rgba(26,43,74,.07)}
+.search-box{flex:1;max-width:340px;display:flex;align-items:center;gap:8px;
+  background:var(--input-bg);
+  border:1.5px solid var(--border-color);border-radius:10px;padding:6px 12px;
+  backdrop-filter:blur(8px);
+  transition:border-color .18s ease,box-shadow .18s ease}
+.search-box:focus-within{border-color:#C5A059;box-shadow:0 0 0 3px rgba(197,160,89,.11)}
+.search-box input{border:none;outline:none;font-size:13.5px;color:var(--text-primary);
+  background:transparent;width:100%;font-family:'Inter',sans-serif}
+.search-box input::placeholder{color:var(--text-muted)}
+.notif-dot{position:absolute;top:9px;right:9px;width:7px;height:7px;
+  border-radius:50%;background:#C5A059;border:1.5px solid white;
+  box-shadow:0 0 6px rgba(197,160,89,.5)}
+.user-avatar{width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,#1A2B4A,#0D1929);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  color:white;cursor:pointer;border:2px solid rgba(197,160,89,.32);
+  box-shadow:0 2px 10px rgba(197,160,89,.14);
+  transition:border-color .18s ease,box-shadow .18s ease;flex-shrink:0}
+.user-avatar:hover{border-color:#C5A059;box-shadow:0 4px 16px rgba(197,160,89,.28)}
+
+/* ── Filter Pills ────────────────────────────────────────────── */
+.fpill{padding:5px 14px;border-radius:9999px;font-size:12.5px;font-weight:500;
+  border:1.5px solid var(--border-color);background:var(--surface-strong);color:var(--text-secondary);
+  cursor:pointer;transition:all .18s ease;white-space:nowrap}
+.fpill:hover{border-color:var(--deep-navy);color:var(--text-primary)}
+.fpill.on{background:linear-gradient(135deg,#1A2B4A 0%,#243756 100%);border-color:#1A2B4A;color:white;
+  box-shadow:0 2px 10px rgba(26,43,74,.22)}
+
+/* ── KPI ─────────────────────────────────────────────────────── */
+.kpi-icon-wrap{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:linear-gradient(148deg,rgba(197,160,89,.18) 0%,rgba(197,160,89,.06) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.kpi-val{font-size:27px;font-weight:700;color:var(--text-primary);line-height:1}
+.kpi-label{font-size:12px;color:var(--text-secondary);font-weight:500;margin-top:3px;letter-spacing:.02em}
+.kpi-badge{padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:2px}
+.badge-up{background:rgba(16,185,129,.12);color:#059669}
+.badge-dn{background:rgba(239,68,68,.12);color:#dc2626}
+
+/* Status Pill */
+.spill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:600}
+
+/* ── Calendar ────────────────────────────────────────────────── */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-hdr{font-size:11px;font-weight:700;color:var(--text-muted);text-align:center;padding:6px 0}
+.cal-day{width:100%;aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;cursor:pointer;font-size:12.5px;font-weight:500;
+  transition:all .15s ease;position:relative;color:var(--text-primary);border:none;background:transparent}
+.cal-day:hover{background:rgba(26,43,74,.07)}
+.cal-day.today{background:linear-gradient(135deg,#1A2B4A 0%,#243756 100%);color:white}
+.cal-day.selected{background:linear-gradient(135deg,#C5A059 0%,#D4B478 100%);color:white;box-shadow:0 4px 12px rgba(197,160,89,.32)}
+.cal-dot{position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:#C5A059;box-shadow:0 0 4px rgba(197,160,89,.5)}
+.cal-day.today .cal-dot,.cal-day.selected .cal-dot{background:white}
+
+/* ── Bars ────────────────────────────────────────────────────── */
+.occ-bar{flex:1;height:6px;border-radius:3px;background:rgba(26,43,74,.08);overflow:hidden}
+.occ-fill{height:100%;border-radius:3px;transition:width 1.2s cubic-bezier(.25,.46,.45,.94)}
+.act-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+
+/* ── Table ───────────────────────────────────────────────────── */
+.t-row td{padding:11px 14px;border-bottom:1px solid rgba(26,43,74,.06);font-size:13px;color:var(--text-primary)}
+.t-row:last-child td{border-bottom:none}
+.t-row:hover td{background:rgba(197,160,89,.04);cursor:pointer}
+.t-head th{padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.06em;
+  background:linear-gradient(135deg,rgba(26,43,74,.05) 0%,rgba(197,160,89,.025) 100%);
+  border-bottom:1px solid rgba(26,43,74,.07)}
+
+.scroll-y{overflow-y:auto}
+.scroll-y::-webkit-scrollbar{width:4px}
+.scroll-y::-webkit-scrollbar-thumb{background:rgba(197,160,89,.2);border-radius:9999px}
+#content{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:20px}
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .4s cubic-bezier(.25,.46,.45,.94) forwards}
+.fu-1{animation-delay:.04s;opacity:0}.fu-2{animation-delay:.08s;opacity:0}
+.fu-3{animation-delay:.12s;opacity:0}.fu-4{animation-delay:.16s;opacity:0}
+.fu-5{animation-delay:.20s;opacity:0}.fu-6{animation-delay:.24s;opacity:0}
+
+@media(max-width:768px){
+  #main{margin-left:0!important}
+  .hide-mobile{display:none!important}
+  #content{padding:14px;gap:14px}
+  .kpi-val{font-size:22px}
+  .kpi-icon-wrap{width:38px;height:38px}
+  .resp-2{grid-template-columns:1fr!important}
+  .resp-4{grid-template-columns:repeat(2,1fr)!important}
+}
+@media(max-width:480px){
+  .resp-4{grid-template-columns:1fr!important}
+  #topbar{padding:0 14px;gap:8px}
+}
+</style>
+</head>
+<body>
+<div id="overlay" onclick="window.__closeSidebar&&window.__closeSidebar()"></div>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+/* ════════════════════════════════════════════════════════════════
+   BanquetPro — Phase 4 Interactive React Dashboard
+   React 18 + Recharts 2.8 + Tailwind CSS (Play CDN)
+   SVG icons (Heroicons outline style, 20×20)
+   Auth: SKIP_AUTH=true (demo) — set false to enforce JWT
+   ════════════════════════════════════════════════════════════════ */
+
+const { useState, useEffect, useMemo } = React;
+const {
+  AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} = Recharts;
+
+/* ── Palette ─────────────────────────────────────────────────── */
+const C = {
+  navy: '#1A2B4A', gold: '#C5A059',
+  babyGrey:'#D3D3D3', lightGrey:'#E5E7EB', cream:'#F5F0E8',
+  green:'#10B981', red:'#EF4444', purple:'#6366F1',
+  blue:'#2563EB', amber:'#F59E0B', teal:'#14B8A6', slate:'#64748B',
+};
+
+/* ══════════════════════════════════════════════════════════════
+   SVG ICON LIBRARY  (Heroicons outline, 20×20)
+   ══════════════════════════════════════════════════════════════ */
+const I = {
+  /* Navigation */
+  dashboard: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  ),
+  calendar: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  ),
+  building: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M3 21h18M5 21V7l7-4 7 4v14"/>
+      <path d="M9 21v-6h6v6"/><path d="M9 9h1m5 0h1M9 13h1m5 0h1"/>
+    </svg>
+  ),
+  home: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M3 12L12 3l9 9"/><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/>
+    </svg>
+  ),
+  users: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+    </svg>
+  ),
+  creditCard: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+    </svg>
+  ),
+  fileText: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+  ),
+  trendingUp: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+      <polyline points="17 6 23 6 23 12"/>
+    </svg>
+  ),
+  clipboardList: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/>
+    </svg>
+  ),
+  calendarDays: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      <circle cx="8" cy="15" r=".5" fill="currentColor"/><circle cx="12" cy="15" r=".5" fill="currentColor"/><circle cx="16" cy="15" r=".5" fill="currentColor"/>
+    </svg>
+  ),
+  user: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  settings: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+  ),
+  /* Topbar / UI */
+  menu: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  ),
+  panelLeft: (p={}) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <line x1="9" y1="3" x2="9" y2="21"/>
+    </svg>
+  ),
+  search: (p={}) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  ),
+  bell: (p={}) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 01-3.46 0"/>
+    </svg>
+  ),
+  chevronLeft: (p={}) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  ),
+  chevronRight: (p={}) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  ),
+  plus: (p={}) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  ),
+  download: (p={}) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  ),
+  /* KPI */
+  dollarSign: (p={}) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <line x1="12" y1="1" x2="12" y2="23"/>
+      <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+    </svg>
+  ),
+  clock: (p={}) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  ),
+  /* Activity */
+  checkCircle: (p={}) => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  ),
+  xCircle: (p={}) => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+    </svg>
+  ),
+  lock: (p={}) => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+    </svg>
+  ),
+  userPlus: (p={}) => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/>
+      <line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+    </svg>
+  ),
+  receipt: (p={}) => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/>
+      <line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/>
+    </svg>
+  ),
+  alertTriangle: (p={}) => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  ),
+  /* Brand icon for sidebar */
+  brand: (p={}) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M3 21h18M5 21V9l7-6 7 6v12"/>
+      <path d="M9 21v-5a1 1 0 011-1h4a1 1 0 011 1v5"/>
+      <path d="M10 6h4M12 4v4"/>
+    </svg>
+  ),
+  arrowRight: (p={}) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+    </svg>
+  ),
+};
+
+/* ── Navigation config ───────────────────────────────────────── */
+const NAV = [
+  { s:'Overview', items:[{ id:'dashboard', icon:I.dashboard, label:'Dashboard', href:null }]},
+  { s:'Operations', items:[
+    { id:'bookings',  icon:I.calendar,      label:'Bookings',  href:'../bookings/index.html'  },
+    { id:'banquets',  icon:I.building,      label:'Banquets',  href:'../banquets/index.html'  },
+    { id:'halls',     icon:I.home,          label:'Halls',     href:'../halls/index.html'     },
+  ]},
+  { s:'CRM', items:[
+    { id:'customers', icon:I.users,         label:'Customers', href:'../customers/index.html' },
+  ]},
+  { s:'Finance', items:[
+    { id:'payments',  icon:I.creditCard,    label:'Payments',  href:'../payments/index.html'  },
+    { id:'invoices',  icon:I.fileText,      label:'Invoices',  href:'../invoices/index.html'  },
+  ]},
+  { s:'Reports', items:[
+    { id:'r-rev',     icon:I.trendingUp,    label:'Revenue',   href:'../reports/revenue.html'   },
+    { id:'r-bk',      icon:I.clipboardList, label:'Bookings',  href:'../reports/bookings.html'  },
+    { id:'r-occ',     icon:I.calendarDays,  label:'Occupancy', href:'../reports/occupancy.html' },
+  ]},
+  { s:'Admin', items:[
+    { id:'users',    icon:I.user,           label:'Users',    href:'../users/index.html'    },
+    { id:'settings', icon:I.settings,       label:'Settings', href:'../settings/index.html' },
+  ]},
+];
+
+/* ── Demo Data ───────────────────────────────────────────────── */
+const KPI_D = {
+  week:    {bookings:18,   revenue:485000,   pending:124000,  occ:72,  bd:+12,rd:+8, pd:-5, od:+3},
+  month:   {bookings:87,   revenue:2340000,  pending:445000,  occ:68,  bd:+7, rd:+15,pd:+2, od:-1},
+  quarter: {bookings:271,  revenue:7820000,  pending:1200000, occ:71,  bd:+18,rd:+22,pd:-8, od:+4},
+  year:    {bookings:1024, revenue:31450000, pending:4800000, occ:69,  bd:+31,rd:+28,pd:-12,od:+6},
+};
+const REV_D = {
+  week:[
+    {l:'Mon',r:68000,t:72000},{l:'Tue',r:45000,t:72000},{l:'Wed',r:82000,t:72000},
+    {l:'Thu',r:59000,t:72000},{l:'Fri',r:94000,t:72000},{l:'Sat',r:112000,t:72000},{l:'Sun',r:25000,t:72000},
+  ],
+  month:[
+    {l:'Week 1',r:520000,t:585000},{l:'Week 2',r:680000,t:585000},
+    {l:'Week 3',r:490000,t:585000},{l:'Week 4',r:650000,t:585000},
+  ],
+  quarter:[
+    {l:'Jan',r:2140000,t:2000000},{l:'Feb',r:2580000,t:2200000},{l:'Mar',r:3100000,t:2500000},
+  ],
+  year:[
+    {l:'Jan',r:2140000,t:2500000},{l:'Feb',r:2580000,t:2500000},{l:'Mar',r:3100000,t:2600000},
+    {l:'Apr',r:2820000,t:2700000},{l:'May',r:3240000,t:2800000},{l:'Jun',r:2960000,t:2800000},
+    {l:'Jul',r:3480000,t:2900000},{l:'Aug',r:3180000,t:3000000},{l:'Sep',r:2640000,t:2900000},
+    {l:'Oct',r:2840000,t:2800000},{l:'Nov',r:3420000,t:3000000},{l:'Dec',r:3050000,t:3200000},
+  ],
+};
+const STS_D = {
+  week:    [{n:'Confirmed',v:5,c:C.green},{n:'Advance Paid',v:8,c:C.purple},{n:'Fully Paid',v:4,c:C.gold},{n:'Cancelled',v:1,c:C.red}],
+  month:   [{n:'Confirmed',v:18,c:C.green},{n:'Advance Paid',v:35,c:C.purple},{n:'Fully Paid',v:28,c:C.gold},{n:'Cancelled',v:6,c:C.red}],
+  quarter: [{n:'Confirmed',v:42,c:C.green},{n:'Advance Paid',v:95,c:C.purple},{n:'Fully Paid',v:118,c:C.gold},{n:'Cancelled',v:16,c:C.red}],
+  year:    [{n:'Confirmed',v:152,c:C.green},{n:'Advance Paid',v:387,c:C.purple},{n:'Fully Paid',v:428,c:C.gold},{n:'Cancelled',v:57,c:C.red}],
+};
+const BOOKINGS_D = [
+  {id:'BNQ-2026-1041',customer:'Sharma Family',  event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-03',time:'10:00 AM',status:'confirmed',    amt:385000},
+  {id:'BNQ-2026-1042',customer:'TCS Ltd',         event:'Corporate',  hall:'Emerald Hall',   date:'2026-07-04',time:'09:00 AM',status:'advance_paid',amt:142000},
+  {id:'BNQ-2026-1043',customer:'Mehta Catering',  event:'Reception',  hall:'Royal Suite',    date:'2026-07-05',time:'06:00 PM',status:'fully_paid',  amt:98000 },
+  {id:'BNQ-2026-1044',customer:'Patel Family',    event:'Engagement', hall:'Silver Terrace', date:'2026-07-05',time:'07:00 PM',status:'confirmed',   amt:62000 },
+  {id:'BNQ-2026-1045',customer:'Gupta Weddings',  event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-07',time:'11:00 AM',status:'advance_paid',amt:420000},
+  {id:'BNQ-2026-1046',customer:'HCL India',        event:'Corporate',  hall:'Diamond Hall',   date:'2026-07-08',time:'09:30 AM',status:'confirmed',   amt:210000},
+  {id:'BNQ-2026-1047',customer:'Reddy Family',     event:'Birthday',   hall:'Emerald Hall',   date:'2026-07-10',time:'06:00 PM',status:'confirmed',   amt:75000 },
+  {id:'BNQ-2026-1048',customer:'Singh Caterers',   event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-12',time:'10:00 AM',status:'advance_paid',amt:395000},
+  {id:'BNQ-2026-1049',customer:'Wipro Ltd',         event:'Corporate',  hall:'Emerald Hall',   date:'2026-07-14',time:'09:00 AM',status:'confirmed',   amt:165000},
+  {id:'BNQ-2026-1050',customer:'Desai Family',      event:'Engagement', hall:'Royal Suite',    date:'2026-07-17',time:'06:00 PM',status:'confirmed',   amt:72000 },
+];
+const ACTIVITY_D = [
+  {t:'2 min ago', a:'New booking created',     d:'BNQ-2026-1047 – Reddy Family Birthday',       icon:'calendar', c:C.green },
+  {t:'18 min ago',a:'Payment received',        d:'₹1,92,000 for BNQ-2026-1038 (Sharma Wedding)',icon:'check',    c:C.gold  },
+  {t:'1 hr ago',  a:'Invoice generated',       d:'INV-2026-892 for TCS Ltd Corporate Event',     icon:'receipt',  c:C.blue  },
+  {t:'2 hr ago',  a:'Booking confirmed',       d:'BNQ-2026-1044 – Patel Engagement',            icon:'check',    c:C.green },
+  {t:'3 hr ago',  a:'Hall blocked',            d:'Grand Ballroom blocked for maintenance Jul 6', icon:'lock',     c:C.red   },
+  {t:'5 hr ago',  a:'New customer registered', d:'Gupta Weddings – Mumbai',                      icon:'userplus', c:C.purple},
+  {t:'6 hr ago',  a:'Cancellation processed',  d:'BNQ-2026-1039 – Kapoor Anniversary',          icon:'xcircle',  c:C.amber },
+];
+const DEMO_NOTIFS = [
+  {id:1,title:'New booking received',body:'A new booking was created for Grand Ballroom.',created_at:new Date().toISOString(),is_read:false,type:'booking_confirmation'},
+  {id:2,title:'Payment pending',body:'A payment reminder was sent for an advance booking.',created_at:new Date(Date.now()-1000*60*20).toISOString(),is_read:false,type:'payment_reminder'},
+  {id:3,title:'Hall availability updated',body:'Emerald Hall availability was refreshed for today.',created_at:new Date(Date.now()-1000*60*60*3).toISOString(),is_read:true,type:'system'},
+];
+const HALLS_D = [
+  {n:'Grand Ballroom',occ:84,bk:22,cap:500},
+  {n:'Emerald Hall',  occ:71,bk:18,cap:350},
+  {n:'Royal Suite',   occ:67,bk:16,cap:200},
+  {n:'Silver Terrace',occ:58,bk:12,cap:400},
+  {n:'Diamond Hall',  occ:43,bk:8, cap:600},
+];
+const BK_DATES = ['2026-07-03','2026-07-04','2026-07-05','2026-07-07','2026-07-08','2026-07-10','2026-07-12','2026-07-14','2026-07-17','2026-07-19','2026-07-21','2026-07-25','2026-07-28'];
+const TODAY = '2026-07-01';
+
+/* ── Helpers ─────────────────────────────────────────────────── */
+const fmtS = n => n>=10000000?'₹'+(n/10000000).toFixed(1)+'Cr':n>=100000?'₹'+(n/100000).toFixed(1)+'L':n>=1000?'₹'+(n/1000).toFixed(0)+'K':'₹'+n;
+const fmtF = n => '₹'+n.toLocaleString('en-IN');
+const sC   = s => ({confirmed:C.green,advance_paid:C.purple,fully_paid:C.gold,cancelled:C.red,pending:C.amber}[s]||'#6b7280');
+const sL   = s => ({confirmed:'Confirmed',advance_paid:'Advance Paid',fully_paid:'Fully Paid',cancelled:'Cancelled',pending:'Pending'}[s]||s);
+const occC = v => v>=80?C.green:v>=55?C.amber:C.red;
+const ini  = n => n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const dL   = d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+const iso  = (y,m,d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+const actIcon = k => ({calendar:I.calendar,check:I.checkCircle,receipt:I.receipt,lock:I.lock,userplus:I.userPlus,xcircle:I.xCircle}[k]||I.checkCircle);
+
+/* ════════════════════════════════════════════════════════════════
+   CARD
+   ════════════════════════════════════════════════════════════════ */
+const Card = ({ children, className='', hover=false, style={}, onClick }) => (
+  <div className={`g-card${hover?' hoverable':''} ${className}`} style={style} onClick={onClick}>
+    {children}
+  </div>
+);
+
+/* ════════════════════════════════════════════════════════════════
+   SIDEBAR
+   ════════════════════════════════════════════════════════════════ */
+const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
+  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'Suresh',last_name:'Mehta',role_slug:'super_admin'};
+  const name = `${user.first_name} ${user.last_name}`;
+  return (
+    <aside id="sidebar" className={[collapsed&&!isMobile?'collapsed':'',isMobile&&!mobileOpen?'mobile-hidden':''].filter(Boolean).join(' ')}>
+      {/* Brand */}
+      <div style={{padding:'18px 14px 10px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div style={{width:40,height:40,borderRadius:12,background:'rgba(197,160,89,.15)',display:'flex',alignItems:'center',justifyContent:'center',color:'#C5A059',flexShrink:0,border:'1px solid rgba(197,160,89,.3)',boxShadow:'0 4px 14px rgba(197,160,89,.18), inset 0 1px 0 rgba(255,255,255,.1)'}}>
+          {I.brand()}
+        </div>
+        <span className="sb-label" style={{fontWeight:700,fontSize:17,color:'white',letterSpacing:'-.01em',fontFamily:"'Playfair Display', serif"}}>BanquetPro</span>
+        {!isMobile&&(
+          <button onClick={onCollapse} title={collapsed?'Expand':'Collapse'}
+            style={{marginLeft:'auto',background:'rgba(255,255,255,.1)',border:'none',width:26,height:26,
+              borderRadius:6,cursor:'pointer',color:'rgba(255,255,255,.6)',display:'flex',
+              alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            {collapsed ? I.chevronRight() : I.chevronLeft()}
+          </button>
+        )}
+      </div>
+      {/* Nav */}
+      <nav style={{flex:1,overflowY:'auto',overflowX:'hidden',paddingBottom:8}}>
+        {NAV.map(sec=>(
+          <div key={sec.s}>
+            <div className="sb-section">{sec.s}</div>
+            {sec.items.map(item=>(
+              item.href
+                ? <a key={item.id} href={item.href} className="sb-item" title={collapsed?item.label:undefined}>
+                    <span className="sb-icon">{item.icon()}</span>
+                    <span className="sb-label">{item.label}</span>
+                  </a>
+                : <div key={item.id} className="sb-item active" title={collapsed?item.label:undefined}>
+                    <span className="sb-icon">{item.icon()}</span>
+                    <span className="sb-label">{item.label}</span>
+                  </div>
+            ))}
+          </div>
+        ))}
+      </nav>
+      {/* Footer */}
+      <div className="sb-footer">
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div className="sb-avatar">{ini(name)}</div>
+          <div className="sb-label" style={{minWidth:0,flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</div>
+            <div style={{fontSize:11,color:C.gold,marginTop:1,textTransform:'capitalize'}}>{(user.role_slug||'').replace(/_/g,' ')}</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════
+   TOPBAR
+   ════════════════════════════════════════════════════════════════ */
+const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMode, setDarkMode, notifications, unreadCount, notifOpen, setNotifOpen, onMarkNotificationRead, onMarkAllNotificationsRead }) => {
+  const PERIODS = [{k:'week',l:'This Week'},{k:'month',l:'This Month'},{k:'quarter',l:'This Quarter'},{k:'year',l:'This Year'}];
+  return (
+    <header id="topbar">
+      <button className="tb-btn" onClick={onMenu} title="Toggle sidebar">{I.menu()}</button>
+      <div className="search-box hide-mobile" style={{flex:'1 1 auto',maxWidth:300}}>
+        <span style={{color:'#9ca3af',display:'flex'}}>{I.search()}</span>
+        <input placeholder="Search bookings, halls, customers…" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/>
+      </div>
+      <div style={{display:'flex',gap:5,marginLeft:'auto',flexShrink:0}} className="hide-mobile">
+        {PERIODS.map(p=>(
+          <button key={p.k} className={`fpill${period===p.k?' on':''}`} onClick={()=>setPeriod(p.k)}>{p.l}</button>
+        ))}
+      </div>
+      <select className="fpill on" style={{marginLeft:'auto',display:'none'}} id="mob-period" value={period} onChange={e=>setPeriod(e.target.value)}>
+        {PERIODS.map(p=><option key={p.k} value={p.k}>{p.l}</option>)}
+      </select>
+      <div style={{position:'relative',flexShrink:0}}>
+        <button className="tb-btn" style={{position:'relative'}} title="Notifications" onClick={()=>setNotifOpen(v=>!v)}>
+          {I.bell()}
+          {unreadCount>0&&<span className="notif-dot"/>}
+        </button>
+        {notifOpen&&(
+          <div style={{position:'absolute',right:0,top:'calc(100% + 8px)',width:320,maxWidth:'calc(100vw - 24px)',background:'var(--surface-strong)',border:'1px solid var(--border-color)',borderRadius:12,boxShadow:'0 16px 40px rgba(0,0,0,.16)',padding:12,zIndex:60}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <span style={{fontWeight:700,fontSize:13,color:'var(--text-primary)'}}>Notifications</span>
+              <button className="fpill" style={{padding:'4px 10px',fontSize:11}} onClick={onMarkAllNotificationsRead}>Mark all read</button>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:280,overflowY:'auto'}}>
+              {notifications.length===0&&<div style={{fontSize:12,color:'var(--text-muted)',padding:'8px 2px'}}>No notifications</div>}
+              {notifications.map(n=>(
+                <button key={n.id} type="button" onClick={()=>onMarkNotificationRead(n.id)} style={{display:'flex',gap:10,alignItems:'flex-start',textAlign:'left',padding:'8px 10px',border:'1px solid var(--border-color)',borderRadius:10,background:n.is_read?'transparent':'rgba(197,160,89,.10)',cursor:'pointer',color:'var(--text-primary)'}}>
+                  <span style={{width:8,height:8,borderRadius:'50%',background:n.is_read?'#94a3b8':'#C5A059',marginTop:6,flexShrink:0}}/>
+                  <span style={{flex:1,minWidth:0}}>
+                    <span style={{display:'block',fontWeight:700,fontSize:12.5,marginBottom:2}}>{n.title}</span>
+                    <span style={{display:'block',fontSize:11.5,color:'var(--text-secondary)',lineHeight:1.35}}>{n.body}</span>
+                    <span style={{display:'block',fontSize:10.5,color:'var(--text-muted)',marginTop:4}}>{new Date(n.created_at).toLocaleString('en-IN',{hour:'numeric',minute:'2-digit',day:'numeric',month:'short'})}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <button className="tb-btn" title={darkMode?'Switch to light mode':'Switch to dark mode'} onClick={()=>setDarkMode(v=>!v)}>
+        {darkMode?'☀':'☾'}
+      </button>
+      <div className="user-avatar">SM</div>
+    </header>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════
+   KPI CARD
+   ════════════════════════════════════════════════════════════════ */
+const KPICard = ({ IconEl, label, value, delta, color, anim }) => {
+  const up = delta>=0;
+  return (
+    <Card hover className={`fu ${anim}`} style={{padding:'18px 20px'}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
+        <div className="kpi-icon-wrap" style={{background:`${color}1A`,color}}><IconEl/></div>
+        <span className={`kpi-badge ${up?'badge-up':'badge-dn'}`}>
+          {up
+            ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          }
+          {Math.abs(delta)}%
+        </span>
+      </div>
+      <div className="kpi-val">{value}</div>
+      <div className="kpi-label">{label}</div>
+    </Card>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════
+   CUSTOM RECHARTS TOOLTIP
+   ════════════════════════════════════════════════════════════════ */
+const CTip = ({ active, payload, label, fmt }) => {
+  if(!active||!payload?.length) return null;
+  const f = fmt||fmtS;
+  return (
+    <div style={{background:'rgba(255,255,255,0.96)',borderRadius:12,padding:'10px 14px',
+      boxShadow:'0 10px 24px rgba(15,23,42,.12)',border:'1px solid rgba(100,116,139,.15)',fontSize:12.5,fontFamily:'Inter,sans-serif'}}>
+      <p style={{color:C.navy,fontWeight:700,marginBottom:6}}>{label}</p>
+      {payload.map((p,i)=>(
+        <p key={i} style={{color:p.color||C.navy,margin:'2px 0'}}>
+          <span style={{opacity:.7}}>{p.name}: </span><b>{f(p.value)}</b>
+        </p>
+      ))}
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════
+   REVENUE AREA CHART
+   ════════════════════════════════════════════════════════════════ */
+const RevenueChart = ({ data }) => (
+  <ResponsiveContainer width="100%" height={228}>
+    <AreaChart data={data} margin={{top:8,right:8,left:0,bottom:0}}>
+      <defs>
+        <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={C.purple} stopOpacity={0.26}/><stop offset="100%" stopColor={C.purple} stopOpacity={0.02}/>
+        </linearGradient>
+        <linearGradient id="gTgt" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={C.teal} stopOpacity={0.20}/><stop offset="100%" stopColor={C.teal} stopOpacity={0.01}/>
+        </linearGradient>
+      </defs>
+      <CartesianGrid stroke="rgba(148,163,184,.16)" strokeDasharray="3 3" vertical={false}/>
+      <XAxis dataKey="l" tick={{fontSize:11,fill:'#64748b',fontFamily:'Inter'}} axisLine={false} tickLine={false}/>
+      <YAxis tick={{fontSize:11,fill:'#64748b',fontFamily:'Inter'}} axisLine={false} tickLine={false} tickFormatter={fmtS} width={54}/>
+      <Tooltip content={<CTip/>}/>
+      <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:12,paddingTop:10,color:'#64748b'}}/>
+      <Area type="monotone" dataKey="r" name="Revenue" stroke={C.purple} strokeWidth={2.6}
+        fill="url(#gRev)" dot={{r:3,fill:C.purple,strokeWidth:0}} activeDot={{r:5,strokeWidth:0}}/>
+      <Area type="monotone" dataKey="t" name="Target" stroke={C.teal} strokeWidth={2}
+        strokeDasharray="5 3" fill="url(#gTgt)" dot={{r:2,fill:C.teal,strokeWidth:0}} activeDot={{r:4,strokeWidth:0}}/>
+    </AreaChart>
+  </ResponsiveContainer>
+);
+
+/* ════════════════════════════════════════════════════════════════
+   BOOKING STATUS DONUT
+   ════════════════════════════════════════════════════════════════ */
+const StatusDonut = ({ data }) => {
+  const total = data.reduce((s,d)=>s+d.v,0);
+  const [hover, setHover] = useState(null);
+  const CL = ({ viewBox }) => {
+    const {cx,cy} = viewBox||{cx:0,cy:0};
+    return (
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
+        <tspan x={cx} dy="-8" fontSize={24} fontWeight={800} fill={C.navy}>{total}</tspan>
+        <tspan x={cx} dy={22} fontSize={11} fill="#9ca3af">Bookings</tspan>
+      </text>
+    );
+  };
+  return (
+    <div>
+      <ResponsiveContainer width="100%" height={188}>
+        <PieChart>
+          <Pie data={data} dataKey="v" nameKey="n" cx="50%" cy="50%" innerRadius={56} outerRadius={80}
+            strokeWidth={2} stroke="rgba(255,255,255,.86)" paddingAngle={2} labelLine={false} label={<CL/>}
+            onMouseEnter={(_,i)=>setHover(i)} onMouseLeave={()=>setHover(null)}>
+            {data.map((d,i)=>(
+              <Cell key={i} fill={d.c} opacity={hover===null||hover===i?1:.58}
+                style={{filter:hover===i?'drop-shadow(0 4px 8px rgba(15,23,42,.16))':'none',transition:'opacity .18s,filter .18s',cursor:'pointer'}}/>
+            ))}
+          </Pie>
+          <Tooltip content={<CTip fmt={v=>v+' bookings'}/>}/>
+        </PieChart>
+      </ResponsiveContainer>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5px 14px',marginTop:8}}>
+        {data.map((d,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:6,fontSize:12}}>
+            <span style={{width:8,height:8,borderRadius:'50%',background:d.c,flexShrink:0}}/>
+            <span style={{color:'#6b7280',flex:1}}>{d.n}</span>
+            <b style={{color:C.navy}}>{d.v}</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════
+   MINI CALENDAR
+   ════════════════════════════════════════════════════════════════ */
+const MiniCalendar = ({ selected, onSelect, dots }) => {
+  const [cur, setCur] = useState(new Date(2026,6,1));
+  const y=cur.getFullYear(), m=cur.getMonth();
+  const dim=new Date(y,m+1,0).getDate(), fdow=new Date(y,m,1).getDay();
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DAYS=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const ds=d=>iso(y,m+1,d);
+  const cells=[];
+  for(let i=0;i<fdow;i++) cells.push(null);
+  for(let d=1;d<=dim;d++) cells.push(d);
+  while(cells.length%7!==0) cells.push(null);
+  return (
+    <div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+        <button onClick={()=>setCur(new Date(y,m-1,1))} className="tb-btn" style={{width:28,height:28,borderRadius:7}}>
+          {I.chevronLeft()}
+        </button>
+        <span style={{fontWeight:700,fontSize:13.5,color:C.navy}}>{MON[m]} {y}</span>
+        <button onClick={()=>setCur(new Date(y,m+1,1))} className="tb-btn" style={{width:28,height:28,borderRadius:7}}>
+          {I.chevronRight()}
+        </button>
+      </div>
+      <div className="cal-grid">{DAYS.map(d=><div key={d} className="cal-hdr">{d}</div>)}</div>
+      <div className="cal-grid">
+        {cells.map((d,i)=>{
+          if(!d) return <div key={i}/>;
+          const s=ds(d), isT=s===TODAY, isSel=s===selected, hasDot=dots.includes(s);
+          return (
+            <button key={i} className={`cal-day${isT&&!isSel?' today':''}${isSel?' selected':''}`}
+              onClick={()=>onSelect(isSel?null:s)} title={hasDot?'Has bookings':''}>
+              {d}
+              {hasDot&&<span className="cal-dot"/>}
+            </button>
+          );
+        })}
+      </div>
+      {selected&&(
+        <button onClick={()=>onSelect(null)}
+          style={{marginTop:10,width:'100%',padding:'6px',borderRadius:8,
+            background:'rgba(197,160,89,.1)',border:'1px solid rgba(197,160,89,.3)',
+            color:C.gold,fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',
+            alignItems:'center',justifyContent:'center',gap:6}}>
+          Clear date filter
+          {I.xCircle()}
+        </button>
+      )}
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════
+   UPCOMING BOOKINGS
+   ════════════════════════════════════════════════════════════════ */
+const UpcomingList = ({ bookings, selected, onOpenBooking }) => {
+  const list = selected ? bookings.filter(b=>b.date===selected) : bookings;
+  return (
+    <div className="scroll-y" style={{maxHeight:318}}>
+      {list.length===0&&(
+        <div style={{textAlign:'center',padding:'32px 0',color:'#9ca3af',fontSize:13}}>
+          No bookings for {dL(selected)}
+        </div>
+      )}
+      {list.map(b=>(
+        <a key={b.id} href={`../bookings/detail.html?id=${b.id}`}
+          onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}}
+          style={{display:'flex',gap:12,alignItems:'flex-start',padding:'10px 0',
+            borderBottom:'1px solid rgba(229,231,235,.5)',textDecoration:'none'}}>
+          <span style={{width:8,height:8,borderRadius:'50%',background:sC(b.status),flexShrink:0,marginTop:5}}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600,fontSize:13,color:C.navy,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.customer}</div>
+            <div style={{fontSize:11.5,color:'#6b7280',marginTop:2}}>{b.event} · {b.hall} · {dL(b.date)} {b.time}</div>
+          </div>
+          <div style={{textAlign:'right',flexShrink:0}}>
+            <div style={{fontWeight:700,fontSize:13,color:C.navy}}>{fmtS(b.amt)}</div>
+            <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:10.5,marginTop:3,display:'inline-flex'}}>{sL(b.status)}</span>
+          </div>
+        </a>
+      ))}
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════
+   HALL OCCUPANCY
+   ════════════════════════════════════════════════════════════════ */
+const OccupancyBars = ({ halls }) => (
+  <div style={{display:'flex',flexDirection:'column',gap:13}}>
+    {halls.map((h,i)=>(
+      <div key={i}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:5,alignItems:'center'}}>
+          <span style={{fontSize:12.5,fontWeight:500,color:C.navy}}>{h.n}</span>
+          <div style={{display:'flex',gap:10,alignItems:'center'}}>
+            <span style={{fontSize:11,color:'#9ca3af'}}>{h.bk} bookings</span>
+            <b style={{fontSize:12.5,color:occC(h.occ)}}>{h.occ}%</b>
+          </div>
+        </div>
+        <div className="occ-bar"><div className="occ-fill" style={{width:`${h.occ}%`,background:occC(h.occ)}}/></div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ════════════════════════════════════════════════════════════════
+   ACTIVITY FEED
+   ════════════════════════════════════════════════════════════════ */
+const ActivityFeed = ({ items }) => (
+  <div className="scroll-y" style={{maxHeight:278}}>
+    {items.map((a,i)=>{
+      const AIcon = actIcon(a.icon);
+      return (
+        <div key={i} style={{display:'flex',gap:10,padding:'9px 0',borderBottom:'1px solid rgba(229,231,235,.5)'}}>
+          <div style={{width:28,height:28,borderRadius:8,background:`${a.c}18`,display:'flex',alignItems:'center',
+            justifyContent:'center',flexShrink:0,color:a.c}}>
+            <AIcon/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:8}}>
+              <span style={{fontWeight:600,fontSize:12.5,color:C.navy}}>{a.a}</span>
+              <span style={{fontSize:11,color:'#9ca3af',flexShrink:0,whiteSpace:'nowrap'}}>{a.t}</span>
+            </div>
+            <div style={{fontSize:11.5,color:'#6b7280',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.d}</div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
+
+/* ════════════════════════════════════════════════════════════════
+   BOOKINGS TABLE
+   ════════════════════════════════════════════════════════════════ */
+const BookingsTable = ({ bookings, onOpenBooking }) => (
+  <div style={{overflowX:'auto'}}>
+    <table style={{width:'100%',borderCollapse:'collapse',minWidth:580}}>
+      <thead>
+        <tr className="t-head">
+          <th>Booking ID</th><th>Customer</th><th>Event</th><th>Hall</th><th>Date</th><th>Amount</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {bookings.map(b=>(
+          <tr key={b.id} className="t-row" onClick={()=>onOpenBooking?.(b.id)}>
+            <td><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{fontFamily:'monospace',fontSize:11.5,background:'rgba(61,84,127,.07)',padding:'2px 7px',borderRadius:5,color:C.navy,textDecoration:'none',display:'inline-block'}}>{b.id}</a></td>
+            <td style={{fontWeight:600}}><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{color:C.navy,textDecoration:'none'}}>{b.customer}</a></td>
+            <td style={{color:'#6b7280'}}>{b.event}</td>
+            <td style={{color:'#6b7280',fontSize:12}}>{b.hall}</td>
+            <td style={{fontSize:12,color:'#6b7280'}}>{dL(b.date)}</td>
+            <td style={{fontWeight:700}}>{fmtF(b.amt)}</td>
+            <td><span className="spill" style={{background:`${sC(b.status)}15`,color:sC(b.status),fontSize:11}}>● {sL(b.status)}</span></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+/* ════════════════════════════════════════════════════════════════
+   DASHBOARD VIEW
+   ════════════════════════════════════════════════════════════════ */
+const DashboardView = ({ period, searchQuery }) => {
+  const [selDate, setSelDate] = useState(null);
+  const [bookings, setBookings] = useState(BOOKINGS_D);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [hallFilter, setHallFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('date_desc');
+  const kpi=KPI_D[period], rev=REV_D[period], sts=STS_D[period];
+
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        if(typeof API==='undefined') return;
+        const r=await API.get(`/dashboard/bookings?period=${period}`);
+        const raw=Array.isArray(r?.data)?r.data:(Array.isArray(r?.data?.bookings)?r.data.bookings:[]);
+        if(!dead&&raw.length){
+          setBookings(raw.map(b=>({
+            id:       b.booking_ref||b.id,
+            customer: b.customer_name||b.customer,
+            event:    b.event_name||b.event,
+            hall:     b.hall_name||b.hall,
+            date:     (b.event_date||b.date||'').substring(0,10),
+            time:     b.event_time_start||b.start_time||b.time||'',
+            status:   b.booking_status||b.status||'confirmed',
+            amt:      parseFloat(b.total_amount||b.amt)||0,
+          })));
+        }
+      }catch(_){}
+    })();
+    return()=>{dead=true};
+  },[period]);
+
+  const ViewAllLink = ({href}) => (
+    <a href={href} style={{fontSize:12,color:C.gold,fontWeight:600,textDecoration:'none',display:'flex',alignItems:'center',gap:3}}>
+      View all {I.arrowRight()}
+    </a>
+  );
+
+  const openBookingDetail = id => {
+    if(!id) return;
+    window.location.assign(`../bookings/detail.html?id=${id}`);
+  };
+
+  const filteredBookings = useMemo(() => {
+    const q = (searchQuery||'').trim().toLowerCase();
+    return [...bookings]
+      .filter(b => {
+        const matchesDate = !selDate || b.date === selDate;
+        const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
+        const matchesHall = hallFilter === 'all' || b.hall === hallFilter;
+        const haystack = `${b.customer} ${b.event} ${b.hall} ${b.id} ${sL(b.status)}`.toLowerCase();
+        const matchesQuery = !q || haystack.includes(q);
+        return matchesDate && matchesStatus && matchesHall && matchesQuery;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'date_asc': return new Date(a.date) - new Date(b.date);
+          case 'amount_asc': return a.amt - b.amt;
+          case 'amount_desc': return b.amt - a.amt;
+          case 'customer': return a.customer.localeCompare(b.customer);
+          default: return new Date(b.date) - new Date(a.date);
+        }
+      });
+  }, [bookings, selDate, searchQuery, statusFilter, hallFilter, sortBy]);
+
+  const visibleBookings = filteredBookings.slice(0, 6);
+  const hallOptions = useMemo(() => ['all', ...new Set(bookings.map(b => b.hall).filter(Boolean))], [bookings]);
+
+  return (
+    <>
+      {/* Greeting */}
+      <div className="fu fu-1" style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+        <div>
+          <h1 style={{fontSize:24,fontWeight:700,color:C.navy,lineHeight:1.2,fontFamily:"'Playfair Display', serif"}}>Good morning, Suresh</h1>
+          <p style={{fontSize:13,color:'#9ca3af',marginTop:4}}>BanquetPro overview · Wednesday, 1 July 2026</p>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <a href="../bookings/index.html">
+            <button style={{padding:'8px 16px',background:C.gold,border:'none',borderRadius:9999,color:'white',
+              fontWeight:600,fontSize:13,cursor:'pointer',boxShadow:`0 2px 10px ${C.gold}50`,
+              display:'flex',alignItems:'center',gap:6}}>
+              {I.plus()}New Booking
+            </button>
+          </a>
+          <button onClick={()=>window.print()}
+            style={{padding:'8px 14px',background:'rgba(61,84,127,.08)',border:'1.5px solid rgba(61,84,127,.15)',
+              borderRadius:9999,color:C.navy,fontWeight:600,fontSize:13,cursor:'pointer',
+              display:'flex',alignItems:'center',gap:6}}>
+            {I.download()}Export
+          </button>
+        </div>
+      </div>
+
+      {/* KPI row */}
+      <div className="resp-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
+        <KPICard IconEl={()=>I.calendar({width:22,height:22})}   label="Total Bookings"   value={kpi.bookings.toLocaleString()} delta={kpi.bd} color={C.purple} anim="fu-1"/>
+        <KPICard IconEl={()=>I.dollarSign()}                       label="Revenue"          value={fmtS(kpi.revenue)}             delta={kpi.rd} color={C.green}  anim="fu-2"/>
+        <KPICard IconEl={()=>I.clock()}                            label="Pending Payments" value={fmtS(kpi.pending)}             delta={kpi.pd} color={C.amber}  anim="fu-3"/>
+        <KPICard IconEl={()=>I.building({width:22,height:22})}    label="Avg Occupancy"    value={kpi.occ+'%'}                   delta={kpi.od} color={C.blue}   anim="fu-4"/>
+      </div>
+
+      {/* Charts */}
+      <div className="resp-2 fu fu-3" style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:16,alignItems:'start'}}>
+        <Card hover style={{padding:'18px 20px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <div>
+              <h3 style={{fontSize:14,fontWeight:700,color:C.navy}}>Revenue vs Target</h3>
+              <p style={{fontSize:12,color:'#9ca3af',marginTop:2}}>{fmtS(kpi.revenue)} collected this period</p>
+            </div>
+            <span style={{fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:9999,
+              background:`${kpi.rd>=0?C.green:C.red}15`,color:kpi.rd>=0?C.green:C.red}}>
+              {kpi.rd>=0?'▲':'▼'} {Math.abs(kpi.rd)}% vs prev
+            </span>
+          </div>
+          <RevenueChart data={rev}/>
+        </Card>
+        <Card hover style={{padding:'18px 20px'}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:14}}>Booking Status</h3>
+          <StatusDonut data={sts}/>
+        </Card>
+      </div>
+
+      {/* Calendar + Upcoming */}
+      <div className="resp-2 fu fu-4" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <Card hover style={{padding:'18px 20px'}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:14,display:'flex',alignItems:'center',gap:8}}>
+            {I.calendarDays({width:16,height:16})}
+            Booking Calendar
+            {selDate&&<span style={{fontWeight:500,fontSize:12,color:C.gold}}>· {dL(selDate)}</span>}
+          </h3>
+          <MiniCalendar selected={selDate} onSelect={setSelDate} dots={BK_DATES}/>
+        </Card>
+        <Card hover style={{padding:'18px 20px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <h3 style={{fontSize:14,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
+              Upcoming Bookings
+              <span style={{background:'rgba(61,84,127,.1)',color:C.navy,padding:'2px 8px',borderRadius:9999,fontSize:11.5,fontWeight:600}}>
+                {filteredBookings.length}
+              </span>
+            </h3>
+            <ViewAllLink href="../bookings/index.html"/>
+          </div>
+          <UpcomingList bookings={filteredBookings} selected={selDate} onOpenBooking={openBookingDetail}/>
+        </Card>
+      </div>
+
+      {/* Occupancy + Activity */}
+      <div className="resp-2 fu fu-5" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <Card hover style={{padding:'18px 20px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <h3 style={{fontSize:14,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
+              {I.building({width:16,height:16})} Hall Occupancy
+            </h3>
+            <ViewAllLink href="../reports/occupancy.html"/>
+          </div>
+          <OccupancyBars halls={HALLS_D}/>
+          <div style={{marginTop:14,display:'flex',gap:14,flexWrap:'wrap'}}>
+            {[{c:C.green,l:'High ≥80%'},{c:C.amber,l:'Mid ≥55%'},{c:C.red,l:'Low <55%'}].map(x=>(
+              <span key={x.l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11.5,color:'#6b7280'}}>
+                <span style={{width:8,height:8,borderRadius:'50%',background:x.c,display:'inline-block'}}/>
+                {x.l}
+              </span>
+            ))}
+          </div>
+        </Card>
+        <Card hover style={{padding:'18px 20px'}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:14}}>Recent Activity</h3>
+          <ActivityFeed items={ACTIVITY_D}/>
+        </Card>
+      </div>
+
+      {/* Bookings table */}
+      <Card hover style={{overflow:'hidden'}} className="fu fu-6">
+        <div style={{padding:'14px 20px',borderBottom:'1px solid rgba(229,231,235,.6)',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:C.navy}}>Recent Bookings</h3>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+            <span style={{fontSize:12,color:'#6b7280'}}>Showing {filteredBookings.length} result{filteredBookings.length===1?'':'s'}</span>
+            <select className="fpill" value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'5px 10px'}}>
+              <option value="date_desc">Newest first</option>
+              <option value="date_asc">Oldest first</option>
+              <option value="amount_desc">Amount: High to Low</option>
+              <option value="amount_asc">Amount: Low to High</option>
+              <option value="customer">Customer A–Z</option>
+            </select>
+            <select className="fpill" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:'5px 10px'}}>
+              <option value="all">All statuses</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="advance_paid">Advance Paid</option>
+              <option value="fully_paid">Fully Paid</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="pending">Pending</option>
+            </select>
+            <select className="fpill" value={hallFilter} onChange={e=>setHallFilter(e.target.value)} style={{padding:'5px 10px'}}>
+              {hallOptions.map(h=> <option key={h} value={h}>{h === 'all' ? 'All halls' : h}</option>)}
+            </select>
+            <button className="fpill" onClick={()=>{setStatusFilter('all');setHallFilter('all');setSortBy('date_desc');setSelDate(null);}} style={{padding:'5px 10px'}}>Clear filters</button>
+          </div>
+          <ViewAllLink href="../bookings/index.html"/>
+        </div>
+        <BookingsTable bookings={visibleBookings} onOpenBooking={openBookingDetail}/>
+      </Card>
+
+      <footer style={{textAlign:'center',fontSize:12,color:'#9ca3af',paddingBottom:16}}>
+        © 2026 BanquetPro Enterprise · Phase 4 Interactive Dashboard
+      </footer>
+    </>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════
+   APP ROOT
+   ════════════════════════════════════════════════════════════════ */
+const App = () => {
+  const [period,      setPeriod]      = useState('month');
+  const [collapsed,   setCollapsed]   = useState(false);
+  const [isMobile,    setIsMobile]    = useState(()=>window.innerWidth<768);
+  const [mobOpen,     setMobOpen]     = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [darkMode,    setDarkMode]    = useState(() => {
+    try { return localStorage.getItem('dashboard-dark-mode') === '1'; } catch { return false; }
+  });
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('dashboard-notifications') || 'null');
+      return Array.isArray(saved) && saved.length ? saved : DEMO_NOTIFS;
+    } catch {
+      return DEMO_NOTIFS;
+    }
+  });
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  useEffect(()=>{
+    if(typeof Auth!=='undefined'){ Auth.requireAuth(); Auth.applyTheme?.(); }
+  },[]);
+
+  useEffect(()=>{
+    document.body.classList.toggle('dark-mode', darkMode);
+    document.body.style.colorScheme = darkMode ? 'dark' : 'light';
+    try { localStorage.setItem('dashboard-dark-mode', darkMode ? '1' : '0'); } catch (_) {}
+  }, [darkMode]);
+
+  useEffect(()=>{
+    (async()=>{
+      try {
+        if (typeof API !== 'undefined' && API.notifications?.list) {
+          const res = await API.notifications.list();
+          const apiNotifs = Array.isArray(res?.data?.notifications) ? res.data.notifications : [];
+          if (apiNotifs.length) {
+            const normalized = apiNotifs.map((n, i) => ({ id: n.notification_id || n.id || i + 1, title: n.title || 'Notification', body: n.body || n.message || 'You have a new update', created_at: n.created_at || n.createdAt || new Date().toISOString(), is_read: Boolean(n.is_read ?? n.read ?? false), type: n.notification_type || n.type || 'system' }));
+            setNotifications(normalized);
+            try { localStorage.setItem('dashboard-notifications', JSON.stringify(normalized)); } catch (_) {}
+            return;
+          }
+        }
+      } catch (_) {}
+      try {
+        const saved = JSON.parse(localStorage.getItem('dashboard-notifications') || 'null');
+        if (Array.isArray(saved) && saved.length) setNotifications(saved);
+      } catch (_) {}
+    })();
+  }, []);
+
+  useEffect(()=>{
+    try { localStorage.setItem('dashboard-notifications', JSON.stringify(notifications)); } catch (_) {}
+  }, [notifications]);
+
+  useEffect(()=>{
+    const h=()=>{ const mob=window.innerWidth<768; setIsMobile(mob); if(!mob) setMobOpen(false); };
+    window.addEventListener('resize',h);
+    return()=>window.removeEventListener('resize',h);
+  },[]);
+
+  useEffect(()=>{
+    const sb=document.getElementById('sidebar');
+    const main=document.getElementById('main');
+    const ov=document.getElementById('overlay');
+    if(!sb||!main||!ov) return;
+    if(isMobile){
+      sb.className=mobOpen?'':'mobile-hidden';
+      main.className='mobile';
+      ov.className=mobOpen?'show':'';
+    } else {
+      sb.className=collapsed?'collapsed':'';
+      main.className=collapsed?'collapsed':'';
+      ov.className='';
+    }
+    const ms=document.getElementById('mob-period');
+    if(ms) ms.style.display=isMobile?'block':'none';
+  },[collapsed,isMobile,mobOpen]);
+
+  window.__closeSidebar=()=>setMobOpen(false);
+
+  function onMenu(){ isMobile?setMobOpen(o=>!o):setCollapsed(c=>!c); }
+  const unreadCount = notifications.filter(n=>!n.is_read).length;
+  const markNotificationRead = id => setNotifications(list => list.map(n => n.id === id ? { ...n, is_read: true } : n));
+  const markAllNotificationsRead = () => { setNotifications(list => list.map(n => ({ ...n, is_read: true }))); setNotifOpen(false); };
+
+  return (
+    <>
+      <Sidebar collapsed={collapsed} onCollapse={()=>setCollapsed(c=>!c)} isMobile={isMobile} mobileOpen={mobOpen}/>
+      <div id="main">
+        <Topbar onMenu={onMenu} period={period} setPeriod={setPeriod} searchQuery={searchQuery} setSearchQuery={setSearchQuery} darkMode={darkMode} setDarkMode={setDarkMode} notifications={notifications} unreadCount={unreadCount} notifOpen={notifOpen} setNotifOpen={setNotifOpen} onMarkNotificationRead={markNotificationRead} onMarkAllNotificationsRead={markAllNotificationsRead}/>
+        <div id="content"><DashboardView period={period} searchQuery={searchQuery}/></div>
+      </div>
+    </>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

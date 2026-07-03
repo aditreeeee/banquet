@@ -1,0 +1,1064 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Booking | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+/* â”€â”€ Wizard layout â”€â”€ */
+.wizard-container { max-width:860px; margin:0 auto; }
+
+/* Steps header */
+.wizard-header {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.steps-track {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+    padding-bottom: 4px;
+    overflow-x: auto;
+    gap: 0;
+}
+
+.steps-track::before {
+    content: '';
+    position: absolute;
+    top: 18px; left: 36px; right: 36px;
+    height: 2px;
+    background: var(--border-color);
+    z-index: 0;
+}
+
+.step-item {
+    flex: 1; min-width: 80px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px; position: relative; z-index: 1;
+    cursor: default;
+}
+
+.step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color-dark);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all var(--transition-base);
+    position: relative; z-index: 2;
+}
+.step-item.active .step-num  { background: var(--brand-primary); border-color: var(--brand-primary); color: white; box-shadow: 0 0 0 4px rgba(124,58,237,.18); }
+.step-item.done   .step-num  { background: var(--color-success); border-color: var(--color-success); color: white; }
+
+.step-lbl {
+    font-size: 11px; font-weight: 500;
+    color: var(--text-muted); text-align: center;
+    white-space: nowrap; line-height: 1.3;
+}
+.step-item.active .step-lbl { color: var(--brand-primary); font-weight: 600; }
+.step-item.done   .step-lbl { color: var(--color-success); }
+
+/* Step panels */
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+
+/* Hall cards */
+.hall-card {
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background: var(--bg-surface);
+    position: relative;
+}
+.hall-card:hover   { border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(124,58,237,.1); }
+.hall-card.selected{ border-color: var(--brand-primary); background: var(--brand-primary-light); box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
+.hall-card.unavailable { opacity: .5; cursor: not-allowed; }
+.hall-badge {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 10px; font-weight: 600; padding: 3px 8px;
+    border-radius: 20px; background: var(--color-success-bg); color: var(--color-success);
+}
+.hall-badge.busy { background: var(--color-danger-bg); color: var(--color-danger); }
+.hall-name { font-weight: 700; font-size: 14px; color: var(--text-primary); margin-bottom: 4px; }
+.hall-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.hall-price{ font-size: 16px; font-weight: 700; color: var(--brand-primary); margin-top: 8px; }
+
+/* Catering items */
+.pkg-card {
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.pkg-card:hover   { border-color: var(--brand-primary); }
+.pkg-card.selected{ border-color: var(--brand-primary); background: var(--brand-primary-light); }
+
+/* Price summary */
+.price-row { display:flex; justify-content:space-between; padding:8px 0; font-size:13.5px; }
+.price-row.total { font-size:16px; font-weight:700; color:var(--text-primary); border-top:2px solid var(--border-color); padding-top:12px; }
+.price-row .label { color: var(--text-secondary); }
+.price-row .value { font-weight:600; color:var(--text-primary); }
+.price-row.green .value { color: var(--color-success); }
+.price-row.red   .value { color: var(--color-danger); }
+
+/* Nav buttons */
+.wizard-nav {
+    display: flex; gap: 12px; justify-content: space-between;
+    margin-top: 24px; padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Confirmation checkmarks */
+.confirm-row { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid var(--border-color); }
+.confirm-row:last-child { border:none; }
+.confirm-icon { font-size:20px; flex-shrink:0; }
+.confirm-label { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; }
+.confirm-value { font-size:14px; font-weight:600; color:var(--text-primary); margin-top:2px; }
+
+@media (max-width:640px) {
+    .step-lbl { display:none; }
+    .steps-track::before { left:18px; right:18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Sidebar (abbreviated) -->
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand">
+        <div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div>
+        <span class="sidebar-brand-text">BanquetPro</span>
+    </a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
+        <a href="create.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">CRM</div>
+        <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span><span class="sidebar-text">Payments</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px">
+            <div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div>
+            <div class="sidebar-text">
+                <div style="color:white;font-size:13px;font-weight:600" data-user-name></div>
+                <div style="color:rgba(255,255,255,.5);font-size:11px" data-user-role></div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li>
+                <li class="breadcrumb-item"><a href="index.html">Bookings</a></li>
+                <li class="breadcrumb-item active">New Booking</li>
+            </ol>
+        </nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="avatar-btn" style="cursor:default">
+                <div class="avatar" data-user-avatar></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="wizard-container">
+
+            <!-- Wizard Header -->
+            <div class="wizard-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+                    <div>
+                        <h1 class="page-title" style="font-size:18px">New Booking</h1>
+                        <p class="page-subtitle" id="stepDescription">Select your event date and banquet hall</p>
+                    </div>
+                    <div style="font-size:13px;color:var(--text-muted)">Step <strong id="currentStepNum">1</strong> of 8</div>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="prog-bar" style="margin-bottom:20px">
+                    <div class="prog-fill" id="wizardProgress" style="width:12.5%"></div>
+                </div>
+
+                <!-- Steps track -->
+                <div class="steps-track" id="stepsTrack">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+
+            <!-- Alert -->
+            <div id="wizardAlert" class="alert-auth" style="display:none;background:var(--color-danger-bg);border-color:var(--color-danger);color:var(--color-danger);border-radius:var(--radius-md);padding:12px 16px;margin-bottom:16px"></div>
+
+            <!-- â•â•â•â•â•â•â•â•â•â•â• STEP PANELS â•â•â•â•â•â•â•â•â•â•â• -->
+
+            <!-- STEP 1: Date & Time -->
+            <div class="step-panel active card" id="step1">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> Select Event Date & Time</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Event Date <span style="color:var(--color-danger)">*</span></label>
+                            <input type="date" class="form-control" id="eventDate" min="" required>
+                            <div class="invalid-feedback" id="eventDate_error"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Expected Guests <span style="color:var(--color-danger)">*</span></label>
+                            <input type="number" class="form-control" id="guestCount" min="1" max="5000" placeholder="e.g. 300" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Start Time <span style="color:var(--color-danger)">*</span></label>
+                            <input type="time" class="form-control" id="startTime" value="08:00" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Time <span style="color:var(--color-danger)">*</span></label>
+                            <input type="time" class="form-control" id="endTime" value="23:00" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <div></div>
+                    <button class="btn-primary-brand" onclick="nextStep()">Next: Choose Hall →</button>
+                </div>
+            </div>
+
+            <!-- STEP 2: Hall Selection -->
+            <div class="step-panel card" id="step2">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:8px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Select Hall</h5>
+                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Showing available halls for your selected date and guest count.</p>
+                    <div id="hallsGrid" class="row g-3">
+                        <div class="col-12 text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Checking availability…</div>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <button class="btn-ghost" onclick="prevStep()">← Back</button>
+                    <button class="btn-primary-brand" onclick="nextStep()">Next: Event Details →</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: Event Details -->
+            <div class="step-panel card" id="step3">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 2v3"></path><path d="m7 5 2 2"></path><path d="m17 5-2 2"></path><path d="M5 12h14"></path><path d="M8 16h8"></path><path d="M10 20h4"></path></svg> Event Details</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Event Type <span style="color:var(--color-danger)">*</span></label>
+                            <select class="form-select" id="eventType" required>
+                                <option value="">— Select type —</option>
+                                <option value="1">Wedding</option>
+                                <option value="2">Reception</option>
+                                <option value="3">Birthday</option>
+                                <option value="4">Corporate Event</option>
+                                <option value="5">Conference / Seminar</option>
+                                <option value="6">Anniversary</option>
+                                <option value="7">Baby Shower</option>
+                                <option value="8">Engagement</option>
+                                <option value="9">Festival Celebration</option>
+                                <option value="10">Farewell / Get-Together</option>
+                                <option value="11">Cultural Show</option>
+                                <option value="12">Award Ceremony</option>
+                                <option value="13">Product Launch</option>
+                                <option value="14">Graduation Party</option>
+                                <option value="15">Other</option>
+                            </select>
+                            <div class="invalid-feedback" id="eventType_error"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Event Name <span style="color:var(--color-danger)">*</span></label>
+                            <input type="text" class="form-control" id="eventName" placeholder="e.g. Sharma – Patel Wedding" required>
+                            <div class="invalid-feedback" id="eventName_error"></div>
+                        </div>
+
+                        <!-- Customer -->
+                        <div class="col-12">
+                            <label class="form-label">Customer <span style="color:var(--color-danger)">*</span></label>
+                            <div style="display:flex;gap:10px">
+                                <input type="text" class="form-control" id="customerSearch" placeholder="Search by name, email or phone…" oninput="searchCustomers(this.value)">
+                                <button type="button" class="btn-ghost" onclick="openNewCustomerModal()" style="white-space:nowrap">+ New Customer</button>
+                            </div>
+                            <div id="customerSuggestions" style="position:relative"></div>
+                            <input type="hidden" id="customerId">
+                            <div id="selectedCustomer" style="margin-top:10px;padding:10px 14px;background:var(--color-success-bg);border-radius:var(--radius-md);font-size:13px;display:none">
+                                Selected: <strong id="selectedCustomerName"></strong>
+                                <button type="button" onclick="clearCustomer()" style="margin-left:12px;background:none;border:none;color:var(--color-danger);cursor:pointer;font-size:12px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg> Change</button>
+                            </div>
+                            <div class="invalid-feedback" id="customerId_error"></div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Special Requests / Notes</label>
+                            <textarea class="form-control" id="specialRequests" rows="3" placeholder="Dietary needs, setup preferences, accessibility requirements…"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <button class="btn-ghost" onclick="prevStep()">← Back</button>
+                    <button class="btn-primary-brand" onclick="nextStep()">Next: Catering →</button>
+                </div>
+            </div>
+
+            <!-- STEP 4: Catering -->
+            <div class="step-panel card" id="step4">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:8px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 3v8"></path><path d="M6 11h4"></path><path d="M10 3v8"></path><path d="M14 5h4"></path><path d="M16 3v10"></path></svg> Catering Package</h5>
+                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Optional — select a package or skip this step.</p>
+                    <div class="row g-3">
+                        <div class="col-md-3 col-6">
+                            <div class="pkg-card" onclick="selectPkg('none',0,'No Catering')">
+                                <div style="font-size:24px;margin-bottom:8px">â­</div>
+                                <div style="font-weight:600;font-size:13px">No Catering</div>
+                                <div style="font-size:12px;color:var(--text-muted)">Self-arranged</div>
+                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="pkg-card" onclick="selectPkg(1,450,'Veg Standard')">
+                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 12h16"></path><path d="M8 12c0-4 3-7 4-7s4 3 4 7"></path></svg></div>
+                                <div style="font-weight:600;font-size:13px">Veg Standard</div>
+                                <div style="font-size:12px;color:var(--text-muted)">25 dishes, welcome drinks</div>
+                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹450/plate</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="pkg-card" onclick="selectPkg(2,650,'Veg Premium')">
+                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20c2-8 8-12 14-12"></path><path d="M5 20c4-2 7-5 8-10"></path></svg></div>
+                                <div style="font-weight:600;font-size:13px">Veg Premium</div>
+                                <div style="font-size:12px;color:var(--text-muted)">40 dishes, live counters</div>
+                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹650/plate</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="pkg-card" onclick="selectPkg(3,600,'Non-Veg Standard')">
+                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M8 4c2 2 4 4 4 8"></path><path d="M4 8c4 0 7 2 9 6"></path></svg></div>
+                                <div style="font-weight:600;font-size:13px">Non-Veg Std.</div>
+                                <div style="font-size:12px;color:var(--text-muted)">30 dishes, dessert bar</div>
+                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹600/plate</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="pkg-card" onclick="selectPkg(4,850,'Non-Veg Premium')">
+                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3c0 4 2 6 5 6"></path><path d="M7 9c4 0 8 2 8 8"></path></svg></div>
+                                <div style="font-weight:600;font-size:13px">Non-Veg Premium</div>
+                                <div style="font-size:12px;color:var(--text-muted)">50 dishes, live grills</div>
+                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹850/plate</div>
+                            </div>
+                        </div>
+                        <div class="col-12" id="cateringPlateInput" style="display:none">
+                            <label class="form-label">Number of Plates</label>
+                            <input type="number" class="form-control" id="plateCount" style="max-width:200px" placeholder="Plates">
+                            <div class="form-text">Minimum plates = expected guests</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <button class="btn-ghost" onclick="prevStep()">← Back</button>
+                    <button class="btn-primary-brand" onclick="nextStep()">Next: Decoration →</button>
+                </div>
+            </div>
+
+            <!-- STEP 5: Decoration -->
+            <div class="step-panel card" id="step5">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3c-2 2-2 4-2 7"></path><path d="M12 3c2 2 2 4 2 7"></path><path d="M8 10c2 1 3 2 4 5"></path><path d="M16 10c-2 1-3 2-4 5"></path></svg> Decoration</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Decoration Package</label>
+                            <select class="form-select" id="decorationType" onchange="updateDecoPrice()">
+                                <option value="0">None (₹0)</option>
+                                <option value="5000">Basic Flowers (₹5,000)</option>
+                                <option value="15000">Classic Floral (₹15,000)</option>
+                                <option value="30000">Premium Stage (₹30,000)</option>
+                                <option value="60000">Grand Luxury (₹60,000)</option>
+                                <option value="custom">Custom…</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="customDecoWrap" style="display:none">
+                            <label class="form-label">Custom Amount (₹)</label>
+                            <input type="number" class="form-control" id="customDecoAmount" min="0" placeholder="Enter amount">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Decoration Notes</label>
+                            <textarea class="form-control" id="decorationNotes" rows="2" placeholder="Colour theme, flower preferences, stage requirements…"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <button class="btn-ghost" onclick="prevStep()">← Back</button>
+                    <button class="btn-primary-brand" onclick="nextStep()">Next: Services →</button>
+                </div>
+            </div>
+
+            <!-- STEP 6: Additional Services -->
+            <div class="step-panel card" id="step6">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M8 13a4 4 0 0 0 8 0"></path><path d="M12 17v4"></path></svg> Additional Services</h5>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;display:block">Select services (multi-select)</label>
+                            <div class="row g-2" id="servicesGrid">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Service Notes</label>
+                            <textarea class="form-control" id="serviceNotes" rows="2" placeholder="Additional requirements…"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <button class="btn-ghost" onclick="prevStep()">← Back</button>
+                    <button class="btn-primary-brand" onclick="nextStep()">Next: Pricing →</button>
+                </div>
+            </div>
+
+            <!-- STEP 7: Pricing Summary -->
+            <div class="step-panel card" id="step7">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg> Pricing Summary</h5>
+                    <div class="row g-4">
+                        <div class="col-md-7">
+                            <div id="priceBreakdown">
+                                <div class="price-row"><span class="label">Hall Rental</span><span class="value" id="prHall">—</span></div>
+                                <div class="price-row"><span class="label">Catering</span><span class="value" id="prCatering">—</span></div>
+                                <div class="price-row"><span class="label">Decoration</span><span class="value" id="prDecoration">—</span></div>
+                                <div class="price-row"><span class="label">Additional Services</span><span class="value" id="prServices">—</span></div>
+                                <div class="price-row green"><span class="label">Discount</span><span class="value" id="prDiscount">—</span></div>
+                                <div class="price-row"><span class="label">GST (18%)</span><span class="value" id="prTax">—</span></div>
+                                <div class="price-row total"><span class="label">Grand Total</span><span class="value" id="prTotal">—</span></div>
+                                <div class="price-row"><span class="label">Advance Required (25%)</span><span class="value" id="prAdvance" style="color:var(--color-warning);font-weight:700">—</span></div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div style="background:var(--bg-surface-2);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px">
+                                <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text-primary)">Apply Coupon</div>
+                                <div style="display:flex;gap:8px">
+                                    <input type="text" class="form-control" id="couponCode" placeholder="Coupon code" style="text-transform:uppercase">
+                                    <button type="button" class="btn-ghost" onclick="applyCoupon()" style="white-space:nowrap">Apply</button>
+                                </div>
+                                <div id="couponResult" style="font-size:12px;margin-top:8px"></div>
+                            </div>
+                            <div style="margin-top:16px;padding:14px;background:var(--color-info-bg);border-radius:var(--radius-md);font-size:12.5px;color:var(--color-info)">
+                                â„¹ Advance payment secures the hall. Balance is due before the event.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <button class="btn-ghost" onclick="prevStep()">← Back</button>
+                    <button class="btn-primary-brand" onclick="nextStep()">Next: Confirm →</button>
+                </div>
+            </div>
+
+            <!-- STEP 8: Confirmation -->
+            <div class="step-panel card" id="step8">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg> Review & Confirm</h5>
+                    <div id="confirmationSummary" class="row g-4">
+                        <div class="col-md-6">
+                            <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Booking Details</div>
+                            <div class="confirm-row">
+                                <div class="confirm-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></div>
+                                <div><div class="confirm-label">Event Date</div><div class="confirm-value" id="cfmDate">—</div></div>
+                            </div>
+                            <div class="confirm-row">
+                                <div class="confirm-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg></div>
+                                <div><div class="confirm-label">Hall</div><div class="confirm-value" id="cfmHall">—</div></div>
+                            </div>
+                            <div class="confirm-row">
+                                <div class="confirm-icon">â°</div>
+                                <div><div class="confirm-label">Time</div><div class="confirm-value" id="cfmTime">—</div></div>
+                            </div>
+                            <div class="confirm-row">
+                                <div class="confirm-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 2v3"></path><path d="m7 5 2 2"></path><path d="m17 5-2 2"></path><path d="M5 12h14"></path><path d="M8 16h8"></path><path d="M10 20h4"></path></svg></div>
+                                <div><div class="confirm-label">Event</div><div class="confirm-value" id="cfmEvent">—</div></div>
+                            </div>
+                            <div class="confirm-row">
+                                <div class="confirm-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="8" r="4"></circle><path d="M4 20a8 8 0 0 1 16 0"></path></svg></div>
+                                <div><div class="confirm-label">Customer</div><div class="confirm-value" id="cfmCustomer">—</div></div>
+                            </div>
+                            <div class="confirm-row">
+                                <div class="confirm-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></div>
+                                <div><div class="confirm-label">Guests</div><div class="confirm-value" id="cfmGuests">—</div></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Financial Summary</div>
+                            <div id="cfmPricing" style="font-size:13.5px"></div>
+                            <div style="margin-top:16px;padding:12px 16px;background:var(--color-warning-bg);border-radius:var(--radius-md);border:1px solid var(--color-warning)">
+                                <div style="font-size:12px;font-weight:600;color:var(--color-warning)">ADVANCE PAYABLE</div>
+                                <div style="font-size:22px;font-weight:800;color:var(--color-warning)" id="cfmAdvance">—</div>
+                                <div style="font-size:11px;color:var(--color-warning);margin-top:2px">Due immediately to confirm booking</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:20px;padding:14px 16px;background:var(--bg-surface-2);border-radius:var(--radius-md)">
+                        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
+                            <input type="checkbox" id="termsAccept" style="margin-top:3px;accent-color:var(--brand-primary)">
+                            <span style="font-size:13px;color:var(--text-secondary)">
+                                I confirm all details above are correct and agree to the
+                                <a href="#" style="color:var(--brand-primary)">Terms & Conditions</a>.
+                                Cancellation charges may apply as per the venue policy.
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <button class="btn-ghost" onclick="prevStep()">← Back</button>
+                    <button class="btn-primary-brand" id="confirmBookingBtn" onclick="submitBooking()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 2v3"></path><path d="m7 5 2 2"></path><path d="m17 5-2 2"></path><path d="M5 12h14"></path><path d="M8 16h8"></path><path d="M10 20h4"></path></svg> Confirm Booking
+                    </button>
+                </div>
+            </div>
+
+        </div><!-- /wizard-container -->
+    </main>
+</div>
+
+<!-- New Customer Modal -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="8" r="4"></circle><path d="M4 20a8 8 0 0 1 16 0"></path></svg> Add New Customer</h5>
+                <button class="btn-close" data-bs-dismiss="modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-6"><label class="form-label">First Name *</label><input type="text" class="form-control" id="nc_firstName"></div>
+                    <div class="col-6"><label class="form-label">Last Name *</label><input type="text" class="form-control" id="nc_lastName"></div>
+                    <div class="col-12"><label class="form-label">Email *</label><input type="email" class="form-control" id="nc_email"></div>
+                    <div class="col-12"><label class="form-label">Phone *</label><input type="tel" class="form-control" id="nc_phone" placeholder="+91-XXXXXXXXXX"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" onclick="createCustomer()">Create Customer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success modal -->
+<div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="text-align:center">
+            <div class="modal-body" style="padding:40px">
+                <div style="font-size:64px;margin-bottom:16px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 2v3"></path><path d="m7 5 2 2"></path><path d="m17 5-2 2"></path><path d="M5 12h14"></path><path d="M8 16h8"></path><path d="M10 20h4"></path></svg></div>
+                <h4 style="font-weight:700;color:var(--text-primary);margin-bottom:8px">Booking Confirmed!</h4>
+                <div id="successRef" style="font-size:20px;font-weight:700;color:var(--brand-primary);font-family:var(--font-mono);margin:16px 0"></div>
+                <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px">
+                    Your booking has been created successfully. A confirmation will be sent to the customer.
+                </p>
+                <div style="display:flex;gap:12px;justify-content:center">
+                    <a href="index.html" class="btn-ghost">View All Bookings</a>
+                    <a href="" class="btn-primary-brand" id="viewBookingBtn">View Booking</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   BOOKING WIZARD CONTROLLER
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+Auth.requireAuth('../auth/login.html');
+
+const STEPS = [
+    { id:1, label:'Date & Time',  desc:'Select event date and time' },
+    { id:2, label:'Hall',         desc:'Choose your hall' },
+    { id:3, label:'Event Info',   desc:'Event details and customer' },
+    { id:4, label:'Catering',     desc:'Select catering package' },
+    { id:5, label:'Decoration',   desc:'Choose decoration package' },
+    { id:6, label:'Services',     desc:'Additional services' },
+    { id:7, label:'Pricing',      desc:'Review pricing and apply coupon' },
+    { id:8, label:'Confirm',      desc:'Review and confirm booking' },
+];
+
+const SERVICES = [
+    { id:1, name:'Sound System',      price:8000  },
+    { id:2, name:'Photography',       price:15000 },
+    { id:3, name:'Videography',       price:20000 },
+    { id:4, name:'DJ Setup',          price:12000 },
+    { id:5, name:'Anchor / Emcee',    price:5000  },
+    { id:6, name:'Floral Car Decor',  price:3000  },
+    { id:7, name:'Ice Cream Counter', price:6000  },
+    { id:8, name:'Valet Parking',     price:8000  },
+];
+
+/* â”€â”€ State â”€â”€ */
+const state = {
+    currentStep:    1,
+    eventDate:      '',
+    banquetId:      null,
+    banquetName:    '',
+    startTime:      '08:00',
+    endTime:        '23:00',
+    guestCount:     0,
+    hallId:         null,
+    hallName:       '',
+    hallBasePrice:  0,
+    pricingId:      null,
+    eventTypeId:    null,
+    eventTypeName:  '',
+    eventName:      '',
+    customerId:     null,
+    customerName:   '',
+    specialRequests:'',
+    cateringPkgId:  null,
+    cateringName:   'None',
+    cateringPPP:    0,
+    plateCount:     0,
+    cateringTotal:  0,
+    decorationAmt:  0,
+    selectedServices:[],
+    servicesTotal:  0,
+    couponCode:     '',
+    discountAmt:    0,
+    taxAmt:         0,
+    grandTotal:     0,
+    advanceAmt:     0,
+};
+
+/* â”€â”€ Render step track â”€â”€ */
+function renderSteps() {
+    const track = document.getElementById('stepsTrack');
+    track.innerHTML = STEPS.map((s, i) => {
+        const isDone   = state.currentStep > s.id;
+        const isActive = state.currentStep === s.id;
+        return `<div class="step-item ${isActive ? 'active' : isDone ? 'done' : ''}" id="stepItem${s.id}">
+            <div class="step-num">${isDone ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg>' : s.id}</div>
+            <div class="step-lbl ${isActive ? 'active' : isDone ? 'done' : ''}">${s.label}</div>
+        </div>
+        ${i < STEPS.length - 1 ? `<div class="step-connector" style="margin-bottom:30px;${isDone ? 'background:var(--color-success)' : ''}"></div>` : ''}`;
+    }).join('');
+
+    document.getElementById('currentStepNum').textContent  = state.currentStep;
+    document.getElementById('stepDescription').textContent = STEPS[state.currentStep - 1].desc;
+    document.getElementById('wizardProgress').style.width  = (state.currentStep / 8 * 100) + '%';
+
+    // Show/hide panels
+    STEPS.forEach(s => {
+        const el = document.getElementById(`step${s.id}`);
+        if (el) el.classList.toggle('active', s.id === state.currentStep);
+    });
+}
+
+/* â”€â”€ Navigation â”€â”€ */
+async function nextStep() {
+    if (!validateCurrentStep()) return;
+    if (state.currentStep === 1) await loadHalls();
+    if (state.currentStep === 6) calculatePrice();
+    if (state.currentStep === 7) populateConfirmation();
+    state.currentStep = Math.min(8, state.currentStep + 1);
+    renderSteps();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function prevStep() {
+    state.currentStep = Math.max(1, state.currentStep - 1);
+    renderSteps();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* â”€â”€ Validate current step â”€â”€ */
+function validateCurrentStep() {
+    const alert = document.getElementById('wizardAlert');
+    alert.style.display = 'none';
+
+    if (state.currentStep === 1) {
+        const date   = document.getElementById('eventDate').value;
+        const guests = document.getElementById('guestCount').value;
+        const start  = document.getElementById('startTime').value;
+        const end    = document.getElementById('endTime').value;
+        if (!date)                  { showAlert('Please select an event date.'); return false; }
+        if (new Date(date) < new Date(new Date().toDateString())) { showAlert('Event date must be in the future.'); return false; }
+        if (!guests || guests < 1)  { showAlert('Please enter expected guest count.'); return false; }
+        if (start >= end)           { showAlert('Start time must be before end time.'); return false; }
+        state.eventDate  = date;
+        state.guestCount = parseInt(guests);
+        state.startTime  = start;
+        state.endTime    = end;
+    }
+
+    if (state.currentStep === 2) {
+        if (!state.hallId) { showAlert('Please select a hall.'); return false; }
+    }
+
+    if (state.currentStep === 3) {
+        const evtType = document.getElementById('eventType').value;
+        const evtName = document.getElementById('eventName').value.trim();
+        if (!evtType) { showAlert('Please select event type.'); return false; }
+        if (!evtName) { showAlert('Please enter event name.'); return false; }
+        if (!state.customerId) { showAlert('Please select or create a customer.'); return false; }
+        state.eventTypeId   = parseInt(evtType);
+        state.eventTypeName = document.getElementById('eventType').selectedOptions[0]?.text || '';
+        state.eventName     = evtName;
+        state.specialRequests = document.getElementById('specialRequests').value;
+    }
+
+    if (state.currentStep === 4) {
+        if (state.cateringPkgId && state.cateringPkgId !== 'none') {
+            const pc = parseInt(document.getElementById('plateCount').value);
+            if (!pc || pc < state.guestCount) {
+                showAlert(`Plate count must be at least ${state.guestCount} (your guest count).`);
+                return false;
+            }
+            state.plateCount    = pc;
+            state.cateringTotal = pc * state.cateringPPP;
+        }
+    }
+
+    if (state.currentStep === 5) {
+        const dt = document.getElementById('decorationType').value;
+        state.decorationAmt = dt === 'custom'
+            ? parseInt(document.getElementById('customDecoAmount').value) || 0
+            : parseInt(dt) || 0;
+    }
+
+    if (state.currentStep === 6) {
+        const selected = document.querySelectorAll('.svc-check:checked');
+        state.selectedServices = Array.from(selected).map(c => ({ id: parseInt(c.dataset.id), name: c.dataset.name, price: parseInt(c.dataset.price) }));
+        state.servicesTotal = state.selectedServices.reduce((s, x) => s + x.price, 0);
+    }
+
+    if (state.currentStep === 8) {
+        if (!document.getElementById('termsAccept').checked) {
+            showAlert('Please accept the terms and conditions to confirm.'); return false;
+        }
+    }
+
+    return true;
+}
+
+function getErrorMessage(err, fallback = 'Something went wrong.') {
+    if (!err) return fallback;
+    if (typeof err === 'string') return err;
+    if (typeof err?.message === 'string' && err.message.trim()) return err.message.replace(/<[^>]*>/g, '').trim();
+    if (typeof err?.error === 'string' && err.error.trim()) return err.error.replace(/<[^>]*>/g, '').trim();
+    if (err?.response?.data?.message) return err.response.data.message;
+    if (err?.response?.data?.error) return err.response.data.error;
+    if (err?.data?.message) return err.data.message;
+    if (err?.data?.error) return err.data.error;
+    return fallback;
+}
+
+function showAlert(msg) {
+    const el = document.getElementById('wizardAlert');
+    const safeMessage = String(msg || 'Please try again.').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    el.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px"><span aria-hidden="true" style="font-size:16px">âš ï¸</span><div>${safeMessage}</div></div>`;
+    el.style.display = '';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* â”€â”€ Load halls (all halls — no banquet filter required) â”€â”€ */
+async function loadHalls() {
+    const grid = document.getElementById('hallsGrid');
+    grid.innerHTML = '<div class="col-12 text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Checking availability…</div>';
+    try {
+        const res = await API.halls.list({
+            limit:        50,
+            min_capacity: state.guestCount || 1,
+        });
+        // Support both response shapes: { halls: [...] } or { data: { halls: [...] } }
+        const halls = res.data?.halls || res.halls || [];
+        // Mark available based on capacity — server confirms on booking creation
+        const mapped = halls.map(h => ({
+            ...h,
+            available: (h.is_active === 1 || h.is_active === true) &&
+                       (h.capacity_seated >= state.guestCount || h.capacity >= state.guestCount),
+        }));
+        renderHalls(mapped);
+    } catch {
+        // Demo halls (shown when API is unreachable)
+        renderHalls([
+            { hall_id:1, hall_name:'Royal Ballroom',  hall_type:'Main Hall', capacity_seated:500, has_ac:1, has_stage:1, base_price:150000, pricing_id:1, available:true },
+            { hall_id:2, hall_name:'Crystal Hall',    hall_type:'Main Hall', capacity_seated:300, has_ac:1, has_stage:1, base_price:90000,  pricing_id:2, available:true },
+            { hall_id:3, hall_name:'Garden Lawn',     hall_type:'Lawn',      capacity_seated:400, has_ac:0, has_stage:0, base_price:100000, pricing_id:3, available:true },
+            { hall_id:4, hall_name:'Executive Suite', hall_type:'Conference',capacity_seated:80,  has_ac:1, has_stage:0, base_price:35000,  pricing_id:4, available:false },
+            { hall_id:5, hall_name:'Terrace Lounge',  hall_type:'Lawn',      capacity_seated:150, has_ac:0, has_stage:0, base_price:45000,  pricing_id:5, available:true },
+        ]);
+    }
+}
+
+function renderHalls(halls) {
+    const grid = document.getElementById('hallsGrid');
+    if (!halls.length) {
+        grid.innerHTML = `<div class="col-12"><div class="empty-state">No halls available for selected date and guest count.</div></div>`;
+        return;
+    }
+    grid.innerHTML = halls.map(h => `
+    <div class="col-md-6">
+        <div class="hall-card ${!h.available ? 'unavailable' : ''} ${state.hallId === h.hall_id ? 'selected' : ''}"
+             onclick="${h.available ? `selectHall(${h.hall_id}, '${h.hall_name.replace(/'/g,"\\'")}', ${h.base_price}, ${h.pricing_id})` : ''}">
+            <div class="hall-badge ${h.available ? '' : 'busy'}">${h.available ? 'Available' : 'Booked'}</div>
+            <div class="hall-name">${h.hall_name}</div>
+            <div class="hall-meta">
+                <span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg> ${Utils.titleCase(h.hall_type)}</span>
+                <span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg> ${h.capacity_seated} seated</span>
+                ${h.has_ac ? '<span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> AC</span>' : ''}
+                ${h.has_stage ? '<span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M8 13a4 4 0 0 0 8 0"></path><path d="M12 17v4"></path></svg> Stage</span>' : ''}
+            </div>
+            <div class="hall-price">${Utils.formatCurrency(h.base_price)}<span style="font-size:12px;font-weight:400;color:var(--text-muted)"> / day</span></div>
+        </div>
+    </div>`).join('');
+}
+
+function selectHall(id, name, price, pricingId) {
+    state.hallId       = id;
+    state.hallName     = name;
+    state.hallBasePrice= price;
+    state.pricingId    = pricingId;
+    document.querySelectorAll('.hall-card').forEach(c => c.classList.remove('selected'));
+    const cards = document.querySelectorAll('.hall-card');
+    cards.forEach(c => { if (c.querySelector('.hall-name')?.textContent === name) c.classList.add('selected'); });
+}
+
+/* â”€â”€ Catering â”€â”€ */
+function selectPkg(id, ppp, name) {
+    state.cateringPkgId = id;
+    state.cateringName  = name;
+    state.cateringPPP   = ppp;
+    document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    const wrap = document.getElementById('cateringPlateInput');
+    if (id && id !== 'none') {
+        wrap.style.display = '';
+        document.getElementById('plateCount').value = state.guestCount;
+    } else {
+        wrap.style.display = 'none';
+        state.cateringTotal = 0;
+    }
+}
+
+/* â”€â”€ Decoration â”€â”€ */
+function updateDecoPrice() {
+    const v = document.getElementById('decorationType').value;
+    document.getElementById('customDecoWrap').style.display = v === 'custom' ? '' : 'none';
+}
+
+/* â”€â”€ Customer search â”€â”€ */
+const demoCustomers = [
+    { customer_id: 1, first_name: 'Arjun', last_name: 'Sharma', email: 'arjun@example.com', phone: '+91-9876543210' },
+    { customer_id: 2, first_name: 'Priya', last_name: 'Patel', email: 'priya@example.com', phone: '+91-9123456780' },
+    { customer_id: 3, first_name: 'Rahul', last_name: 'Gupta', email: 'rahul@example.com', phone: '+91-9988776655' },
+    { customer_id: 4, first_name: 'Anjali', last_name: 'Singh', email: 'anjali@example.com', phone: '+91-9811122233' },
+    { customer_id: 5, first_name: 'Kavita', last_name: 'Joshi', email: 'kavita@example.com', phone: '+91-9654321098' },
+];
+
+function renderCustomerSuggestions(list, query = '') {
+    const wrap = document.getElementById('customerSuggestions');
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery || !list.length) {
+        wrap.innerHTML = '';
+        return;
+    }
+    wrap.innerHTML = `<div style="position:absolute;top:100%;left:0;right:0;z-index:1050;margin-top:6px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);max-height:230px;overflow-y:auto">
+        ${list.map(c => `<div class="dropdown-item" style="padding:10px 14px;cursor:pointer" onclick="selectCustomer(${c.customer_id}, '${(c.first_name + ' ' + c.last_name).replace(/'/g, "\\'")}', '${(c.email || '').replace(/'/g, "\\'")}')">
+            <div style="font-size:13px;font-weight:600">${c.first_name} ${c.last_name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${c.email || ''}${c.phone ? ' • ' + c.phone : ''}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+const searchCustomers = Utils.debounce(async (q) => {
+    const value = (q || '').trim();
+    const wrap = document.getElementById('customerSuggestions');
+    if (value.length < 2) { wrap.innerHTML = ''; return; }
+    try {
+        const res = await API.customers.list({ search: value, limit: 6 });
+        const list = Array.isArray(res?.data?.customers) ? res.data.customers : [];
+        renderCustomerSuggestions(list.length ? list : demoCustomers.filter(c => [c.first_name, c.last_name, c.email, c.phone].some(item => (item || '').toLowerCase().includes(value.toLowerCase()))), value);
+    } catch {
+        const list = demoCustomers.filter(c => [c.first_name, c.last_name, c.email, c.phone].some(item => (item || '').toLowerCase().includes(value.toLowerCase())));
+        renderCustomerSuggestions(list, value);
+    }
+}, 300);
+
+function selectCustomer(id, name, email = '') {
+    state.customerId = id;
+    state.customerName = name;
+    document.getElementById('customerSearch').value = name;
+    document.getElementById('customerSuggestions').innerHTML = '';
+    document.getElementById('customerId').value = id;
+    document.getElementById('selectedCustomerName').textContent = name;
+    document.getElementById('selectedCustomer').style.display = '';
+    if (email) {
+        document.getElementById('selectedCustomer').dataset.email = email;
+    }
+}
+
+function clearCustomer() {
+    state.customerId = null;
+    state.customerName = '';
+    document.getElementById('customerSearch').value = '';
+    document.getElementById('customerId').value = '';
+    document.getElementById('selectedCustomer').style.display = 'none';
+    document.getElementById('selectedCustomer').removeAttribute('data-email');
+}
+
+function openNewCustomerModal() {
+    new bootstrap.Modal(document.getElementById('newCustomerModal')).show();
+}
+
+async function createCustomer() {
+    const fn = document.getElementById('nc_firstName').value.trim();
+    const ln = document.getElementById('nc_lastName').value.trim();
+    const em = document.getElementById('nc_email').value.trim();
+    const ph = document.getElementById('nc_phone').value.trim();
+    if (!fn || !ln || !em || !ph) {
+        Utils.toast('Please fill in every customer field.', 'error');
+        return;
+    }
+    try {
+        const res = await API.customers.create({ first_name: fn, last_name: ln, email: em, phone: ph });
+        const customerId = res?.data?.customer_id || Date.now();
+        selectCustomer(customerId, `${fn} ${ln}`, em);
+        bootstrap.Modal.getInstance(document.getElementById('newCustomerModal')).hide();
+        Utils.toast('Customer created!', 'success');
+    } catch (err) {
+        Utils.toast(getErrorMessage(err, 'Unable to create customer right now.'), 'error');
+    }
+}
+
+/* â”€â”€ Services grid â”€â”€ */
+function renderServices() {
+    document.getElementById('servicesGrid').innerHTML = SERVICES.map(s => `
+    <div class="col-md-4 col-6">
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;background:var(--bg-surface)">
+            <input type="checkbox" class="svc-check" data-id="${s.id}" data-name="${s.name}" data-price="${s.price}" style="accent-color:var(--brand-primary);width:16px;height:16px">
+            <div>
+                <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${s.name}</div>
+                <div style="font-size:11px;color:var(--text-muted)">${Utils.formatCurrency(s.price)}</div>
+            </div>
+        </label>
+    </div>`).join('');
+}
+
+/* â”€â”€ Price calculation â”€â”€ */
+function calculatePrice() {
+    const sub   = state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal;
+    const tax   = Math.round(sub * 0.18);
+    state.taxAmt     = tax;
+    state.grandTotal = sub - state.discountAmt + tax;
+    state.advanceAmt = Math.ceil(state.grandTotal * 0.25);
+
+    document.getElementById('prHall').textContent       = Utils.formatCurrency(state.hallBasePrice);
+    document.getElementById('prCatering').textContent   = Utils.formatCurrency(state.cateringTotal);
+    document.getElementById('prDecoration').textContent = Utils.formatCurrency(state.decorationAmt);
+    document.getElementById('prServices').textContent   = Utils.formatCurrency(state.servicesTotal);
+    document.getElementById('prDiscount').textContent   = state.discountAmt > 0 ? 'âˆ’' + Utils.formatCurrency(state.discountAmt) : '₹0';
+    document.getElementById('prTax').textContent        = Utils.formatCurrency(tax);
+    document.getElementById('prTotal').textContent      = Utils.formatCurrency(state.grandTotal);
+    document.getElementById('prAdvance').textContent    = Utils.formatCurrency(state.advanceAmt);
+}
+
+async function applyCoupon() {
+    const code = document.getElementById('couponCode').value.toUpperCase().trim();
+    const res = document.getElementById('couponResult');
+    if (!code) return;
+    try {
+        const validateCoupon = API.coupons?.validate || (() => Promise.reject(new Error('Coupon service unavailable')));
+        const r = await validateCoupon({ coupon_code: code, subtotal: state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal });
+        state.discountAmt = r?.data?.discount_amount || 0;
+        state.couponCode = code;
+        res.innerHTML = `<span style="color:var(--color-success)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg> ${code} applied — saving ${Utils.formatCurrency(state.discountAmt)}</span>`;
+        calculatePrice();
+    } catch {
+        res.innerHTML = `<span style="color:var(--color-danger)">Invalid or expired coupon</span>`;
+    }
+}
+
+/* â”€â”€ Confirmation view â”€â”€ */
+function populateConfirmation() {
+    document.getElementById('cfmDate').textContent     = Utils.formatDate(state.eventDate);
+    document.getElementById('cfmHall').textContent     = state.hallName;
+    document.getElementById('cfmTime').textContent     = `${Utils.formatTime(state.startTime)} – ${Utils.formatTime(state.endTime)}`;
+    document.getElementById('cfmEvent').textContent    = `${state.eventName} (${state.eventTypeName})`;
+    document.getElementById('cfmCustomer').textContent = state.customerName;
+    document.getElementById('cfmGuests').textContent   = Utils.formatNumber(state.guestCount) + ' guests';
+    document.getElementById('cfmAdvance').textContent  = Utils.formatCurrency(state.advanceAmt);
+    document.getElementById('cfmPricing').innerHTML = `
+        <div class="price-row"><span class="label">Subtotal</span><span class="value">${Utils.formatCurrency(state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal)}</span></div>
+        ${state.discountAmt > 0 ? `<div class="price-row green"><span class="label">Discount</span><span class="value">âˆ’${Utils.formatCurrency(state.discountAmt)}</span></div>` : ''}
+        <div class="price-row"><span class="label">GST (18%)</span><span class="value">${Utils.formatCurrency(state.taxAmt)}</span></div>
+        <div class="price-row total"><span class="label">Grand Total</span><span class="value">${Utils.formatCurrency(state.grandTotal)}</span></div>`;
+}
+
+/* â”€â”€ Submit booking â”€â”€ */
+async function submitBooking() {
+    const btn = document.getElementById('confirmBookingBtn');
+    Utils.showLoader(btn, 'Creating booking…');
+    try {
+        // Payload keys must match the Joi createSchema (camelCase, stripUnknown: true)
+        const payload = {
+            hallId:         state.hallId,
+            customerId:     state.customerId,
+            eventDate:      state.eventDate,
+            eventTimeStart: state.startTime,
+            eventTimeEnd:   state.endTime,
+            eventName:      state.eventName      || undefined,
+            eventType:      state.eventTypeName  || undefined,
+            guestCount:     state.guestCount     || undefined,
+            totalAmount:    state.grandTotal,
+            advancePaid:    state.advanceAmt      || 0,
+            notes:          state.specialRequests || undefined,
+        };
+        const res = await API.bookings.create(payload);
+        const ref = res.data?.booking_ref || 'BNQ-2026-XXXXXX';
+        const id  = res.data?.booking_id  || 1;
+        document.getElementById('successRef').textContent = ref;
+        document.getElementById('viewBookingBtn').href   = `detail.html?id=${id}`;
+        new bootstrap.Modal(document.getElementById('successModal')).show();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        showAlert(getErrorMessage(err, 'Failed to create booking. Please try again.'));
+    }
+}
+
+/* â”€â”€ Init â”€â”€ */
+document.addEventListener('DOMContentLoaded', () => {
+    Auth.requireAuth('../auth/login.html');
+    // Set minimum date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('eventDate').min = tomorrow.toISOString().split('T')[0];
+
+    renderServices();
+    renderSteps();
+});
+</script>
+</body>
+</html>

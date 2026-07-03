@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookings | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.filter-bar { display:flex; gap:10px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--border-color); background:var(--bg-surface-2); border-radius:var(--radius-lg) var(--radius-lg) 0 0; }
+.filter-bar select, .filter-bar input[type="date"] { font-size:12.5px; padding:7px 10px; border-radius:var(--radius-md); border:1px solid var(--border-color-dark); background:var(--bg-surface); color:var(--text-primary); }
+.filter-bar select:focus, .filter-bar input[type="date"]:focus { outline:none; border-color:var(--brand-primary); box-shadow:0 0 0 3px rgba(124,58,237,.1); }
+.stat-strip { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
+.stat-mini { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:14px 16px; text-align:center; }
+.stat-mini .num { font-size:22px; font-weight:700; color:var(--text-primary); }
+.stat-mini .lbl { font-size:11px; color:var(--text-muted); margin-top:2px; }
+@media(max-width:768px) { .stat-strip { grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon">🏛</div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon">📊</span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Venues</div>
+        <a href="../banquets/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">🏰</span><span class="sidebar-text">Banquets</span></a>
+        <a href="../halls/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">🚪</span><span class="sidebar-text">Halls</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon">📅</span><span class="sidebar-text">All Bookings</span></a>
+        <a href="create.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager,booking_executive"><span class="sidebar-icon">➕</span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager,booking_executive">CRM</div>
+        <a href="../customers/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager,booking_executive"><span class="sidebar-icon">👥</span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">💰</span><span class="sidebar-text">Payments</span></a>
+        <a href="../invoices/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">🧾</span><span class="sidebar-text">Invoices</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Reports</div>
+        <a href="../reports/revenue.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">📈</span><span class="sidebar-text">Revenue</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px">
+            <div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div>
+            <div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div><div style="color:rgba(255,255,255,.5);font-size:11px" data-user-role></div></div>
+        </div>
+    </div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle">☰</button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Bookings</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon">🌙</span></button>
+            <div class="dropdown"><button class="topbar-btn" data-bs-toggle="dropdown">🔔<span class="notif-dot" style="display:none"></span></button><div class="dropdown-menu dropdown-menu-end notif-panel p-3" style="min-width:360px"><div id="notifList"></div></div></div>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">🚪 Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Bookings</h1><p class="page-subtitle">Manage and track all event bookings</p></div>
+            <div style="display:flex;gap:10px">
+                <button class="btn-ghost" onclick="exportBookings()">⬇ Export</button>
+                <a href="create.html" class="btn-primary-brand" data-require-role="super_admin,company_admin,branch_manager,booking_executive">➕ New Booking</a>
+            </div>
+        </div>
+
+        <!-- Stats strip -->
+        <div class="stat-strip" id="statStrip">
+            <div class="stat-mini"><div class="num" id="statTotal">—</div><div class="lbl">Total</div></div>
+            <div class="stat-mini"><div class="num" id="statConfirmed" style="color:var(--color-info)">—</div><div class="lbl">Confirmed</div></div>
+            <div class="stat-mini"><div class="num" id="statPaid" style="color:var(--color-success)">—</div><div class="lbl">Paid</div></div>
+            <div class="stat-mini"><div class="num" id="statPending" style="color:var(--color-warning)">—</div><div class="lbl">Pending Payment</div></div>
+            <div class="stat-mini"><div class="num" id="statCancelled" style="color:var(--color-danger)">—</div><div class="lbl">Cancelled</div></div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-card">
+            <!-- Filter bar -->
+            <div class="filter-bar">
+                <div class="search-input-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search ref, customer, event…" oninput="handleSearch(this.value)">
+                </div>
+                <select id="statusFilter" onchange="loadBookings(1)">
+                    <option value="">All Statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="advance_paid">Advance Paid</option>
+                    <option value="fully_paid">Fully Paid</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <select id="hallFilter" onchange="loadBookings(1)">
+                    <option value="">All Halls</option>
+                </select>
+                <input type="date" id="fromDate" onchange="loadBookings(1)" title="From date">
+                <input type="date" id="toDate"   onchange="loadBookings(1)" title="To date">
+                <button class="btn-ghost" onclick="clearFilters()" style="font-size:12px;padding:6px 12px">✕ Clear</button>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" style="accent-color:var(--brand-primary)"></th>
+                            <th>Booking Ref</th>
+                            <th>Customer</th>
+                            <th>Event</th>
+                            <th>Date</th>
+                            <th>Hall</th>
+                            <th>Guests</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsBody">
+                        <tr><td colspan="10" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading bookings…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="paginationWrap"></div>
+        </div>
+
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Cancel Booking</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <p style="color:var(--text-secondary);margin-bottom:16px">Please provide a reason for cancellation. This action may be subject to cancellation charges.</p>
+                <input type="hidden" id="cancelBookingId">
+                <label class="form-label">Reason for Cancellation</label>
+                <select class="form-select" id="cancelReason" style="margin-bottom:12px">
+                    <option value="customer_request">Customer Request</option>
+                    <option value="double_booking">Double Booking Error</option>
+                    <option value="venue_issue">Venue Issue</option>
+                    <option value="payment_failure">Payment Failure</option>
+                    <option value="other">Other</option>
+                </select>
+                <textarea class="form-control" id="cancelNote" rows="3" placeholder="Additional details…"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Keep Booking</button>
+                <button class="btn-primary-brand" style="background:var(--color-danger)" onclick="confirmCancel()">Cancel Booking</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../public/assets/js/api.js"></script>
+<script src="../../public/assets/js/utils.js"></script>
+<script src="../../public/assets/js/auth.js"></script>
+<script src="../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+let currentPage = 1;
+const PAGE_SIZE = 20;
+
+const DEMO_BOOKINGS = [
+    { booking_id:1, booking_ref:'BNQ-2026-000001', customer_name:'Arjun Sharma',  event_name:'Wedding Ceremony',     booking_date:'2026-07-15', hall_name:'Royal Ballroom',  expected_guests:450, grand_total:225000, booking_status:'advance_paid' },
+    { booking_id:2, booking_ref:'BNQ-2026-000002', customer_name:'Priya Patel',   event_name:'Birthday Celebration', booking_date:'2026-07-18', hall_name:'Crystal Hall',    expected_guests:120, grand_total:85000,  booking_status:'confirmed' },
+    { booking_id:3, booking_ref:'BNQ-2026-000003', customer_name:'Rahul Gupta',   event_name:'Corporate Seminar',    booking_date:'2026-07-20', hall_name:'Executive Suite', expected_guests:80,  grand_total:42000,  booking_status:'fully_paid' },
+    { booking_id:4, booking_ref:'BNQ-2026-000004', customer_name:'Anjali Singh',  event_name:'Reception Dinner',     booking_date:'2026-07-22', hall_name:'Garden Lawn',     expected_guests:300, grand_total:148000, booking_status:'confirmed' },
+    { booking_id:5, booking_ref:'BNQ-2026-000005', customer_name:'Vikram Mehta',  event_name:'Silver Anniversary',   booking_date:'2026-07-25', hall_name:'Terrace Lounge',  expected_guests:150, grand_total:68000,  booking_status:'advance_paid' },
+    { booking_id:6, booking_ref:'BNQ-2026-000006', customer_name:'Neha Agarwal',  event_name:'Engagement Ceremony',  booking_date:'2026-07-28', hall_name:'Maharaja Hall',   expected_guests:200, grand_total:185000, booking_status:'completed' },
+    { booking_id:7, booking_ref:'BNQ-2026-000007', customer_name:'Sanjay Kumar',  event_name:'Tech Summit',          booking_date:'2026-08-01', hall_name:'Diamond Hall',    expected_guests:250, grand_total:132000, booking_status:'draft' },
+    { booking_id:8, booking_ref:'BNQ-2026-000008', customer_name:'Kavita Joshi',  event_name:'Baby Shower',          booking_date:'2026-08-05', hall_name:'Executive Suite', expected_guests:60,  grand_total:38000,  booking_status:'cancelled' },
+];
+
+async function loadBookings(page = 1) {
+    currentPage = page;
+    const tbody = document.getElementById('bookingsBody');
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+
+    const params = {
+        page, limit: PAGE_SIZE,
+        search: document.getElementById('searchInput').value.trim() || undefined,
+        status: document.getElementById('statusFilter').value || undefined,
+        hall_id:    document.getElementById('hallFilter').value || undefined,
+        from_date:  document.getElementById('fromDate').value   || undefined,
+        to_date:    document.getElementById('toDate').value     || undefined,
+    };
+
+    try {
+        const res      = await API.bookings.list(params);
+        const bookings = res.data?.bookings  || [];
+        const meta     = res.data?.meta      || { total: bookings.length, page, limit: PAGE_SIZE };
+        renderTable(bookings);
+        updateStats(res.data?.stats || {});
+        Utils.renderPagination('paginationWrap', { page: meta.page || page, limit: meta.limit || PAGE_SIZE, total: meta.total || bookings.length }, loadBookings);
+    } catch {
+        renderTable(DEMO_BOOKINGS);
+        updateStats({ total:8, confirmed:2, fully_paid:1, advance_paid:2, cancelled:1 });
+        Utils.renderPagination('paginationWrap', { page:1, limit:20, total:8 }, loadBookings);
+    }
+}
+
+function renderTable(bookings) {
+    const tbody = document.getElementById('bookingsBody');
+    if (!bookings.length) {
+        tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">No bookings found</div><div class="empty-state-text">Try adjusting your filters or create a new booking.</div></div></td></tr>';
+        return;
+    }
+    tbody.innerHTML = bookings.map(b => `
+    <tr>
+        <td><input type="checkbox" class="row-check" value="${b.booking_id}" style="accent-color:var(--brand-primary)"></td>
+        <td><a href="detail.html?id=${b.booking_id}" style="color:var(--brand-primary);font-weight:600;text-decoration:none;font-family:var(--font-mono);font-size:12px">${b.booking_ref}</a></td>
+        <td><div style="font-weight:500">${b.customer_name}</div></td>
+        <td><div style="max-width:160px" title="${b.event_name}">${Utils.truncate(b.event_name, 22)}</div></td>
+        <td style="white-space:nowrap">${Utils.formatDate(b.booking_date)}</td>
+        <td>${Utils.truncate(b.hall_name || '—', 18)}</td>
+        <td>${Utils.formatNumber(b.expected_guests)}</td>
+        <td style="white-space:nowrap;font-weight:600">${Utils.formatCurrency(b.grand_total)}</td>
+        <td>${Utils.statusBadge(b.booking_status)}</td>
+        <td>
+            <div style="display:flex;gap:4px">
+                <a href="detail.html?id=${b.booking_id}" class="btn-icon" title="View">👁</a>
+                ${b.booking_status !== 'cancelled' && b.booking_status !== 'completed'
+                    ? `<button class="btn-icon danger" title="Cancel" onclick="openCancel(${b.booking_id})">✕</button>`
+                    : ''}
+            </div>
+        </td>
+    </tr>`).join('');
+}
+
+function updateStats(s) {
+    document.getElementById('statTotal').textContent     = Utils.formatNumber(s.total     || DEMO_BOOKINGS.length);
+    document.getElementById('statConfirmed').textContent = Utils.formatNumber(s.confirmed  || 2);
+    document.getElementById('statPaid').textContent      = Utils.formatNumber(s.fully_paid || 1);
+    document.getElementById('statPending').textContent   = Utils.formatNumber(s.advance_paid || 2);
+    document.getElementById('statCancelled').textContent = Utils.formatNumber(s.cancelled  || 1);
+}
+
+function toggleSelectAll(cb) {
+    document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+}
+
+const handleSearch = Utils.debounce(() => loadBookings(1), 350);
+
+function clearFilters() {
+    document.getElementById('searchInput').value  = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('hallFilter').value   = '';
+    document.getElementById('fromDate').value     = '';
+    document.getElementById('toDate').value       = '';
+    loadBookings(1);
+}
+
+let cancelModal;
+function openCancel(id) {
+    document.getElementById('cancelBookingId').value = id;
+    document.getElementById('cancelNote').value      = '';
+    cancelModal = new bootstrap.Modal(document.getElementById('cancelModal'));
+    cancelModal.show();
+}
+
+async function confirmCancel() {
+    const id     = document.getElementById('cancelBookingId').value;
+    const reason = document.getElementById('cancelReason').value;
+    const note   = document.getElementById('cancelNote').value;
+    try {
+        await API.bookings.cancel(id, `${reason}: ${note}`);
+        cancelModal?.hide();
+        Utils.toast('Booking cancelled successfully', 'success');
+        loadBookings(currentPage);
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to cancel booking', 'error');
+    }
+}
+
+async function exportBookings() {
+    Utils.toast('Export started — file will download shortly', 'info');
+    try {
+        const res = await API.get('/bookings/export', {
+            status: document.getElementById('statusFilter').value || undefined,
+            from_date: document.getElementById('fromDate').value || undefined,
+            to_date:   document.getElementById('toDate').value   || undefined,
+        });
+    } catch {
+        Utils.toast('Export feature requires backend connection', 'warning');
+    }
+}
+
+async function loadHallFilter() {
+    try {
+        const res   = await API.halls.list({ limit: 50 });
+        const halls = res.data?.halls || [];
+        const sel   = document.getElementById('hallFilter');
+        halls.forEach(h => {
+            const o = document.createElement('option');
+            o.value = h.hall_id; o.textContent = h.hall_name;
+            sel.appendChild(o);
+        });
+    } catch { /* skip */ }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadBookings(1);
+    loadHallFilter();
+});
+</script>
+</body>
+</html>

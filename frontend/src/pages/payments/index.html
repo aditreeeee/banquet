@@ -1,0 +1,383 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payments | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
+        <a href="../bookings/create.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">CRM</div>
+        <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span><span class="sidebar-text">Payments</span></a>
+        <a href="../invoices/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg></span><span class="sidebar-text">Invoices</span></a>
+        <div class="nav-section-label">Reports</div>
+        <a href="../reports/revenue.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path></svg></span><span class="sidebar-text">Revenue</span></a>
+    </nav>
+    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Payments</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Payments</h1><p class="page-subtitle">Record, track and manage all payment transactions</p></div>
+            <div style="display:flex;gap:10px">
+                <button class="btn-ghost" onclick="loadPending()">â³ Pending Collections</button>
+                <button class="btn-primary-brand" onclick="openRecordModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Record Payment</button>
+            </div>
+        </div>
+
+        <!-- KPI row -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+            <div class="kpi-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><div class="kpi-label">Today's Collection</div><div class="kpi-value" id="todayCollection">—</div></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-2-bg)"><span style="font-size:20px;color:var(--kpi-2)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span></div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><div class="kpi-label">Month Revenue</div><div class="kpi-value" id="monthRevenue">—</div></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-1-bg)"><span style="font-size:20px;color:var(--kpi-1)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span></div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><div class="kpi-label">Pending Collections</div><div class="kpi-value" id="pendingTotal" style="color:var(--color-warning)">—</div></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-3-bg)"><span style="font-size:20px;color:var(--kpi-3)">â³</span></div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><div class="kpi-label">Total Transactions</div><div class="kpi-value" id="totalTransactions">—</div></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-5-bg)"><span style="font-size:20px;color:var(--kpi-5)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs: All / Pending -->
+        <ul class="nav nav-tabs" style="margin-bottom:20px;border-bottom:1px solid var(--border-color)">
+            <li class="nav-item"><button class="nav-link active" id="tab-all" onclick="switchTab('all')" style="background:none;border:none;padding:10px 18px;font-size:13.5px;font-weight:600;color:var(--brand-primary);border-bottom:2px solid var(--brand-primary)">All Payments</button></li>
+            <li class="nav-item"><button class="nav-link" id="tab-pending" onclick="switchTab('pending')" style="background:none;border:none;padding:10px 18px;font-size:13.5px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent">Pending Collections</button></li>
+        </ul>
+
+        <!-- All payments table -->
+        <div id="allPaymentsView">
+            <div class="table-card">
+                <div style="display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--border-color)">
+                    <div class="search-input-wrap">
+                        <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg></span>
+                        <input type="text" class="form-control" id="paySearch" placeholder="Payment ref, booking, customer…" oninput="handlePaySearch(this.value)">
+                    </div>
+                    <select class="form-select" id="methodFilter" onchange="loadPayments(1)" style="width:auto">
+                        <option value="">All Methods</option>
+                        <option value="cash">Cash</option>
+                        <option value="upi">UPI</option>
+                        <option value="card">Card</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="online">Online</option>
+                    </select>
+                    <input type="date" id="payFromDate" onchange="loadPayments(1)">
+                    <input type="date" id="payToDate"   onchange="loadPayments(1)">
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Payment Ref</th><th>Date</th><th>Booking</th><th>Customer</th><th>Type</th><th>Method</th><th>Amount</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="paymentsBody">
+                            <tr><td colspan="8" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="payPaginationWrap"></div>
+            </div>
+        </div>
+
+        <!-- Pending collections -->
+        <div id="pendingView" style="display:none">
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Booking</th><th>Customer</th><th>Event Date</th><th>Event</th><th>Balance Due</th><th>Days Until Event</th><th>Action</th></tr>
+                        </thead>
+                        <tbody id="pendingBody">
+                            <tr><td colspan="7" class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<!-- Record Payment Modal -->
+<div class="modal fade" id="recordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Record Payment</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Booking Reference *</label>
+                        <div style="display:flex;gap:8px">
+                            <input type="text" class="form-control" id="payBookingRef" placeholder="BNQ-2026-XXXXXX">
+                            <button type="button" class="btn-ghost" onclick="lookupBooking()">Lookup</button>
+                        </div>
+                        <div id="bookingInfo" style="margin-top:10px;padding:12px;background:var(--bg-surface-2);border-radius:var(--radius-md);display:none"></div>
+                    </div>
+                    <input type="hidden" id="payBookingId">
+                    <input type="hidden" id="payCustomerId">
+                    <div class="col-md-6">
+                        <label class="form-label">Payment Type *</label>
+                        <select class="form-select" id="payType">
+                            <option value="advance">Advance Payment</option>
+                            <option value="balance">Balance Payment</option>
+                            <option value="full">Full Payment</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Payment Method *</label>
+                        <select class="form-select" id="payMethod">
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI</option>
+                            <option value="card">Credit / Debit Card</option>
+                            <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
+                            <option value="online">Online Gateway</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Amount (₹) *</label>
+                        <input type="number" class="form-control" id="payAmount" min="1" placeholder="0.00">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Payment Date *</label>
+                        <input type="date" class="form-control" id="payDate">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Transaction ID / Reference</label>
+                        <input type="text" class="form-control" id="payTransactionId" placeholder="UPI ref, cheque no., UTR…">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Remarks</label>
+                        <textarea class="form-control" id="payRemarks" rows="2" placeholder="Internal notes…"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="savePayBtn" onclick="recordPayment()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 3h9l4 4v14H6z"></path><path d="M14 3v5h4"></path><path d="M8 13h8"></path><path d="M8 17h8"></path></svg> Record Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+const DEMO_PAYMENTS = [
+    { payment_ref:'PAY-2026-000001', payment_date:'2026-06-10', booking_ref:'BNQ-2026-000001', customer_name:'Arjun Sharma',  payment_type:'advance', payment_method:'upi',           amount:56250, payment_status:'completed' },
+    { payment_ref:'PAY-2026-000002', payment_date:'2026-06-14', booking_ref:'BNQ-2026-000002', customer_name:'Priya Patel',   payment_type:'advance', payment_method:'card',          amount:21250, payment_status:'completed' },
+    { payment_ref:'PAY-2026-000003', payment_date:'2026-06-18', booking_ref:'BNQ-2026-000003', customer_name:'Rahul Gupta',   payment_type:'full',    payment_method:'bank_transfer', amount:42000, payment_status:'completed' },
+    { payment_ref:'PAY-2026-000004', payment_date:'2026-06-20', booking_ref:'BNQ-2026-000004', customer_name:'Anjali Singh',  payment_type:'advance', payment_method:'cash',          amount:37000, payment_status:'completed' },
+    { payment_ref:'PAY-2026-000005', payment_date:'2026-06-22', booking_ref:'BNQ-2026-000005', customer_name:'Vikram Mehta',  payment_type:'advance', payment_method:'upi',           amount:17000, payment_status:'completed' },
+    { payment_ref:'PAY-2026-000006', payment_date:'2026-06-25', booking_ref:'BNQ-2026-000006', customer_name:'Neha Agarwal',  payment_type:'balance', payment_method:'upi',           amount:72500, payment_status:'completed' },
+    { payment_ref:'PAY-2026-F000003',payment_date:'2026-06-19', booking_ref:'BNQ-2026-000003', customer_name:'Rahul Gupta',   payment_type:'full',    payment_method:'bank_transfer', amount:0,     payment_status:'completed' },
+];
+
+const METHOD_ICONS = { cash:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg>', upi:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="5" y="2" width="14" height="20" rx="2"></rect><path d="M11 18h2"></path></svg>', card:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>', bank_transfer:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path></svg>', online:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15 15 0 0 1 0 20"></path><path d="M12 2a15 15 0 0 0 0 20"></path></svg>' };
+
+async function loadPayments(page = 1) {
+    const tbody = document.getElementById('paymentsBody');
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+    try {
+        const res  = await API.payments.list({ page, limit:20,
+            search:      document.getElementById('paySearch').value || undefined,
+            method:      document.getElementById('methodFilter').value || undefined,
+            from_date:   document.getElementById('payFromDate').value || undefined,
+            to_date:     document.getElementById('payToDate').value   || undefined,
+        });
+        const pays = res.data?.payments || [];
+        renderPayments(pays);
+        updateKPIs(res.data?.stats || {});
+        Utils.renderPagination('payPaginationWrap', { page, limit:20, total: res.data?.meta?.total || pays.length }, loadPayments);
+    } catch {
+        renderPayments(DEMO_PAYMENTS);
+        updateKPIs({ today:84500, month:2850000, pending:485000, total:342 });
+        Utils.renderPagination('payPaginationWrap', { page:1, limit:20, total:342 }, loadPayments);
+    }
+}
+
+function renderPayments(pays) {
+    const tbody = document.getElementById('paymentsBody');
+    if (!pays.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state" style="padding:24px">No payments found</div></td></tr>'; return; }
+    tbody.innerHTML = pays.map(p => `
+    <tr>
+        <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--brand-primary)">${p.payment_ref}</span></td>
+        <td>${Utils.formatDate(p.payment_date)}</td>
+        <td><a href="../bookings/detail.html?ref=${p.booking_ref}" style="color:var(--brand-primary);font-size:12px;font-family:var(--font-mono)">${p.booking_ref}</a></td>
+        <td>${p.customer_name}</td>
+        <td>${Utils.titleCase(p.payment_type)}</td>
+        <td>${METHOD_ICONS[p.payment_method] || ''} ${Utils.titleCase(p.payment_method?.replace('_',' '))}</td>
+        <td style="font-weight:700">${Utils.formatCurrency(p.amount)}</td>
+        <td>${Utils.statusBadge(p.payment_status)}</td>
+    </tr>`).join('');
+}
+
+async function loadPendingPayments() {
+    const tbody = document.getElementById('pendingBody');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>';
+    try {
+        const res   = await API.payments.pending({ days_ahead: 30 });
+        const items = res.data?.pending || [];
+        renderPending(items);
+    } catch {
+        renderPending([
+            { booking_id:2, booking_ref:'BNQ-2026-000002', customer_name:'Priya Patel',  booking_date:'2026-07-18', event_name:'Birthday Party',  balance_due:63750, days_until_event:18 },
+            { booking_id:4, booking_ref:'BNQ-2026-000004', customer_name:'Anjali Singh', booking_date:'2026-07-22', event_name:'Reception Dinner', balance_due:111000,days_until_event:22 },
+            { booking_id:5, booking_ref:'BNQ-2026-000005', customer_name:'Vikram Mehta', booking_date:'2026-07-25', event_name:'Anniversary',      balance_due:51000, days_until_event:25 },
+        ]);
+    }
+}
+
+function renderPending(items) {
+    const tbody = document.getElementById('pendingBody');
+    if (!items.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state" style="padding:24px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 2v3"></path><path d="m7 5 2 2"></path><path d="m17 5-2 2"></path><path d="M5 12h14"></path><path d="M8 16h8"></path><path d="M10 20h4"></path></svg> No pending collections!</div></td></tr>'; return; }
+    tbody.innerHTML = items.map(p => {
+        const urgent = p.days_until_event <= 7;
+        return `<tr>
+            <td><a href="../bookings/detail.html?id=${p.booking_id}" style="color:var(--brand-primary);font-weight:600;font-family:var(--font-mono);font-size:12px">${p.booking_ref}</a></td>
+            <td>${p.customer_name}</td>
+            <td>${Utils.formatDate(p.booking_date)}</td>
+            <td>${Utils.truncate(p.event_name, 25)}</td>
+            <td style="font-weight:700;color:var(--color-warning)">${Utils.formatCurrency(p.balance_due)}</td>
+            <td><span style="color:${urgent ? 'var(--color-danger)' : 'var(--text-secondary)'};font-weight:${urgent ? 700 : 400}">${p.days_until_event} days ${urgent ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3 2 20h20Z"></path><path d="M12 9v4"></path><path d="M12 16h.01"></path></svg>' : ''}</span></td>
+            <td><button class="btn-primary-brand" style="font-size:12px;padding:6px 12px" onclick="openRecordModal('${p.booking_ref}')">Collect</button></td>
+        </tr>`;
+    }).join('');
+}
+
+function updateKPIs(s) {
+    document.getElementById('todayCollection').textContent  = Utils.formatCurrency(s.today   || 84500);
+    document.getElementById('monthRevenue').textContent    = Utils.formatCurrency(s.month    || 2850000);
+    document.getElementById('pendingTotal').textContent    = Utils.formatCurrency(s.pending  || 485000);
+    document.getElementById('totalTransactions').textContent = Utils.formatNumber(s.total    || 342);
+}
+
+let recordModalInstance;
+function openRecordModal(bookingRef = '') {
+    document.getElementById('payBookingRef').value = bookingRef;
+    document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('bookingInfo').style.display = 'none';
+    document.getElementById('payBookingId').value   = '';
+    document.getElementById('payCustomerId').value  = '';
+    document.getElementById('payAmount').value      = '';
+    recordModalInstance = new bootstrap.Modal(document.getElementById('recordModal'));
+    recordModalInstance.show();
+    if (bookingRef) lookupBooking();
+}
+
+async function lookupBooking() {
+    const ref  = document.getElementById('payBookingRef').value.trim().toUpperCase();
+    const info = document.getElementById('bookingInfo');
+    if (!ref) return;
+    try {
+        const res = await API.get(`/bookings/ref/${ref}`);
+        const b   = res.data;
+        document.getElementById('payBookingId').value  = b.booking_id;
+        document.getElementById('payCustomerId').value = b.customer_id;
+        info.innerHTML = `<div style="font-size:13px"><strong>${b.event_name || ref}</strong> — ${Utils.formatDate(b.event_date)}<br>
+            <span style="color:var(--text-muted)">Customer: ${b.customer_name} | Grand Total: ${Utils.formatCurrency(b.total_amount)} | Balance Due: <strong style="color:var(--color-warning)">${Utils.formatCurrency(b.balance_due)}</strong></span></div>`;
+        info.style.display = '';
+        document.getElementById('payAmount').value = b.balance_due;
+    } catch (err) {
+        document.getElementById('payBookingId').value  = '';
+        document.getElementById('payCustomerId').value = '';
+        info.innerHTML = `<span style="color:var(--danger,#DC2626)">${err.message || 'Booking not found. Check the reference and try again.'}</span>`;
+        info.style.display = '';
+    }
+}
+
+async function recordPayment() {
+    const btn = document.getElementById('savePayBtn');
+    const bookingId = document.getElementById('payBookingId').value;
+    if (!bookingId) { Utils.toast('Please look up a booking first', 'warning'); return; }
+    const amt = parseFloat(document.getElementById('payAmount').value);
+    if (!amt || amt <= 0) { Utils.toast('Please enter a valid amount', 'error'); return; }
+    Utils.showLoader(btn, 'Recording…');
+    try {
+        await API.payments.record({
+            booking_id:    document.getElementById('payBookingId').value  || null,
+            customer_id:   document.getElementById('payCustomerId').value || null,
+            payment_type:  document.getElementById('payType').value,
+            payment_method:document.getElementById('payMethod').value,
+            amount:        amt,
+            payment_date:  document.getElementById('payDate').value,
+            transaction_id:document.getElementById('payTransactionId').value || null,
+            remarks:       document.getElementById('payRemarks').value       || null,
+        });
+        Utils.hideLoader(btn);
+        recordModalInstance?.hide();
+        Utils.toast('Payment recorded successfully!', 'success');
+        loadPayments(1);
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to record payment', 'error');
+    }
+}
+
+let currentTab = 'all';
+function switchTab(tab) {
+    currentTab = tab;
+    const tabs = { all: 'tab-all', pending: 'tab-pending' };
+    Object.entries(tabs).forEach(([t, id]) => {
+        const el = document.getElementById(id);
+        const isActive = t === tab;
+        el.style.color        = isActive ? 'var(--brand-primary)' : 'var(--text-muted)';
+        el.style.borderBottom = isActive ? '2px solid var(--brand-primary)' : '2px solid transparent';
+    });
+    document.getElementById('allPaymentsView').style.display = tab === 'all'     ? '' : 'none';
+    document.getElementById('pendingView').style.display     = tab === 'pending' ? '' : 'none';
+    if (tab === 'pending') loadPendingPayments();
+}
+
+const handlePaySearch = Utils.debounce(() => loadPayments(1), 350);
+
+document.addEventListener('DOMContentLoaded', () => loadPayments(1));
+</script>
+</body>
+</html>

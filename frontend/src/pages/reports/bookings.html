@@ -1,0 +1,314 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookings Report | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">Reports</div>
+        <a href="revenue.html"   class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path></svg></span><span class="sidebar-text">Revenue</span></a>
+        <a href="bookings.html"  class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg></span><span class="sidebar-text">Bookings</span></a>
+        <a href="occupancy.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></span><span class="sidebar-text">Occupancy</span></a>
+    </nav>
+    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item">Reports</li><li class="breadcrumb-item active">Bookings</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Bookings Report</h1><p class="page-subtitle">Booking volume, status distribution and trends</p></div>
+            <div style="display:flex;gap:8px">
+                <button class="btn-ghost" onclick="Utils.toast('Exporting…','info')">⬇ Export</button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div style="display:flex;flex-direction:column;gap:12px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:20px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <input type="search" id="searchInput" class="form-control" style="min-width:240px" placeholder="Search booking, customer, hall or event type">
+                <input type="date" id="fromDate" class="form-control" style="width:150px">
+                <span style="color:var(--text-muted)">→</span>
+                <input type="date" id="toDate" class="form-control" style="width:150px">
+                <select class="form-select" id="branchFilter" style="width:auto">
+                    <option value="">All Branches</option>
+                    <option value="1">Main Branch</option>
+                    <option value="2">North Branch</option>
+                </select>
+                <select class="form-select" id="statusFilter" style="width:auto">
+                    <option value="">All Statuses</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="advance_paid">Advance Paid</option>
+                    <option value="fully_paid">Fully Paid</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <select class="form-select" id="sortField" style="width:auto">
+                    <option value="date">Sort by Date</option>
+                    <option value="amount">Sort by Amount</option>
+                    <option value="customer">Sort by Customer</option>
+                    <option value="status">Sort by Status</option>
+                </select>
+                <select class="form-select" id="sortDirection" style="width:auto">
+                    <option value="desc">Newest / Highest</option>
+                    <option value="asc">Oldest / Lowest</option>
+                </select>
+                <button type="button" class="btn btn-primary" id="applyFiltersBtn">Apply</button>
+                <button type="button" class="btn btn-outline-secondary" id="resetFiltersBtn">Reset</button>
+            </div>
+            <div id="resultsSummary" style="font-size:12px;color:var(--text-muted)"></div>
+        </div>
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px">
+            <div class="kpi-card"><div class="kpi-label">Total Bookings</div><div class="kpi-value" id="kpiTotal">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Confirmed</div><div class="kpi-value" id="kpiConf" style="color:var(--color-success)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Advance Paid</div><div class="kpi-value" id="kpiAdv" style="color:var(--brand-primary)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Fully Paid</div><div class="kpi-value" id="kpiFull" style="color:var(--kpi-2)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Cancelled</div><div class="kpi-value" id="kpiCancel" style="color:var(--color-danger)">—</div></div>
+        </div>
+
+        <!-- Charts row -->
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;margin-bottom:20px">
+            <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px">
+                <h6 style="font-size:13px;font-weight:700;margin-bottom:14px">Bookings Trend</h6>
+                <div style="height:220px"><canvas id="trendChart"></canvas></div>
+            </div>
+            <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px">
+                <h6 style="font-size:13px;font-weight:700;margin-bottom:14px">By Status</h6>
+                <div style="height:220px"><canvas id="statusChart"></canvas></div>
+            </div>
+            <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px">
+                <h6 style="font-size:13px;font-weight:700;margin-bottom:14px">By Event Type</h6>
+                <div style="height:220px"><canvas id="eventChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Detailed table -->
+        <div class="table-card">
+            <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);font-weight:700;font-size:13px">Booking Details</div>
+            <div class="table-responsive">
+                <table class="table" style="font-size:12.5px">
+                    <thead>
+                        <tr>
+                            <th>Booking</th>
+                            <th>Customer</th>
+                            <th>Hall</th>
+                            <th>Event Type</th>
+                            <th>Status</th>
+                            <th>Amount</th>
+                            <th>Branch</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportBody"><tr><td colspan="7" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+let trendChart, statusChart, eventChart;
+
+const demoBookings = [
+    { id:'BK-1042', customer:'Aisha Khan', hall:'Grand Ballroom', eventType:'Wedding', status:'confirmed', bookingDate:'2026-06-18', branchId:1, amount:42000 },
+    { id:'BK-1038', customer:'Rohan Shah', hall:'Emerald Hall', eventType:'Corporate', status:'advance_paid', bookingDate:'2026-05-29', branchId:2, amount:28500 },
+    { id:'BK-1034', customer:'Nadia Ali', hall:'Royal Pavilion', eventType:'Birthday', status:'fully_paid', bookingDate:'2026-05-12', branchId:1, amount:36800 },
+    { id:'BK-1029', customer:'Mina Patel', hall:'Grand Ballroom', eventType:'Reception', status:'cancelled', bookingDate:'2026-04-22', branchId:1, amount:52000 },
+    { id:'BK-1025', customer:'Jamil Noor', hall:'Crystal Terrace', eventType:'Engagement', status:'confirmed', bookingDate:'2026-03-31', branchId:2, amount:31200 },
+    { id:'BK-1017', customer:'Sara Thomas', hall:'Emerald Hall', eventType:'Wedding', status:'fully_paid', bookingDate:'2026-02-14', branchId:1, amount:45500 },
+    { id:'BK-1012', customer:'Dev Menon', hall:'Royal Pavilion', eventType:'Corporate', status:'advance_paid', bookingDate:'2026-01-09', branchId:2, amount:23900 },
+    { id:'BK-1008', customer:'Lina Gomez', hall:'Crystal Terrace', eventType:'Birthday', status:'confirmed', bookingDate:'2026-01-04', branchId:1, amount:29800 }
+];
+
+function getDemoData() {
+    const searchInput = document.getElementById('searchInput').value.trim().toLowerCase();
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    const branchId = document.getElementById('branchFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const sortField = document.getElementById('sortField').value;
+    const sortDirection = document.getElementById('sortDirection').value;
+
+    const filtered = demoBookings.filter(booking => {
+        const bookingDate = booking.bookingDate;
+        const matchesSearch = !searchInput || [booking.id, booking.customer, booking.hall, booking.eventType].some(value => value.toLowerCase().includes(searchInput));
+        const matchesFrom = !fromDate || bookingDate >= fromDate;
+        const matchesTo = !toDate || bookingDate <= toDate;
+        const matchesBranch = !branchId || String(booking.branchId) === branchId;
+        const matchesStatus = !statusFilter || booking.status === statusFilter;
+        return matchesSearch && matchesFrom && matchesTo && matchesBranch && matchesStatus;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+        const direction = sortDirection === 'asc' ? 1 : -1;
+        if (sortField === 'amount') return (a.amount - b.amount) * direction;
+        if (sortField === 'customer') return a.customer.localeCompare(b.customer) * direction;
+        if (sortField === 'status') return a.status.localeCompare(b.status) * direction;
+        return (new Date(a.bookingDate) - new Date(b.bookingDate)) * direction;
+    });
+
+    const monthEntries = {};
+    sorted.forEach(booking => {
+        const month = new Date(booking.bookingDate).toLocaleString('en', { month: 'short', year: 'numeric' });
+        if (!monthEntries[month]) monthEntries[month] = { total: 0, cancelled: 0 };
+        monthEntries[month].total += 1;
+        if (booking.status === 'cancelled') monthEntries[month].cancelled += 1;
+    });
+
+    const monthLabels = Object.keys(monthEntries);
+    const trendData = monthLabels.map(month => monthEntries[month].total);
+    const cancelledData = monthLabels.map(month => monthEntries[month].cancelled);
+
+    const statusCounts = ['confirmed', 'advance_paid', 'fully_paid', 'cancelled'].map(status => sorted.filter(item => item.status === status).length);
+    const eventCounts = ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Engagement'].map(type => sorted.filter(item => item.eventType === type).length);
+
+    return {
+        kpi: {
+            total: sorted.length,
+            confirmed: statusCounts[0],
+            advance_paid: statusCounts[1],
+            fully_paid: statusCounts[2],
+            cancelled: statusCounts[3]
+        },
+        trend: {
+            labels: monthLabels,
+            datasets: [
+                { label: 'Total', data: trendData, borderColor: '#7C3AED', backgroundColor: 'rgba(124,58,237,.08)', fill: true, tension: .35, borderWidth: 2.5 },
+                { label: 'Cancelled', data: cancelledData, borderColor: '#EF4444', borderDash: [4, 2], fill: false, tension: .35, borderWidth: 1.5 }
+            ]
+        },
+        by_status: {
+            labels: ['Confirmed', 'Advance Paid', 'Fully Paid', 'Cancelled'],
+            data: statusCounts
+        },
+        by_event: {
+            labels: ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Engagement'],
+            data: eventCounts
+        },
+        table: sorted.map(booking => ({
+            booking_id: booking.id,
+            customer: booking.customer,
+            hall: booking.hall,
+            event_type: booking.eventType,
+            status: booking.status,
+            amount: booking.amount,
+            branch: booking.branchId === 2 ? 'North Branch' : 'Main Branch',
+            booking_date: booking.bookingDate
+        }))
+    };
+}
+
+function formatStatusLabel(status) {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+}
+
+async function loadReport() {
+    let data;
+    try {
+        const res = await API.reports.bookings({ from_date: document.getElementById('fromDate').value, to_date: document.getElementById('toDate').value, branch_id: document.getElementById('branchFilter').value || undefined, status: document.getElementById('statusFilter').value || undefined });
+        if (res?.data) {
+            data = res.data;
+        } else {
+            data = getDemoData();
+        }
+    } catch {
+        data = getDemoData();
+    }
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const grid = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.06)';
+    const txt = isDark ? '#9CA3AF' : '#6B7280';
+    const k = data.kpi || {};
+    document.getElementById('kpiTotal').textContent = k.total ?? 0;
+    document.getElementById('kpiConf').textContent = k.confirmed ?? 0;
+    document.getElementById('kpiAdv').textContent = k.advance_paid ?? 0;
+    document.getElementById('kpiFull').textContent = k.fully_paid ?? 0;
+    document.getElementById('kpiCancel').textContent = k.cancelled ?? 0;
+
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+    if (statusChart) { statusChart.destroy(); statusChart = null; }
+    if (eventChart) { eventChart.destroy(); eventChart = null; }
+
+    const trendPayload = data.trend || { labels: [], datasets: [] };
+    const statusPayload = data.by_status || { labels: [], data: [] };
+    const eventPayload = data.by_event || { labels: [], data: [] };
+
+    trendChart = new Chart(document.getElementById('trendChart').getContext('2d'), { type: 'line', data: trendPayload, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, font: { size: 11 } } } }, scales: { x: { grid: { color: grid }, ticks: { color: txt, font: { size: 10 } } }, y: { grid: { color: grid }, ticks: { color: txt, font: { size: 10 } } } } } });
+    statusChart = new Chart(document.getElementById('statusChart').getContext('2d'), { type: 'doughnut', data: { labels: statusPayload.labels, datasets: [{ data: statusPayload.data, backgroundColor: ['#10B981', '#7C3AED', '#2563EB', '#EF4444'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: txt, font: { size: 11 }, boxWidth: 10 } } } } });
+    eventChart = new Chart(document.getElementById('eventChart').getContext('2d'), { type: 'bar', data: { labels: eventPayload.labels, datasets: [{ data: eventPayload.data, backgroundColor: 'rgba(124,58,237,.7)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: grid }, ticks: { color: txt, font: { size: 10 } } }, y: { grid: { color: 'transparent' }, ticks: { color: txt, font: { size: 10 } } } } } });
+
+    const rows = Array.isArray(data.table) ? data.table : [];
+    document.getElementById('resultsSummary').textContent = rows.length ? `Showing ${rows.length} booking${rows.length === 1 ? '' : 's'} that match the current filters.` : 'No bookings match the current filters.';
+    document.getElementById('reportBody').innerHTML = rows.length ? rows.map(row => `
+        <tr>
+            <td style="font-weight:600">${row.booking_id}</td>
+            <td>${row.customer}</td>
+            <td>${row.hall}</td>
+            <td>${row.event_type}</td>
+            <td><span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${row.status === 'cancelled' ? 'rgba(239,68,68,.14)' : row.status === 'confirmed' ? 'rgba(16,185,129,.14)' : 'rgba(124,58,237,.14)'};color:${row.status === 'cancelled' ? 'var(--color-danger)' : row.status === 'confirmed' ? 'var(--color-success)' : 'var(--brand-primary)'}">${formatStatusLabel(row.status)}</span></td>
+            <td>${Utils.formatCurrency(row.amount)}</td>
+            <td>${row.branch}</td>
+        </tr>`).join('') : '<tr><td colspan="7" class="text-center py-4">No bookings match the current filters.</td></tr>';
+}
+
+new MutationObserver(() => loadReport()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+document.addEventListener('DOMContentLoaded',()=>{
+    const now=new Date(); document.getElementById('toDate').value=now.toISOString().split('T')[0];
+    const from=new Date(now.getFullYear(),0,1); document.getElementById('fromDate').value=from.toISOString().split('T')[0];
+    ['searchInput','fromDate','toDate','branchFilter','statusFilter','sortField','sortDirection'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', loadReport);
+            if (id === 'searchInput') {
+                el.addEventListener('input', loadReport);
+            }
+        }
+    });
+    document.getElementById('applyFiltersBtn')?.addEventListener('click', loadReport);
+    document.getElementById('resetFiltersBtn')?.addEventListener('click', () => {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('fromDate').value = '';
+        document.getElementById('toDate').value = '';
+        document.getElementById('branchFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('sortField').value = 'date';
+        document.getElementById('sortDirection').value = 'desc';
+        loadReport();
+    });
+    loadReport();
+});
+</script>
+</body>
+</html>

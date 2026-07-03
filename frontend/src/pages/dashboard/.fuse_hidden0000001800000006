@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | Banquet System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<link href="../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+/* ── KPI row ── */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+
+/* ── Charts grid ── */
+.charts-grid { display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:24px; }
+.charts-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px; }
+
+/* ── Today's events ── */
+.event-row { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border-color); }
+.event-row:last-child { border-bottom:none; }
+.event-time { font-size:11px; font-weight:600; color:var(--text-muted); min-width:55px; }
+.event-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.event-name { font-size:13.5px; font-weight:600; color:var(--text-primary); }
+.event-hall { font-size:12px; color:var(--text-muted); }
+.event-guests { font-size:12px; color:var(--text-secondary); margin-left:auto; white-space:nowrap; }
+
+/* ── Quick action cards ── */
+.quick-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+.qa-card {
+    background:var(--bg-surface); border:1px solid var(--border-color);
+    border-radius:var(--radius-lg); padding:16px;
+    text-decoration:none; text-align:center;
+    transition:transform var(--transition-fast),box-shadow var(--transition-fast),border-color var(--transition-fast);
+    cursor:pointer;
+}
+.qa-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:var(--brand-primary); }
+.qa-icon { font-size:28px; margin-bottom:8px; }
+.qa-label { font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+
+/* ── Skeleton for KPI ── */
+.kpi-skeleton .kpi-value { background:var(--border-color); color:transparent; border-radius:4px; }
+.kpi-skeleton .kpi-label { background:var(--border-color); color:transparent; border-radius:4px; margin-bottom:12px; }
+
+@media (max-width:1100px) { .charts-grid { grid-template-columns:1fr; } .charts-grid-3 { grid-template-columns:1fr 1fr; } }
+@media (max-width:768px) { .quick-actions { grid-template-columns:1fr 1fr; } .charts-grid-3 { grid-template-columns:1fr; } }
+@media (max-width:480px) { .kpi-grid { grid-template-columns:1fr 1fr; } .quick-actions { grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar" id="sidebar">
+    <a href="/pages/dashboard/index.html" class="sidebar-brand">
+        <div class="sidebar-brand-icon">🏛</div>
+        <span class="sidebar-brand-text">BanquetPro</span>
+    </a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon">📊</span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Venues</div>
+        <a href="../banquets/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">🏰</span><span class="sidebar-text">Banquets</span></a>
+        <a href="../halls/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">🚪</span><span class="sidebar-text">Halls</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon">📅</span><span class="sidebar-text">All Bookings</span></a>
+        <a href="../bookings/create.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager,booking_executive"><span class="sidebar-icon">➕</span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager,booking_executive">CRM</div>
+        <a href="../customers/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager,booking_executive"><span class="sidebar-icon">👥</span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">💰</span><span class="sidebar-text">Payments</span></a>
+        <a href="../invoices/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">🧾</span><span class="sidebar-text">Invoices</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Reports</div>
+        <a href="../reports/revenue.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">📈</span><span class="sidebar-text">Revenue</span></a>
+        <a href="../reports/bookings.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon">📋</span><span class="sidebar-text">Booking Report</span></a>
+        <div class="nav-section-label" data-require-role="super_admin,company_admin">Admin</div>
+        <a href="../users/index.html" class="sidebar-link" data-require-role="super_admin,company_admin"><span class="sidebar-icon">👤</span><span class="sidebar-text">Users</span></a>
+        <a href="../settings/index.html" class="sidebar-link" data-require-role="super_admin,company_admin"><span class="sidebar-icon">⚙️</span><span class="sidebar-text">Settings</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--radius-md)">
+            <div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div>
+            <div class="sidebar-text">
+                <div style="color:white;font-size:13px;font-weight:600" data-user-name></div>
+                <div style="color:rgba(255,255,255,.5);font-size:11px" data-user-role></div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main-content" id="mainContent">
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle">☰</button>
+        <nav class="breadcrumb-nav" aria-label="breadcrumb">
+            <ol class="breadcrumb"><li class="breadcrumb-item active">Dashboard</li></ol>
+        </nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle" title="Toggle theme"><span id="themeIcon">🌙</span></button>
+            <div class="dropdown">
+                <button class="topbar-btn" data-bs-toggle="dropdown">🔔<span class="notif-dot" style="display:none"></span></button>
+                <div class="dropdown-menu dropdown-menu-end notif-panel p-3" style="min-width:360px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                        <span style="font-weight:600;font-size:14px;color:var(--text-primary)">Notifications</span>
+                        <button class="btn-ghost" style="font-size:11px;padding:4px 10px" data-action="mark-all-read">Mark all read</button>
+                    </div>
+                    <div id="notifList"><div class="skeleton" style="height:60px;border-radius:8px"></div></div>
+                </div>
+            </div>
+            <div class="dropdown">
+                <button class="avatar-btn" data-bs-toggle="dropdown">
+                    <div class="avatar" data-user-avatar></div>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="../settings/index.html">⚙️ Settings</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item danger" href="#" data-action="logout">🚪 Log Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- Page -->
+    <main class="page-content">
+
+        <!-- Header -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title" id="greetingTitle">Good morning 👋</h1>
+                <p class="page-subtitle" id="greetingDate"></p>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn-ghost" onclick="loadDashboard()">⟳ Refresh</button>
+                <a href="../bookings/create.html" class="btn-primary-brand">➕ New Booking</a>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <a href="../bookings/create.html" class="qa-card">
+                <div class="qa-icon">📅</div>
+                <div class="qa-label">New Booking</div>
+            </a>
+            <a href="../customers/index.html" class="qa-card">
+                <div class="qa-icon">👤</div>
+                <div class="qa-label">Add Customer</div>
+            </a>
+            <a href="../payments/index.html" class="qa-card">
+                <div class="qa-icon">💰</div>
+                <div class="qa-label">Record Payment</div>
+            </a>
+            <a href="../reports/revenue.html" class="qa-card">
+                <div class="qa-icon">📊</div>
+                <div class="qa-label">View Reports</div>
+            </a>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid" id="kpiGrid">
+            <!-- Filled by JS -->
+            <div class="kpi-card skeleton-kpi" style="height:120px"></div>
+            <div class="kpi-card skeleton-kpi" style="height:120px"></div>
+            <div class="kpi-card skeleton-kpi" style="height:120px"></div>
+            <div class="kpi-card skeleton-kpi" style="height:120px"></div>
+            <div class="kpi-card skeleton-kpi" style="height:120px"></div>
+            <div class="kpi-card skeleton-kpi" style="height:120px"></div>
+            <div class="kpi-card skeleton-kpi" style="height:120px"></div>
+        </div>
+
+        <!-- Charts row -->
+        <div class="charts-grid">
+            <!-- Revenue trend -->
+            <div class="card">
+                <div class="card-header" style="padding:18px 20px">
+                    <span class="card-title">Revenue Trend (6 months)</span>
+                    <div style="display:flex;gap:8px">
+                        <select class="form-select" id="revenuePeriod" style="width:auto;font-size:12px;padding:4px 8px">
+                            <option value="6">Last 6 months</option>
+                            <option value="12">Last 12 months</option>
+                            <option value="3">Last 3 months</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height:260px">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings by event type -->
+            <div class="card">
+                <div class="card-header" style="padding:18px 20px">
+                    <span class="card-title">Bookings by Event Type</span>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height:260px">
+                        <canvas id="eventTypeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom row: Calendar + Today's events + Occupancy -->
+        <div class="charts-grid">
+            <!-- FullCalendar -->
+            <div class="card">
+                <div class="card-header" style="padding:18px 20px">
+                    <span class="card-title">Booking Calendar</span>
+                </div>
+                <div class="card-body" style="padding:12px">
+                    <div id="bookingCalendar"></div>
+                </div>
+            </div>
+
+            <!-- Today's Events + Pending Collections -->
+            <div style="display:flex;flex-direction:column;gap:16px">
+                <!-- Today's events -->
+                <div class="card" style="flex:1">
+                    <div class="card-header" style="padding:16px 20px 12px">
+                        <span class="card-title">Today's Events</span>
+                        <span class="badge bg-primary" id="todayCount" style="background:var(--brand-primary) !important"></span>
+                    </div>
+                    <div id="todayEvents" style="max-height:220px;overflow-y:auto">
+                        <div class="empty-state" style="padding:24px">
+                            <div style="font-size:32px;margin-bottom:8px">📅</div>
+                            <div style="font-size:13px;color:var(--text-muted)">Loading…</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Occupancy bar chart -->
+                <div class="card" style="flex:1">
+                    <div class="card-header" style="padding:16px 20px 12px">
+                        <span class="card-title">Hall Occupancy (This Month)</span>
+                    </div>
+                    <div class="card-body" style="padding:12px 16px">
+                        <div class="chart-container" style="height:160px">
+                            <canvas id="occupancyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent bookings table -->
+        <div class="table-card">
+            <div class="table-toolbar">
+                <span style="font-weight:600;font-size:14px;color:var(--text-primary)">Recent Bookings</span>
+                <a href="../bookings/index.html" class="btn-ghost ms-auto" style="font-size:13px">View all →</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table" id="recentBookings">
+                    <thead>
+                        <tr>
+                            <th>Booking Ref</th>
+                            <th>Customer</th>
+                            <th>Event</th>
+                            <th>Date</th>
+                            <th>Hall</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentBookingsBody">
+                        <tr><td colspan="8" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">
+        © 2026 BanquetPro | Enterprise Edition
+    </footer>
+</div>
+
+<button id="scrollTop" aria-label="Back to top">↑</button>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script src="../../public/assets/js/api.js"></script>
+<script src="../../public/assets/js/utils.js"></script>
+<script src="../../public/assets/js/auth.js"></script>
+<script src="../../public/assets/js/app.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   DASHBOARD CONTROLLER
+═══════════════════════════════════════════════════════ */
+Auth.requireAuth('../auth/login.html');
+
+let revenueChart, eventTypeChart, occupancyChart, calendar;
+
+/* ── Greeting ── */
+function setGreeting() {
+    const h = new Date().getHours();
+    const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    const user = Auth.getUser();
+    document.getElementById('greetingTitle').textContent = `${g}, ${user?.first_name || 'there'} 👋`;
+    document.getElementById('greetingDate').textContent =
+        new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+
+/* ── KPI Cards ── */
+const KPI_DEFS = [
+    { key:'today_bookings',   label:"Today's Bookings",  icon:'📅', colorIdx:0, format:'number' },
+    { key:'month_revenue',    label:'Month Revenue',      icon:'💰', colorIdx:1, format:'currency' },
+    { key:'upcoming_events',  label:'Upcoming Events',    icon:'🎉', colorIdx:2, format:'number' },
+    { key:'active_customers', label:'Active Customers',   icon:'👥', colorIdx:4, format:'number' },
+    { key:'occupancy_rate',   label:'Occupancy Rate',     icon:'🏢', colorIdx:5, format:'percent' },
+    { key:'pending_payments', label:'Pending Collections',icon:'⏳', colorIdx:3, format:'currency' },
+    { key:'total_halls',      label:'Active Halls',       icon:'🚪', colorIdx:6, format:'number' },
+];
+
+function renderKPIs(data) {
+    const grid = document.getElementById('kpiGrid');
+    grid.innerHTML = KPI_DEFS.map((k, i) => {
+        const val    = data?.[k.key];
+        const fmtVal = k.format === 'currency' ? Utils.formatCurrency(val)
+                     : k.format === 'percent'  ? Utils.formatPercent(val)
+                     : Utils.formatNumber(val);
+        const delta  = data?.[k.key + '_delta'];
+        const deltaHtml = delta !== undefined
+            ? `<div class="kpi-delta ${delta >= 0 ? 'up' : 'down'}">
+                ${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)}% vs last month
+               </div>` : '';
+        return `
+        <div class="kpi-card" style="--accent:var(--kpi-${k.colorIdx + 1})">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                <div>
+                    <div class="kpi-label">${k.label}</div>
+                    <div class="kpi-value">${fmtVal}</div>
+                    ${deltaHtml}
+                </div>
+                <div class="kpi-icon-wrap" style="background:var(--kpi-${k.colorIdx + 1}-bg)">
+                    <span style="font-size:20px;color:var(--kpi-${k.colorIdx + 1})">${k.icon}</span>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ── Revenue Chart ── */
+function initRevenueChart(labels, revenues, bookingCounts) {
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    const isDark = Auth.getTheme() === 'dark';
+    const gridColor = isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+    const textColor = isDark ? '#64748B' : '#94A3B8';
+
+    if (revenueChart) revenueChart.destroy();
+    revenueChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Revenue (₹)',
+                    data: revenues,
+                    borderColor: '#7C3AED',
+                    backgroundColor: 'rgba(124,58,237,.08)',
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#7C3AED',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Bookings',
+                    data: bookingCounts,
+                    borderColor: '#10B981',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    borderDash: [4, 3],
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: textColor, font: { size: 12 }, usePointStyle: true, pointStyleWidth: 12 }},
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.datasetIndex === 0
+                            ? ` Revenue: ${Utils.formatCurrency(ctx.parsed.y)}`
+                            : ` Bookings: ${ctx.parsed.y}`
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 12 }}},
+                y: {
+                    position: 'left',
+                    grid: { color: gridColor },
+                    ticks: { color: textColor, font: { size: 11 }, callback: v => '₹' + Utils.formatNumber(v) }
+                },
+                y1: {
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: { color: textColor, font: { size: 11 }}
+                }
+            }
+        }
+    });
+}
+
+/* ── Event Type Donut ── */
+function initEventTypeChart(labels, counts) {
+    const ctx = document.getElementById('eventTypeChart').getContext('2d');
+    const colors = ['#7C3AED','#10B981','#F59E0B','#EF4444','#3B82F6','#EC4899','#14B8A6','#8B5CF6','#F97316','#06B6D4'];
+    if (eventTypeChart) eventTypeChart.destroy();
+    eventTypeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: counts,
+                backgroundColor: colors.slice(0, labels.length),
+                borderWidth: 2,
+                borderColor: Auth.getTheme() === 'dark' ? '#151929' : '#ffffff',
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { font: { size: 11 }, usePointStyle: true, pointStyleWidth: 10,
+                        color: Auth.getTheme() === 'dark' ? '#94A3B8' : '#475569' }
+                }
+            }
+        }
+    });
+}
+
+/* ── Occupancy Bar ── */
+function initOccupancyChart(labels, values) {
+    const ctx = document.getElementById('occupancyChart').getContext('2d');
+    const isDark = Auth.getTheme() === 'dark';
+    if (occupancyChart) occupancyChart.destroy();
+    occupancyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Occupancy %',
+                data: values,
+                backgroundColor: values.map(v => v >= 80 ? 'rgba(16,185,129,.7)' : v >= 50 ? 'rgba(245,158,11,.7)' : 'rgba(239,68,68,.7)'),
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.x.toFixed(1)}%` }}},
+            scales: {
+                x: {
+                    max: 100,
+                    grid: { color: isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)' },
+                    ticks: { color: isDark ? '#64748B' : '#94A3B8', font: { size: 11 }, callback: v => v + '%' }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: isDark ? '#64748B' : '#94A3B8', font: { size: 11 }}
+                }
+            }
+        }
+    });
+}
+
+/* ── FullCalendar ── */
+function initCalendar(events) {
+    const el = document.getElementById('bookingCalendar');
+    if (!el) return;
+    if (calendar) calendar.destroy();
+    calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+        height: 380,
+        events,
+        eventClick: ({ event }) => {
+            if (event.extendedProps.booking_id) {
+                window.location.href = `../bookings/detail.html?id=${event.extendedProps.booking_id}`;
+            }
+        },
+        eventContent: ({ event }) => ({
+            html: `<div style="padding:1px 4px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${event.title}</div>`
+        }),
+        dayMaxEvents: 3,
+        eventClassNames: 'fc-event-custom',
+    });
+    calendar.render();
+}
+
+/* ── Today's Events ── */
+function renderTodayEvents(events) {
+    const container = document.getElementById('todayEvents');
+    const badge     = document.getElementById('todayCount');
+    badge.textContent = events.length;
+
+    if (!events.length) {
+        container.innerHTML = `<div class="empty-state" style="padding:24px">
+            <div style="font-size:32px;margin-bottom:8px">🎉</div>
+            <div style="font-size:13px;color:var(--text-muted)">No events today</div>
+        </div>`;
+        return;
+    }
+
+    container.innerHTML = events.map((e, i) => `
+    <div class="event-row">
+        <div class="event-time">${Utils.formatTime(e.start_time)}</div>
+        <div class="event-dot" style="background:${Utils.eventColor(i)}"></div>
+        <div style="flex:1;min-width:0">
+            <div class="event-name truncate">${e.event_name}</div>
+            <div class="event-hall">${e.hall_name} • ${e.banquet_name}</div>
+        </div>
+        <div class="event-guests">${Utils.formatNumber(e.expected_guests)} guests</div>
+    </div>`).join('');
+}
+
+/* ── Recent Bookings Table ── */
+function renderRecentBookings(bookings) {
+    const tbody = document.getElementById('recentBookingsBody');
+    if (!bookings?.length) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">No recent bookings</div></td></tr>`;
+        return;
+    }
+    tbody.innerHTML = bookings.map(b => `
+    <tr>
+        <td><a href="../bookings/detail.html?id=${b.booking_id}" style="color:var(--brand-primary);font-weight:600;text-decoration:none;font-family:var(--font-mono);font-size:12px">${b.booking_ref}</a></td>
+        <td>${Utils.truncate(b.customer_name, 22)}</td>
+        <td>${Utils.truncate(b.event_name || b.event_type, 20)}</td>
+        <td style="white-space:nowrap">${Utils.formatDate(b.booking_date)}</td>
+        <td>${Utils.truncate(b.hall_name || '—', 18)}</td>
+        <td style="white-space:nowrap">${Utils.formatCurrency(b.grand_total)}</td>
+        <td>${Utils.statusBadge(b.booking_status)}</td>
+        <td>
+            <a href="../bookings/detail.html?id=${b.booking_id}" class="btn-icon" title="View">👁</a>
+        </td>
+    </tr>`).join('');
+}
+
+/* ── Main load ── */
+async function loadDashboard() {
+    try {
+        /* KPIs */
+        const kpiRes = await API.dashboard.kpis({});
+        renderKPIs(kpiRes.data);
+
+        /* Revenue chart */
+        const months = kpiRes.data?.revenue_trend || [];
+        initRevenueChart(
+            months.map(m => m.label),
+            months.map(m => m.revenue),
+            months.map(m => m.booking_count)
+        );
+
+        /* Event type donut */
+        const etData = kpiRes.data?.event_type_breakdown || [];
+        initEventTypeChart(etData.map(e => e.type_name), etData.map(e => e.count));
+
+        /* Occupancy */
+        const occData = kpiRes.data?.hall_occupancy || [];
+        initOccupancyChart(
+            occData.map(h => Utils.truncate(h.hall_name, 14)),
+            occData.map(h => h.occupancy_pct)
+        );
+
+        /* Calendar */
+        const calRes = await API.dashboard.calendar({});
+        const calEvents = (calRes.data?.events || []).map((e, i) => ({
+            id:    e.booking_id,
+            title: e.event_name || e.event_type,
+            start: e.booking_date,
+            color: Utils.eventColor(i),
+            extendedProps: { booking_id: e.booking_id }
+        }));
+        initCalendar(calEvents);
+
+        /* Today's events */
+        renderTodayEvents(kpiRes.data?.todays_events || []);
+
+        /* Recent bookings */
+        const bookRes = await API.bookings.list({ limit: 8, page: 1 });
+        renderRecentBookings(bookRes.data?.bookings);
+
+    } catch (err) {
+        // Use demo/placeholder data if API not yet connected
+        renderKPIs({
+            today_bookings:   12,    today_bookings_delta:   8,
+            month_revenue:    2850000, month_revenue_delta:  12,
+            upcoming_events:  47,
+            active_customers: 386,
+            occupancy_rate:   73.5,
+            pending_payments: 485000,
+            total_halls:      11,
+        });
+
+        const demoMonths = ['Jan','Feb','Mar','Apr','May','Jun'];
+        initRevenueChart(
+            demoMonths,
+            [1200000, 1800000, 2100000, 1600000, 2400000, 2850000],
+            [18, 24, 31, 22, 38, 42]
+        );
+        initEventTypeChart(
+            ['Wedding','Birthday','Corporate','Reception','Anniversary'],
+            [42, 28, 35, 20, 15]
+        );
+        initOccupancyChart(
+            ['Royal Ballroom','Crystal Hall','Garden Lawn','Maharaja Hall','Diamond Hall'],
+            [85, 62, 78, 91, 55]
+        );
+        initCalendar([
+            { id:1, title:'Wedding',   start: new Date().toISOString().split('T')[0], color:'#7C3AED' },
+            { id:2, title:'Birthday',  start: new Date(Date.now()+86400000).toISOString().split('T')[0], color:'#10B981' },
+            { id:3, title:'Corporate', start: new Date(Date.now()+172800000).toISOString().split('T')[0], color:'#F59E0B' },
+        ]);
+        renderTodayEvents([
+            { start_time:'08:00', event_name:'Sharma Wedding Reception', hall_name:'Royal Ballroom', banquet_name:'Grand Events', expected_guests:450 },
+            { start_time:'14:00', event_name:'Kapoor Birthday Bash',     hall_name:'Crystal Hall',   banquet_name:'Grand Events', expected_guests:120 },
+            { start_time:'19:00', event_name:'Tech Summit Dinner',       hall_name:'Diamond Hall',   banquet_name:'Emerald CC',   expected_guests:200 },
+        ]);
+        renderRecentBookings([
+            { booking_id:1, booking_ref:'BNQ-2026-000001', customer_name:'Arjun Sharma',  event_name:'Wedding Ceremony',     booking_date:'2026-07-15', hall_name:'Royal Ballroom', grand_total:225000, booking_status:'advance_paid' },
+            { booking_id:2, booking_ref:'BNQ-2026-000002', customer_name:'Priya Patel',   event_name:'Birthday Celebration', booking_date:'2026-07-18', hall_name:'Crystal Hall',   grand_total:85000,  booking_status:'confirmed' },
+            { booking_id:3, booking_ref:'BNQ-2026-000003', customer_name:'Rahul Gupta',   event_name:'Corporate Seminar',    booking_date:'2026-07-20', hall_name:'Executive Suite', grand_total:42000,  booking_status:'fully_paid' },
+            { booking_id:4, booking_ref:'BNQ-2026-000004', customer_name:'Anjali Singh',  event_name:'Reception Dinner',     booking_date:'2026-07-22', hall_name:'Garden Lawn',    grand_total:148000, booking_status:'confirmed' },
+            { booking_id:5, booking_ref:'BNQ-2026-000005', customer_name:'Vikram Mehta',  event_name:'Silver Anniversary',   booking_date:'2026-07-25', hall_name:'Terrace Lounge', grand_total:68000,  booking_status:'advance_paid' },
+        ]);
+    }
+}
+
+/* ── Init ── */
+document.addEventListener('DOMContentLoaded', () => {
+    setGreeting();
+    loadDashboard();
+
+    /* Re-draw charts on theme change */
+    const observer = new MutationObserver(() => {
+        if (revenueChart) { revenueChart.destroy(); revenueChart = null; }
+        if (eventTypeChart) { eventTypeChart.destroy(); eventTypeChart = null; }
+        if (occupancyChart) { occupancyChart.destroy(); occupancyChart = null; }
+        loadDashboard();
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    /* Revenue period change */
+    document.getElementById('revenuePeriod')?.addEventListener('change', loadDashboard);
+});
+</script>
+</body>
+</html>

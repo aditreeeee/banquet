@@ -1,0 +1,311 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Profile | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.profile-hero { background:linear-gradient(135deg,#7C3AED,#4F46E5);border-radius:var(--radius-lg);padding:28px 32px;margin-bottom:20px;position:relative;overflow:hidden }
+.profile-hero::before { content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:rgba(255,255,255,.07);border-radius:50% }
+.profile-hero::after  { content:'';position:absolute;bottom:-60px;right:60px;width:140px;height:140px;background:rgba(255,255,255,.05);border-radius:50% }
+.hero-avatar { width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;background:rgba(255,255,255,.15);backdrop-filter:blur(6px) }
+.hero-name  { font-size:22px;font-weight:800;color:#fff;margin-bottom:3px }
+.hero-meta  { font-size:13px;color:rgba(255,255,255,.75) }
+.hero-stat  { text-align:center }
+.hero-stat-val  { font-size:20px;font-weight:800;color:#fff }
+.hero-stat-lbl  { font-size:11.5px;color:rgba(255,255,255,.7);margin-top:2px }
+.detail-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:14px }
+.detail-card h6 { font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border-color) }
+.info-row { display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border-color) }
+.info-row:last-child { border-bottom:none }
+.info-label { font-size:12.5px;color:var(--text-muted) }
+.info-value { font-size:12.5px;font-weight:500;color:var(--text-primary);text-align:right }
+.review-stars { color:#F59E0B;letter-spacing:1px }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <div class="nav-section-label">CRM</div>
+        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
+        <a href="../bookings/create.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span><span class="sidebar-text">Payments</span></a>
+    </nav>
+    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item"><a href="index.html">Customers</a></li><li class="breadcrumb-item active" id="breadcrumbName">Profile</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div id="loadingState" style="text-align:center;padding:60px"><span class="spinner-border" style="color:var(--brand-primary)"></span></div>
+        <div id="pageContent" style="display:none">
+
+        <!-- Hero -->
+        <div class="profile-hero">
+            <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px">
+                <div class="hero-avatar" id="heroAvatar"></div>
+                <div>
+                    <div class="hero-name" id="heroName"></div>
+                    <div class="hero-meta" id="heroMeta"></div>
+                    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap" id="heroTags"></div>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px;position:relative;z-index:1">
+                    <a href="../bookings/create.html" class="btn-primary-brand" style="text-decoration:none;color:#fff" id="newBookingBtn"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> New Booking</a>
+                    <button class="btn-ghost" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="editCustomer()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> Edit</button>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.15)">
+                <div class="hero-stat"><div class="hero-stat-val" id="statBookings">—</div><div class="hero-stat-lbl">Total Bookings</div></div>
+                <div class="hero-stat"><div class="hero-stat-val" id="statSpend">—</div><div class="hero-stat-lbl">Total Spend</div></div>
+                <div class="hero-stat"><div class="hero-stat-val" id="statAvg">—</div><div class="hero-stat-lbl">Avg Booking Value</div></div>
+                <div class="hero-stat"><div class="hero-stat-val" id="statRating">—</div><div class="hero-stat-lbl">Avg Review</div></div>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:320px 1fr;gap:16px">
+            <!-- Left: contact + notes -->
+            <div>
+                <div class="detail-card">
+                    <h6>Contact Info</h6>
+                    <div class="info-row"><span class="info-label">Email</span><span class="info-value" id="infoEmail">—</span></div>
+                    <div class="info-row"><span class="info-label">Phone</span><span class="info-value" id="infoPhone">—</span></div>
+                    <div class="info-row"><span class="info-label">Alt Phone</span><span class="info-value" id="infoAlt">—</span></div>
+                    <div class="info-row"><span class="info-label">WhatsApp</span><span class="info-value" id="infoWA">—</span></div>
+                    <div class="info-row"><span class="info-label">City</span><span class="info-value" id="infoCity">—</span></div>
+                    <div class="info-row"><span class="info-label">Address</span><span class="info-value" id="infoAddr" style="max-width:160px;text-align:right">—</span></div>
+                </div>
+                <div class="detail-card">
+                    <h6>Account Info</h6>
+                    <div class="info-row"><span class="info-label">Customer ID</span><span class="info-value" id="infoId">—</span></div>
+                    <div class="info-row"><span class="info-label">Source</span><span class="info-value" id="infoSource">—</span></div>
+                    <div class="info-row"><span class="info-label">Joined</span><span class="info-value" id="infoJoined">—</span></div>
+                    <div class="info-row"><span class="info-label">Last Booking</span><span class="info-value" id="infoLastBook">—</span></div>
+                    <div class="info-row"><span class="info-label">Credit Limit</span><span class="info-value" id="infoCreditLimit">—</span></div>
+                    <div class="info-row"><span class="info-label">Outstanding</span><span class="info-value" id="infoOutstanding" style="color:var(--color-warning)">—</span></div>
+                </div>
+                <div class="detail-card">
+                    <h6>Internal Notes</h6>
+                    <textarea class="form-control" id="custNotes" rows="4" placeholder="Add private notes about this customer…" style="font-size:12.5px"></textarea>
+                    <button class="btn-ghost" style="margin-top:10px;font-size:12px" onclick="saveNotes()">Save Notes</button>
+                </div>
+            </div>
+
+            <!-- Right: bookings + reviews -->
+            <div>
+                <!-- Tabs -->
+                <div style="display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:16px">
+                    <button class="stab2 active" data-tab2="bookings" onclick="switchTab2('bookings')"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg> Bookings</button>
+                    <button class="stab2" data-tab2="payments" onclick="switchTab2('payments')"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg> Payments</button>
+                    <button class="stab2" data-tab2="reviews"  onclick="switchTab2('reviews')"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="m12 2 3.2 6.5 7.2.8-5.4 5.1 1.5 7-6.5-3.6-6.5 3.6 1.5-7-5.4-5.1 7.2-.8z"></path></svg> Reviews</button>
+                </div>
+
+                <!-- Bookings tab -->
+                <div id="tab2-bookings">
+                    <div class="table-card">
+                        <div class="table-responsive">
+                            <table class="table" style="font-size:12.5px">
+                                <thead><tr><th>Booking Ref</th><th>Event</th><th>Date</th><th>Hall</th><th>Amount</th><th>Status</th></tr></thead>
+                                <tbody id="custBookingsBody"><tr><td colspan="6" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payments tab -->
+                <div id="tab2-payments" style="display:none">
+                    <div class="table-card">
+                        <div class="table-responsive">
+                            <table class="table" style="font-size:12.5px">
+                                <thead><tr><th>Payment Ref</th><th>Date</th><th>Method</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+                                <tbody id="custPaymentsBody"><tr><td colspan="6" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reviews tab -->
+                <div id="tab2-reviews" style="display:none">
+                    <div id="custReviewsList"></div>
+                </div>
+            </div>
+        </div>
+
+        </div><!-- /pageContent -->
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+const DEMO_CUSTOMER = {
+    customer_id:1, first_name:'Arjun', last_name:'Sharma',
+    email:'arjun.sharma@email.com', phone:'+91 98765 43210', alt_phone:'+91 91234 56789',
+    whatsapp:'+91 98765 43210', city:'Mumbai', address:'42, Palm Grove Society, Juhu, Mumbai – 400049',
+    source:'referral', joined_date:'2024-03-15', last_booking_date:'2026-06-10',
+    credit_limit:200000, outstanding_balance:398250,
+    total_bookings:3, total_spend:1278000, avg_booking_value:426000, avg_rating:4.7,
+    tags:['VIP','Wedding Specialist'],
+    notes:'Prefers vegetarian catering. Usually books 3-4 months in advance. Has referred 2 customers.',
+    bookings:[
+        { booking_id:1, booking_ref:'BNQ-2026-000001', event_name:'Wedding Reception',  booking_date:'2026-08-15', hall_name:'Grand Ballroom',   grand_total:531000, status:'advance_paid' },
+        { booking_id:8, booking_ref:'BNQ-2025-000045', event_name:'Engagement Ceremony',booking_date:'2025-11-20', hall_name:'Silver Terrace',    grand_total:285000, status:'fully_paid'   },
+        { booking_id:12,booking_ref:'BNQ-2025-000012', event_name:'Birthday Party',     booking_date:'2025-06-10', hall_name:'Emerald Hall',      grand_total:124000, status:'fully_paid'   },
+    ],
+    payments:[
+        { payment_ref:'PAY-2026-000001', payment_date:'2026-06-10', payment_method:'UPI',           payment_type:'Advance', amount:132750, payment_status:'completed' },
+        { payment_ref:'PAY-2025-000145', payment_date:'2025-11-18', payment_method:'Bank Transfer',  payment_type:'Full',    amount:285000, payment_status:'completed' },
+        { payment_ref:'PAY-2025-000045', payment_date:'2025-06-08', payment_method:'Card',           payment_type:'Full',    amount:124000, payment_status:'completed' },
+    ],
+    reviews:[
+        { review_id:1, rating:5, comment:'Absolutely fantastic! The hall was stunning and the catering was excellent. Will definitely book again.',       created_at:'2025-11-25', event_name:'Engagement Ceremony' },
+        { review_id:2, rating:4, comment:'Great experience overall. Staff were very helpful. Minor hiccup with setup timing but resolved quickly.', created_at:'2025-06-15', event_name:'Birthday Party' },
+    ],
+};
+
+const SOURCE_LABELS = { referral:'Referral', walk_in:'Walk-in', website:'Website', phone:'Phone', social_media:'Social Media' };
+const AVATAR_COLORS = ['#7C3AED','#2563EB','#DC2626','#D97706','#059669','#7C3AED','#DB2777'];
+
+let customer = null;
+
+async function loadCustomer() {
+    const id = new URLSearchParams(location.search).get('id');
+    try {
+        const res = await API.customers.detail(id);
+        customer  = res.data;
+    } catch {
+        customer  = DEMO_CUSTOMER;
+    }
+    render(customer);
+}
+
+function render(c) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('pageContent').style.display  = '';
+    document.getElementById('breadcrumbName').textContent = c.first_name + ' ' + c.last_name;
+
+    const initials = Utils.initials(c.first_name + ' ' + c.last_name);
+    const color    = AVATAR_COLORS[c.customer_id % AVATAR_COLORS.length];
+    const heroAv   = document.getElementById('heroAvatar');
+    heroAv.textContent = initials;
+
+    document.getElementById('heroName').textContent = c.first_name + ' ' + c.last_name;
+    document.getElementById('heroMeta').textContent = `${c.email} · ${c.phone} · ${c.city}`;
+    document.getElementById('heroTags').innerHTML   = (c.tags||[]).map(t => `<span style="background:rgba(255,255,255,.15);color:#fff;padding:3px 10px;border-radius:20px;font-size:11.5px">${t}</span>`).join('');
+
+    document.getElementById('statBookings').textContent = c.total_bookings;
+    document.getElementById('statSpend').textContent    = Utils.formatCurrencyShort(c.total_spend);
+    document.getElementById('statAvg').textContent      = Utils.formatCurrencyShort(c.avg_booking_value);
+    document.getElementById('statRating').innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="m12 2 3.2 6.5 7.2.8-5.4 5.1 1.5 7-6.5-3.6-6.5 3.6 1.5-7-5.4-5.1 7.2-.8z"></path></svg><span>${c.avg_rating?.toFixed(1) || '—'}</span></span>`;
+
+    document.getElementById('infoEmail').textContent    = c.email;
+    document.getElementById('infoPhone').textContent    = c.phone;
+    document.getElementById('infoAlt').textContent      = c.alt_phone || '—';
+    document.getElementById('infoWA').textContent       = c.whatsapp  || '—';
+    document.getElementById('infoCity').textContent     = c.city;
+    document.getElementById('infoAddr').textContent     = c.address   || '—';
+    document.getElementById('infoId').textContent       = '#' + c.customer_id;
+    document.getElementById('infoSource').textContent   = SOURCE_LABELS[c.source] || Utils.titleCase(c.source || '');
+    document.getElementById('infoJoined').textContent   = Utils.formatDate(c.joined_date);
+    document.getElementById('infoLastBook').textContent = Utils.formatDate(c.last_booking_date);
+    document.getElementById('infoCreditLimit').textContent   = Utils.formatCurrency(c.credit_limit);
+    document.getElementById('infoOutstanding').textContent   = Utils.formatCurrency(c.outstanding_balance);
+    document.getElementById('custNotes').value               = c.notes || '';
+
+    document.getElementById('newBookingBtn').href = `../bookings/create.html?customer_id=${c.customer_id}`;
+
+    renderBookings(c.bookings || []);
+    renderPayments(c.payments || []);
+    renderReviews(c.reviews   || []);
+}
+
+function renderBookings(bookings) {
+    document.getElementById('custBookingsBody').innerHTML = bookings.map(b => `
+    <tr>
+        <td><a href="../bookings/detail.html?id=${b.booking_id}" style="color:var(--brand-primary);font-family:var(--font-mono);font-size:11.5px">${b.booking_ref}</a></td>
+        <td>${Utils.truncate(b.event_name,25)}</td>
+        <td>${Utils.formatDate(b.booking_date)}</td>
+        <td>${Utils.truncate(b.hall_name,20)}</td>
+        <td style="font-weight:700">${Utils.formatCurrency(b.grand_total)}</td>
+        <td>${Utils.statusBadge(b.status)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="text-center" style="color:var(--text-muted)">No bookings</td></tr>';
+}
+
+function renderPayments(pays) {
+    document.getElementById('custPaymentsBody').innerHTML = pays.map(p => `
+    <tr>
+        <td style="font-family:var(--font-mono);font-size:11.5px;color:var(--brand-primary)">${p.payment_ref}</td>
+        <td>${Utils.formatDate(p.payment_date)}</td>
+        <td>${p.payment_method}</td>
+        <td>${p.payment_type}</td>
+        <td style="font-weight:700">${Utils.formatCurrency(p.amount)}</td>
+        <td>${Utils.statusBadge(p.payment_status)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="text-center" style="color:var(--text-muted)">No payments</td></tr>';
+}
+
+function renderReviews(reviews) {
+    const wrap = document.getElementById('custReviewsList');
+    if (!reviews.length) { wrap.innerHTML = '<div class="empty-state" style="padding:32px">No reviews yet</div>'; return; }
+    wrap.innerHTML = reviews.map(r => `
+    <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <div>
+                <span class="review-stars">${'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>'.repeat(r.rating)}${'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>'.repeat(5-r.rating)}</span>
+                <span style="font-size:12px;color:var(--text-muted);margin-left:6px">${r.rating}/5</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)">${Utils.formatDate(r.created_at)} · ${r.event_name}</div>
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin:0">${r.comment}</p>
+    </div>`).join('');
+}
+
+function switchTab2(tab) {
+    document.querySelectorAll('.stab2').forEach(b => b.classList.toggle('active', b.dataset.tab2 === tab));
+    document.querySelectorAll('[id^="tab2-"]').forEach(p => p.style.display = p.id === `tab2-${tab}` ? '' : 'none');
+}
+
+async function saveNotes() {
+    const notes = document.getElementById('custNotes').value;
+    try { await API.customers.update(customer.customer_id, { notes }); } catch { /* demo */ }
+    Utils.toast('Notes saved', 'success');
+}
+
+function editCustomer() { window.location.href = `index.html?edit=${customer?.customer_id}`; }
+
+// Stab2 styles
+const s = document.createElement('style');
+s.textContent = `.stab2{background:none;border:none;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);border-bottom:2.5px solid transparent;transition:.15s}.stab2.active{color:var(--brand-primary);border-bottom-color:var(--brand-primary);font-weight:700}`;
+document.head.appendChild(s);
+
+document.addEventListener('DOMContentLoaded', loadCustomer);
+</script>
+</body>
+</html>

@@ -168,6 +168,8 @@ const DEMO_USERS = [
 
 const ROLE_COLORS = { 'Super Admin':'#7C3AED','Company Admin':'#2563EB','Branch Manager':'#10B981','Booking Executive':'#F59E0B' };
 
+let currentUsers = [];
+
 async function loadUsers(page = 1) {
     const tbody = document.getElementById('usersBody');
     tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>';
@@ -178,10 +180,12 @@ async function loadUsers(page = 1) {
             status: document.getElementById('statusFilter').value  || undefined,
         });
         const users = res.data?.users || [];
+        currentUsers = users;
         renderUsers(users);
         updateKPIs(res.data?.stats || {});
         Utils.renderPagination('userPagination', { page, limit:20, total: res.data?.meta?.total || users.length }, loadUsers);
     } catch {
+        currentUsers = DEMO_USERS;
         renderUsers(DEMO_USERS);
         updateKPIs({ super_admin:1, company_admin:1, branch_manager:2, booking_exec:3, active:6 });
         Utils.renderPagination('userPagination', { page:1, limit:20, total:7 }, loadUsers);
@@ -212,7 +216,7 @@ function renderUsers(users) {
             <div style="display:flex;gap:4px">
                 <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="editUser(${u.user_id})" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
                 ${u.status === 'active' ? `<button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--color-warning)" onclick="toggleStatus(${u.user_id},'inactive')" title="Deactivate"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path></svg></button>` : `<button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--color-success)" onclick="toggleStatus(${u.user_id},'active')" title="Activate"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0"></path></svg></button>`}
-                <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="resetPassword(${u.user_id})" title="Reset Password"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg></button>
+                <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="resetPassword(${u.user_id}, '${u.email}')" title="Reset Password"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg></button>
             </div>
         </td>
     </tr>`).join('');
@@ -235,6 +239,8 @@ function openModal(user = null) {
     document.getElementById('uLastName').value  = user?.last_name  || '';
     document.getElementById('uEmail').value     = user?.email      || '';
     document.getElementById('uPhone').value     = user?.phone      || '';
+    document.getElementById('uRole').value      = user?.role_id    || '';
+    document.getElementById('uBranch').value    = user?.branch_id  || '';
     document.getElementById('uStatus').value    = user?.status     || 'active';
     document.getElementById('passFieldWrap').style.display = user ? 'none' : '';
     userModalInst = new bootstrap.Modal(document.getElementById('userModal'));
@@ -242,7 +248,7 @@ function openModal(user = null) {
 }
 
 function editUser(id) {
-    const u = DEMO_USERS.find(u => u.user_id === id);
+    const u = currentUsers.find(u => u.user_id === id);
     openModal(u || { user_id: id });
 }
 
@@ -280,16 +286,22 @@ async function toggleStatus(id, newStatus) {
     const ok = await Utils.confirm(`${Utils.titleCase(label)} this user?`, { danger: newStatus !== 'active' });
     if (!ok) return;
     try {
-        await API.users.update(id, { status: newStatus });
+        // The backend flips the current status; it doesn't accept a target
+        // value (there is no PUT /users/:id field that maps to it either).
+        await API.users.toggle(id);
     } catch { /* demo */ }
     Utils.toast(`User ${label}d`, newStatus === 'active' ? 'success' : 'warning');
     loadUsers(1);
 }
 
-async function resetPassword(id) {
+async function resetPassword(id, email) {
     const ok = await Utils.confirm('Send password reset email to this user?', { title:'Reset Password' });
     if (!ok) return;
-    try { await API.users.resetPassword(id); } catch { /* demo */ }
+    try {
+        // There is no admin-initiated reset endpoint; reuse the existing
+        // forgot-password flow (generates a token + queues the reset email).
+        await API.auth.forgotPassword(email);
+    } catch { /* demo */ }
     Utils.toast('Password reset email sent', 'info');
 }
 

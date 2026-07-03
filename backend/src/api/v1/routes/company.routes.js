@@ -21,9 +21,14 @@ router.get('/', requireRole(USER_ROLES.SUPER_ADMIN), async (req, res) => {
 });
 
 router.get('/:id', requireRole(USER_ROLES.SUPER_ADMIN, USER_ROLES.COMPANY_ADMIN), async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!req.user.isSuperAdmin && id !== req.companyId) {
+        return res.status(404).json({ success: false, message: 'Company not found' });
+    }
+
     const rows = await executeQuery(
-        `SELECT * FROM Companies WHERE company_id = :id`,
-        { id: parseInt(req.params.id, 10) }
+        `SELECT * FROM Companies WHERE company_id = @id`,
+        { id }
     );
     if (!rows[0]) return res.status(404).json({ success: false, message: 'Company not found' });
     return response.success(res, rows[0]);
@@ -35,7 +40,8 @@ router.post('/', requireRole(USER_ROLES.SUPER_ADMIN), async (req, res) => {
 
     const result = await executeQuery(
         `INSERT INTO Companies (company_name, email, phone, address, city, state, is_active, created_at, updated_at)
-         VALUES (:name, :email, :phone, :address, :city, :state, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+         OUTPUT INSERTED.company_id AS insertId
+         VALUES (@name, @email, @phone, @address, @city, @state, 1, GETUTCDATE(), GETUTCDATE())`,
         {
             name:    companyName,
             email:   email   || null,
@@ -45,22 +51,27 @@ router.post('/', requireRole(USER_ROLES.SUPER_ADMIN), async (req, res) => {
             state:   state   || null,
         }
     );
-    return response.created(res, { company_id: result.insertId });
+    return response.created(res, { company_id: result[0].insertId });
 });
 
 router.patch('/:id', requireRole(USER_ROLES.SUPER_ADMIN, USER_ROLES.COMPANY_ADMIN), async (req, res) => {
+    const idParam = parseInt(req.params.id, 10);
+    if (!req.user.isSuperAdmin && idParam !== req.companyId) {
+        return res.status(404).json({ success: false, message: 'Company not found' });
+    }
+
     const { companyName, email, phone, address, city, state, isActive } = req.body;
     await executeQuery(
         `UPDATE Companies
-         SET company_name = IFNULL(:name,     company_name),
-             email        = IFNULL(:email,    email),
-             phone        = IFNULL(:phone,    phone),
-             address      = IFNULL(:address,  address),
-             city         = IFNULL(:city,     city),
-             state        = IFNULL(:state,    state),
-             is_active    = IFNULL(:isActive, is_active),
-             updated_at   = UTC_TIMESTAMP()
-         WHERE company_id = :id`,
+         SET company_name = ISNULL(@name,     company_name),
+             email        = ISNULL(@email,    email),
+             phone        = ISNULL(@phone,    phone),
+             address      = ISNULL(@address,  address),
+             city         = ISNULL(@city,     city),
+             state        = ISNULL(@state,    state),
+             is_active    = ISNULL(@isActive, is_active),
+             updated_at   = GETUTCDATE()
+         WHERE company_id = @id`,
         {
             id:       parseInt(req.params.id, 10),
             name:     companyName || null,

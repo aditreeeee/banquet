@@ -40,7 +40,16 @@ const normalize = (data) => ({
 });
 
 const create = async (data, actor) => {
-    return repo.create({ ...normalize(data), companyId: actor.companyId });
+    const normalized = normalize(data);
+
+    if (!normalized.branchId) {
+        throw new ValidationError('branch_id is required');
+    }
+    if (!normalized.address) {
+        throw new ValidationError('address is required');
+    }
+
+    return repo.create({ ...normalized, companyId: actor.companyId });
 };
 
 const update = async (id, data, actor) => {

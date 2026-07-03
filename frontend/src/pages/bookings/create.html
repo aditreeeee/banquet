@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
@@ -195,7 +195,7 @@
                         <h1 class="page-title" style="font-size:18px">New Booking</h1>
                         <p class="page-subtitle" id="stepDescription">Select your event date and banquet hall</p>
                     </div>
-                    <div style="font-size:13px;color:var(--text-muted)">Step <strong id="currentStepNum">1</strong> of 8</div>
+                    <div style="font-size:13px;color:var(--text-muted)">Step <strong id="currentStepNum">1</strong> of 9</div>
                 </div>
 
                 <!-- Progress bar -->
@@ -240,15 +240,30 @@
                 </div>
                 <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
                     <div></div>
+                    <button class="btn-primary-brand" onclick="nextStep()">Next: Choose Banquet →</button>
+                </div>
+            </div>
+
+            <!-- STEP 2: Banquet Selection -->
+            <div class="step-panel card" id="step2">
+                <div class="card-body">
+                    <h5 style="font-weight:700;margin-bottom:8px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 20V9l8-5 8 5v11"></path><path d="M8 20v-5h8v5"></path><path d="M10 9h4"></path></svg> Select Banquet</h5>
+                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Choose the banquet property. Halls in the next step will be filtered to this banquet.</p>
+                    <div id="banquetsGrid" class="row g-3">
+                        <div class="col-12 text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading banquets…</div>
+                    </div>
+                </div>
+                <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
+                    <button class="btn-ghost" onclick="prevStep()">← Back</button>
                     <button class="btn-primary-brand" onclick="nextStep()">Next: Choose Hall →</button>
                 </div>
             </div>
 
-            <!-- STEP 2: Hall Selection -->
-            <div class="step-panel card" id="step2">
+            <!-- STEP 3: Hall Selection -->
+            <div class="step-panel card" id="step3">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:8px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Select Hall</h5>
-                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Showing available halls for your selected date and guest count.</p>
+                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Showing halls for the selected banquet, date and guest count.</p>
                     <div id="hallsGrid" class="row g-3">
                         <div class="col-12 text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Checking availability…</div>
                     </div>
@@ -259,8 +274,8 @@
                 </div>
             </div>
 
-            <!-- STEP 3: Event Details -->
-            <div class="step-panel card" id="step3">
+            <!-- STEP 4: Event Details -->
+            <div class="step-panel card" id="step4">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 2v3"></path><path d="m7 5 2 2"></path><path d="m17 5-2 2"></path><path d="M5 12h14"></path><path d="M8 16h8"></path><path d="M10 20h4"></path></svg> Event Details</h5>
                     <div class="row g-3">
@@ -320,15 +335,15 @@
                 </div>
             </div>
 
-            <!-- STEP 4: Catering -->
-            <div class="step-panel card" id="step4">
+            <!-- STEP 5: Catering -->
+            <div class="step-panel card" id="step5">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:8px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 3v8"></path><path d="M6 11h4"></path><path d="M10 3v8"></path><path d="M14 5h4"></path><path d="M16 3v10"></path></svg> Catering Package</h5>
                     <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Optional — select a package or skip this step.</p>
                     <div class="row g-3">
                         <div class="col-md-3 col-6">
                             <div class="pkg-card" onclick="selectPkg('none',0,'No Catering')">
-                                <div style="font-size:24px;margin-bottom:8px">â­</div>
+                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></div>
                                 <div style="font-weight:600;font-size:13px">No Catering</div>
                                 <div style="font-size:12px;color:var(--text-muted)">Self-arranged</div>
                                 <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹0</div>
@@ -379,8 +394,8 @@
                 </div>
             </div>
 
-            <!-- STEP 5: Decoration -->
-            <div class="step-panel card" id="step5">
+            <!-- STEP 6: Decoration -->
+            <div class="step-panel card" id="step6">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3c-2 2-2 4-2 7"></path><path d="M12 3c2 2 2 4 2 7"></path><path d="M8 10c2 1 3 2 4 5"></path><path d="M16 10c-2 1-3 2-4 5"></path></svg> Decoration</h5>
                     <div class="row g-3">
@@ -411,8 +426,8 @@
                 </div>
             </div>
 
-            <!-- STEP 6: Additional Services -->
-            <div class="step-panel card" id="step6">
+            <!-- STEP 7: Additional Services -->
+            <div class="step-panel card" id="step7">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M8 13a4 4 0 0 0 8 0"></path><path d="M12 17v4"></path></svg> Additional Services</h5>
                     <div class="row g-3">
@@ -434,8 +449,8 @@
                 </div>
             </div>
 
-            <!-- STEP 7: Pricing Summary -->
-            <div class="step-panel card" id="step7">
+            <!-- STEP 8: Pricing Summary -->
+            <div class="step-panel card" id="step8">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg> Pricing Summary</h5>
                     <div class="row g-4">
@@ -461,7 +476,7 @@
                                 <div id="couponResult" style="font-size:12px;margin-top:8px"></div>
                             </div>
                             <div style="margin-top:16px;padding:14px;background:var(--color-info-bg);border-radius:var(--radius-md);font-size:12.5px;color:var(--color-info)">
-                                â„¹ Advance payment secures the hall. Balance is due before the event.
+                                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg> Advance payment secures the hall. Balance is due before the event.
                             </div>
                         </div>
                     </div>
@@ -472,8 +487,8 @@
                 </div>
             </div>
 
-            <!-- STEP 8: Confirmation -->
-            <div class="step-panel card" id="step8">
+            <!-- STEP 9: Confirmation -->
+            <div class="step-panel card" id="step9">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg> Review & Confirm</h5>
                     <div id="confirmationSummary" class="row g-4">
@@ -488,7 +503,7 @@
                                 <div><div class="confirm-label">Hall</div><div class="confirm-value" id="cfmHall">—</div></div>
                             </div>
                             <div class="confirm-row">
-                                <div class="confirm-icon">â°</div>
+                                <div class="confirm-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg></div>
                                 <div><div class="confirm-label">Time</div><div class="confirm-value" id="cfmTime">—</div></div>
                             </div>
                             <div class="confirm-row">
@@ -598,13 +613,14 @@ Auth.requireAuth('../auth/login.html');
 
 const STEPS = [
     { id:1, label:'Date & Time',  desc:'Select event date and time' },
-    { id:2, label:'Hall',         desc:'Choose your hall' },
-    { id:3, label:'Event Info',   desc:'Event details and customer' },
-    { id:4, label:'Catering',     desc:'Select catering package' },
-    { id:5, label:'Decoration',   desc:'Choose decoration package' },
-    { id:6, label:'Services',     desc:'Additional services' },
-    { id:7, label:'Pricing',      desc:'Review pricing and apply coupon' },
-    { id:8, label:'Confirm',      desc:'Review and confirm booking' },
+    { id:2, label:'Banquet',      desc:'Select banquet property' },
+    { id:3, label:'Hall',         desc:'Choose your hall' },
+    { id:4, label:'Event Info',   desc:'Event details and customer' },
+    { id:5, label:'Catering',     desc:'Select catering package' },
+    { id:6, label:'Decoration',   desc:'Choose decoration package' },
+    { id:7, label:'Services',     desc:'Additional services' },
+    { id:8, label:'Pricing',      desc:'Review pricing and apply coupon' },
+    { id:9, label:'Confirm',      desc:'Review and confirm booking' },
 ];
 
 const SERVICES = [
@@ -618,9 +634,14 @@ const SERVICES = [
     { id:8, name:'Valet Parking',     price:8000  },
 ];
 
+/* ── Edit mode ── */
+let editMode      = false;
+let editBookingId = null;
+
 /* â”€â”€ State â”€â”€ */
 const state = {
     currentStep:    1,
+    bookingRef:     '',
     eventDate:      '',
     banquetId:      null,
     banquetName:    '',
@@ -667,7 +688,7 @@ function renderSteps() {
 
     document.getElementById('currentStepNum').textContent  = state.currentStep;
     document.getElementById('stepDescription').textContent = STEPS[state.currentStep - 1].desc;
-    document.getElementById('wizardProgress').style.width  = (state.currentStep / 8 * 100) + '%';
+    document.getElementById('wizardProgress').style.width  = (state.currentStep / 9 * 100) + '%';
 
     // Show/hide panels
     STEPS.forEach(s => {
@@ -679,15 +700,44 @@ function renderSteps() {
 /* â”€â”€ Navigation â”€â”€ */
 async function nextStep() {
     if (!validateCurrentStep()) return;
-    if (state.currentStep === 1) await loadHalls();
-    if (state.currentStep === 6) calculatePrice();
-    if (state.currentStep === 7) populateConfirmation();
-    state.currentStep = Math.min(8, state.currentStep + 1);
+    // Editing an existing booking cannot change banquet/hall/date (no reschedule flow here) —
+    // skip straight from Date & Time (step 1) to Event Info (step 4).
+    if (editMode && state.currentStep === 1) {
+        state.currentStep = 4;
+        renderSteps();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+    // Edit mode has no catering/decoration/services/pricing to review — only event details change.
+    if (editMode && state.currentStep === 4) {
+        populateConfirmation();
+        state.currentStep = 9;
+        renderSteps();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+    if (state.currentStep === 1) await loadBanquets();
+    if (state.currentStep === 2) await loadHalls();
+    if (state.currentStep === 7) calculatePrice();
+    if (state.currentStep === 8) populateConfirmation();
+    state.currentStep = Math.min(9, state.currentStep + 1);
     renderSteps();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function prevStep() {
+    if (editMode && state.currentStep === 4) {
+        state.currentStep = 1;
+        renderSteps();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+    if (editMode && state.currentStep === 9) {
+        state.currentStep = 4;
+        renderSteps();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
     state.currentStep = Math.max(1, state.currentStep - 1);
     renderSteps();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -714,10 +764,14 @@ function validateCurrentStep() {
     }
 
     if (state.currentStep === 2) {
-        if (!state.hallId) { showAlert('Please select a hall.'); return false; }
+        if (!state.banquetId) { showAlert('Please select a banquet.'); return false; }
     }
 
     if (state.currentStep === 3) {
+        if (!state.hallId) { showAlert('Please select a hall.'); return false; }
+    }
+
+    if (state.currentStep === 4) {
         const evtType = document.getElementById('eventType').value;
         const evtName = document.getElementById('eventName').value.trim();
         if (!evtType) { showAlert('Please select event type.'); return false; }
@@ -729,7 +783,7 @@ function validateCurrentStep() {
         state.specialRequests = document.getElementById('specialRequests').value;
     }
 
-    if (state.currentStep === 4) {
+    if (state.currentStep === 5) {
         if (state.cateringPkgId && state.cateringPkgId !== 'none') {
             const pc = parseInt(document.getElementById('plateCount').value);
             if (!pc || pc < state.guestCount) {
@@ -741,20 +795,20 @@ function validateCurrentStep() {
         }
     }
 
-    if (state.currentStep === 5) {
+    if (state.currentStep === 6) {
         const dt = document.getElementById('decorationType').value;
         state.decorationAmt = dt === 'custom'
             ? parseInt(document.getElementById('customDecoAmount').value) || 0
             : parseInt(dt) || 0;
     }
 
-    if (state.currentStep === 6) {
+    if (state.currentStep === 7) {
         const selected = document.querySelectorAll('.svc-check:checked');
         state.selectedServices = Array.from(selected).map(c => ({ id: parseInt(c.dataset.id), name: c.dataset.name, price: parseInt(c.dataset.price) }));
         state.servicesTotal = state.selectedServices.reduce((s, x) => s + x.price, 0);
     }
 
-    if (state.currentStep === 8) {
+    if (state.currentStep === 9) {
         if (!document.getElementById('termsAccept').checked) {
             showAlert('Please accept the terms and conditions to confirm.'); return false;
         }
@@ -778,18 +832,70 @@ function getErrorMessage(err, fallback = 'Something went wrong.') {
 function showAlert(msg) {
     const el = document.getElementById('wizardAlert');
     const safeMessage = String(msg || 'Please try again.').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    el.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px"><span aria-hidden="true" style="font-size:16px">âš ï¸</span><div>${safeMessage}</div></div>`;
+    el.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;flex-shrink:0" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><div>${safeMessage}</div></div>`;
     el.style.display = '';
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-/* â”€â”€ Load halls (all halls — no banquet filter required) â”€â”€ */
+/* ── Load banquets (Step 2) ── */
+async function loadBanquets() {
+    const grid = document.getElementById('banquetsGrid');
+    grid.innerHTML = '<div class="col-12 text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading banquets…</div>';
+    try {
+        const res = await API.banquets.list({ limit: 100, is_active: true });
+        const banquets = res.data?.banquets || res.data?.rows || res.banquets || [];
+        renderBanquets(banquets);
+    } catch {
+        // Demo banquets (shown when API is unreachable)
+        renderBanquets([
+            { banquet_id: 1, banquet_name: 'Royal Heritage Banquet', city: 'Mumbai', active_halls: 3 },
+            { banquet_id: 2, banquet_name: 'Grand Celebration Hall',  city: 'Pune',   active_halls: 2 },
+        ]);
+    }
+}
+
+function renderBanquets(banquets) {
+    const grid = document.getElementById('banquetsGrid');
+    if (!banquets.length) {
+        grid.innerHTML = `<div class="col-12"><div class="empty-state">No banquets available.</div></div>`;
+        return;
+    }
+    grid.innerHTML = banquets.map(bq => `
+    <div class="col-md-6">
+        <div class="hall-card ${state.banquetId === bq.banquet_id ? 'selected' : ''}"
+             onclick="selectBanquet(${bq.banquet_id}, '${(bq.banquet_name || '').replace(/'/g,"\\'")}')">
+            <div class="hall-name">${bq.banquet_name}</div>
+            <div class="hall-meta">
+                <span>${bq.city || '—'}</span>
+                ${bq.active_halls != null ? `<span>${bq.active_halls} active hall(s)</span>` : ''}
+            </div>
+        </div>
+    </div>`).join('');
+}
+
+function selectBanquet(id, name) {
+    if (state.banquetId !== id) {
+        // Changing the banquet invalidates any previously selected hall
+        state.hallId = null;
+        state.hallName = '';
+        state.hallBasePrice = 0;
+        state.pricingId = null;
+    }
+    state.banquetId   = id;
+    state.banquetName = name;
+    document.querySelectorAll('#banquetsGrid .hall-card').forEach(c => c.classList.remove('selected'));
+    const cards = document.querySelectorAll('#banquetsGrid .hall-card');
+    cards.forEach(c => { if (c.querySelector('.hall-name')?.textContent === name) c.classList.add('selected'); });
+}
+
+/* ── Load halls for the selected banquet (Step 3) ── */
 async function loadHalls() {
     const grid = document.getElementById('hallsGrid');
     grid.innerHTML = '<div class="col-12 text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Checking availability…</div>';
     try {
         const res = await API.halls.list({
             limit:        50,
+            banquet_id:   state.banquetId,
             min_capacity: state.guestCount || 1,
         });
         // Support both response shapes: { halls: [...] } or { data: { halls: [...] } }
@@ -804,11 +910,11 @@ async function loadHalls() {
     } catch {
         // Demo halls (shown when API is unreachable)
         renderHalls([
-            { hall_id:1, hall_name:'Royal Ballroom',  hall_type:'Main Hall', capacity_seated:500, has_ac:1, has_stage:1, base_price:150000, pricing_id:1, available:true },
-            { hall_id:2, hall_name:'Crystal Hall',    hall_type:'Main Hall', capacity_seated:300, has_ac:1, has_stage:1, base_price:90000,  pricing_id:2, available:true },
-            { hall_id:3, hall_name:'Garden Lawn',     hall_type:'Lawn',      capacity_seated:400, has_ac:0, has_stage:0, base_price:100000, pricing_id:3, available:true },
-            { hall_id:4, hall_name:'Executive Suite', hall_type:'Conference',capacity_seated:80,  has_ac:1, has_stage:0, base_price:35000,  pricing_id:4, available:false },
-            { hall_id:5, hall_name:'Terrace Lounge',  hall_type:'Lawn',      capacity_seated:150, has_ac:0, has_stage:0, base_price:45000,  pricing_id:5, available:true },
+            { hall_id:1, hall_name:'Royal Ballroom',  hall_type:'main_hall', capacity_seated:500, has_ac:1, has_stage:1, base_price:150000, weekend_surcharge_pct:10, description:'Premium ballroom with crystal chandeliers.', available:true },
+            { hall_id:2, hall_name:'Crystal Hall',    hall_type:'main_hall', capacity_seated:300, has_ac:1, has_stage:1, base_price:90000,  weekend_surcharge_pct:10, description:'Elegant hall for mid-size gatherings.',      available:true },
+            { hall_id:3, hall_name:'Garden Lawn',     hall_type:'lawn',      capacity_seated:400, has_ac:0, has_stage:0, base_price:100000, weekend_surcharge_pct:15, description:'Open-air lawn for outdoor celebrations.',    available:true },
+            { hall_id:4, hall_name:'Executive Suite', hall_type:'conference',capacity_seated:80,  has_ac:1, has_stage:0, base_price:35000,  weekend_surcharge_pct:0,  description:'Compact venue for corporate events.',        available:false },
+            { hall_id:5, hall_name:'Terrace Lounge',  hall_type:'lawn',      capacity_seated:150, has_ac:0, has_stage:0, base_price:45000,  weekend_surcharge_pct:5,  description:'Rooftop terrace with skyline views.',        available:true },
         ]);
     }
 }
@@ -816,33 +922,42 @@ async function loadHalls() {
 function renderHalls(halls) {
     const grid = document.getElementById('hallsGrid');
     if (!halls.length) {
-        grid.innerHTML = `<div class="col-12"><div class="empty-state">No halls available for selected date and guest count.</div></div>`;
+        grid.innerHTML = `<div class="col-12"><div class="empty-state">No halls available for the selected banquet, date and guest count.</div></div>`;
         return;
     }
-    grid.innerHTML = halls.map(h => `
+    grid.innerHTML = halls.map(h => {
+        const seatingType = h.hall_type ? Utils.titleCase(String(h.hall_type).replace(/_/g, ' ')) : 'Not specified';
+        const basePrice   = parseFloat(h.base_price) || 0;
+        const surchargePct= parseFloat(h.weekend_surcharge_pct) || 0;
+        const maxPrice    = basePrice * (1 + surchargePct / 100);
+        const priceRange  = surchargePct > 0
+            ? `${Utils.formatCurrency(basePrice)} – ${Utils.formatCurrency(maxPrice)}`
+            : Utils.formatCurrency(basePrice);
+        return `
     <div class="col-md-6">
         <div class="hall-card ${!h.available ? 'unavailable' : ''} ${state.hallId === h.hall_id ? 'selected' : ''}"
-             onclick="${h.available ? `selectHall(${h.hall_id}, '${h.hall_name.replace(/'/g,"\\'")}', ${h.base_price}, ${h.pricing_id})` : ''}">
+             onclick="${h.available ? `selectHall(${h.hall_id}, '${(h.hall_name || '').replace(/'/g,"\\'")}', ${basePrice})` : ''}">
             <div class="hall-badge ${h.available ? '' : 'busy'}">${h.available ? 'Available' : 'Booked'}</div>
             <div class="hall-name">${h.hall_name}</div>
             <div class="hall-meta">
-                <span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg> ${Utils.titleCase(h.hall_type)}</span>
-                <span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg> ${h.capacity_seated} seated</span>
+                <span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg> ${seatingType}</span>
+                <span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg> Capacity: ${Utils.formatNumber(h.capacity || h.capacity_seated || 0)}</span>
                 ${h.has_ac ? '<span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> AC</span>' : ''}
                 ${h.has_stage ? '<span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M8 13a4 4 0 0 0 8 0"></path><path d="M12 17v4"></path></svg> Stage</span>' : ''}
             </div>
-            <div class="hall-price">${Utils.formatCurrency(h.base_price)}<span style="font-size:12px;font-weight:400;color:var(--text-muted)"> / day</span></div>
+            ${h.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px">${Utils.truncate(h.description, 90)}</div>` : ''}
+            <div class="hall-price">${priceRange}<span style="font-size:12px;font-weight:400;color:var(--text-muted)"> / day</span></div>
         </div>
-    </div>`).join('');
+    </div>`;
+    }).join('');
 }
 
-function selectHall(id, name, price, pricingId) {
+function selectHall(id, name, price) {
     state.hallId       = id;
     state.hallName     = name;
     state.hallBasePrice= price;
-    state.pricingId    = pricingId;
-    document.querySelectorAll('.hall-card').forEach(c => c.classList.remove('selected'));
-    const cards = document.querySelectorAll('.hall-card');
+    document.querySelectorAll('#hallsGrid .hall-card').forEach(c => c.classList.remove('selected'));
+    const cards = document.querySelectorAll('#hallsGrid .hall-card');
     cards.forEach(c => { if (c.querySelector('.hall-name')?.textContent === name) c.classList.add('selected'); });
 }
 
@@ -979,7 +1094,7 @@ function calculatePrice() {
     document.getElementById('prCatering').textContent   = Utils.formatCurrency(state.cateringTotal);
     document.getElementById('prDecoration').textContent = Utils.formatCurrency(state.decorationAmt);
     document.getElementById('prServices').textContent   = Utils.formatCurrency(state.servicesTotal);
-    document.getElementById('prDiscount').textContent   = state.discountAmt > 0 ? 'âˆ’' + Utils.formatCurrency(state.discountAmt) : '₹0';
+    document.getElementById('prDiscount').textContent   = state.discountAmt > 0 ? '-' + Utils.formatCurrency(state.discountAmt) : '₹0';
     document.getElementById('prTax').textContent        = Utils.formatCurrency(tax);
     document.getElementById('prTotal').textContent      = Utils.formatCurrency(state.grandTotal);
     document.getElementById('prAdvance').textContent    = Utils.formatCurrency(state.advanceAmt);
@@ -1009,10 +1124,16 @@ function populateConfirmation() {
     document.getElementById('cfmEvent').textContent    = `${state.eventName} (${state.eventTypeName})`;
     document.getElementById('cfmCustomer').textContent = state.customerName;
     document.getElementById('cfmGuests').textContent   = Utils.formatNumber(state.guestCount) + ' guests';
+
+    if (editMode) {
+        // Pricing is not editable via this flow — hide the financial summary entirely.
+        document.getElementById('cfmAdvance').closest('.col-md-6').style.display = 'none';
+        return;
+    }
     document.getElementById('cfmAdvance').textContent  = Utils.formatCurrency(state.advanceAmt);
     document.getElementById('cfmPricing').innerHTML = `
         <div class="price-row"><span class="label">Subtotal</span><span class="value">${Utils.formatCurrency(state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal)}</span></div>
-        ${state.discountAmt > 0 ? `<div class="price-row green"><span class="label">Discount</span><span class="value">âˆ’${Utils.formatCurrency(state.discountAmt)}</span></div>` : ''}
+        ${state.discountAmt > 0 ? `<div class="price-row green"><span class="label">Discount</span><span class="value">-${Utils.formatCurrency(state.discountAmt)}</span></div>` : ''}
         <div class="price-row"><span class="label">GST (18%)</span><span class="value">${Utils.formatCurrency(state.taxAmt)}</span></div>
         <div class="price-row total"><span class="label">Grand Total</span><span class="value">${Utils.formatCurrency(state.grandTotal)}</span></div>`;
 }
@@ -1020,6 +1141,31 @@ function populateConfirmation() {
 /* â”€â”€ Submit booking â”€â”€ */
 async function submitBooking() {
     const btn = document.getElementById('confirmBookingBtn');
+
+    if (editMode && editBookingId) {
+        Utils.showLoader(btn, 'Saving changes…');
+        try {
+            // The update endpoint only accepts these fields (see booking.validator.js updateSchema)
+            const payload = {
+                eventName:  state.eventName      || undefined,
+                eventType:  state.eventTypeName   || undefined,
+                guestCount: state.guestCount      || undefined,
+                notes:      state.specialRequests || undefined,
+            };
+            const res = await API.bookings.update(editBookingId, payload);
+            const ref = res.data?.booking_ref || state.bookingRef || '';
+            document.getElementById('successRef').textContent = ref;
+            document.querySelector('#successModal h4').textContent = 'Booking Updated!';
+            document.querySelector('#successModal p').textContent  = 'Your changes have been saved successfully.';
+            document.getElementById('viewBookingBtn').href = `detail.html?id=${editBookingId}`;
+            new bootstrap.Modal(document.getElementById('successModal')).show();
+        } catch (err) {
+            Utils.hideLoader(btn);
+            showAlert(getErrorMessage(err, 'Failed to update booking. Please try again.'));
+        }
+        return;
+    }
+
     Utils.showLoader(btn, 'Creating booking…');
     try {
         // Payload keys must match the Joi createSchema (camelCase, stripUnknown: true)
@@ -1037,14 +1183,57 @@ async function submitBooking() {
             notes:          state.specialRequests || undefined,
         };
         const res = await API.bookings.create(payload);
-        const ref = res.data?.booking_ref || 'BNQ-2026-XXXXXX';
-        const id  = res.data?.booking_id  || 1;
-        document.getElementById('successRef').textContent = ref;
-        document.getElementById('viewBookingBtn').href   = `detail.html?id=${id}`;
+        const ref = res.data?.booking_ref;
+        const id  = res.data?.booking_id;
+        document.getElementById('successRef').textContent = ref || '';
+        document.getElementById('viewBookingBtn').href   = id ? `detail.html?id=${id}` : 'index.html';
         new bootstrap.Modal(document.getElementById('successModal')).show();
     } catch (err) {
         Utils.hideLoader(btn);
         showAlert(getErrorMessage(err, 'Failed to create booking. Please try again.'));
+    }
+}
+
+/* ── Load an existing booking for editing ── */
+async function loadExistingBooking(id) {
+    try {
+        const res = await API.bookings.get(id);
+        const b = res.data;
+        if (!b) throw new Error('Booking not found');
+
+        state.bookingRef      = b.booking_ref || '';
+        state.eventDate       = b.event_date  ? String(b.event_date).slice(0, 10) : '';
+        state.startTime       = (b.event_time_start || '08:00').slice(0, 5);
+        state.endTime         = (b.event_time_end   || '23:00').slice(0, 5);
+        state.guestCount      = b.guest_count || 0;
+        state.hallId          = b.hall_id;
+        state.hallName        = b.hall_name || '';
+        state.eventTypeName   = b.event_type || '';
+        state.eventName       = b.event_name || '';
+        state.customerId      = b.customer_id;
+        state.customerName    = b.customer_name || '';
+        state.specialRequests = b.notes || '';
+
+        // Pre-fill Step 1 (read-only reference fields for context)
+        document.getElementById('eventDate').value  = state.eventDate;
+        document.getElementById('guestCount').value = state.guestCount;
+        document.getElementById('startTime').value  = state.startTime;
+        document.getElementById('endTime').value    = state.endTime;
+        document.getElementById('eventDate').disabled  = true;
+        document.getElementById('startTime').disabled  = true;
+        document.getElementById('endTime').disabled    = true;
+
+        // Pre-fill Step 4 (Event Info)
+        const eventTypeSelect = document.getElementById('eventType');
+        const match = Array.from(eventTypeSelect.options).find(o => o.text === state.eventTypeName);
+        if (match) eventTypeSelect.value = match.value;
+        document.getElementById('eventName').value = state.eventName;
+        document.getElementById('specialRequests').value = state.specialRequests;
+        selectCustomer(state.customerId, state.customerName);
+
+        document.getElementById('stepDescription').textContent = `Editing ${state.bookingRef} — hall and date cannot be changed here`;
+    } catch (err) {
+        Utils.toast(getErrorMessage(err, 'Unable to load booking for editing.'), 'error');
     }
 }
 
@@ -1057,6 +1246,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('eventDate').min = tomorrow.toISOString().split('T')[0];
 
     renderServices();
+
+    const params = new URLSearchParams(location.search);
+    const id   = params.get('id');
+    const mode = params.get('mode');
+    if (id && mode === 'edit') {
+        editMode = true;
+        editBookingId = parseInt(id, 10);
+        document.querySelector('.page-title').textContent = 'Edit Booking';
+        document.getElementById('confirmBookingBtn').innerHTML = 'Save Changes';
+        loadExistingBooking(editBookingId);
+    }
+
     renderSteps();
 });
 </script>

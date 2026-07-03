@@ -63,7 +63,8 @@
         <div class="page-header">
             <div><h1 class="page-title">Bookings</h1><p class="page-subtitle">Manage and track all event bookings</p></div>
             <div style="display:flex;gap:10px">
-                <button class="btn-ghost" onclick="exportBookings()">⬇ Export</button>
+                <button class="btn-ghost" onclick="openImportModal()" data-require-role="super_admin,company_admin,branch_manager,booking_executive"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M4 21h16"></path></svg> Import</button>
+                <button class="btn-ghost" onclick="exportBookings()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M20 21H4"></path></svg> Export</button>
                 <a href="create.html" class="btn-primary-brand" data-require-role="super_admin,company_admin,branch_manager,booking_executive"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> New Booking</a>
             </div>
         </div>
@@ -157,6 +158,28 @@
     </div>
 </div>
 
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Import Bookings</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px">
+                    Upload a <strong>.csv</strong> file with columns: <code>hallId, customerId, eventDate, eventTimeStart, eventTimeEnd, eventName, eventType, guestCount, totalAmount, advancePaid, notes</code>.
+                    The first row must be the header row.
+                </p>
+                <input type="file" class="form-control" id="importFile" accept=".csv,.xlsx,.xls" onchange="handleImportFile(this)">
+                <div id="importSummary" style="margin-top:14px;font-size:13px"></div>
+                <div id="importResults" style="margin-top:10px;max-height:260px;overflow-y:auto;font-size:12.5px"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Close</button>
+                <button class="btn-primary-brand" id="importSubmitBtn" onclick="runImport()" disabled>Import Rows</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 <button id="scrollTop">↑</button>
 
@@ -173,14 +196,14 @@ let currentPage = 1;
 const PAGE_SIZE = 20;
 
 const DEMO_BOOKINGS = [
-    { booking_id:1, booking_ref:'BNQ-2026-000001', customer_name:'Arjun Sharma',  event_name:'Wedding Ceremony',     booking_date:'2026-07-15', hall_name:'Royal Ballroom',  expected_guests:450, grand_total:225000, booking_status:'advance_paid' },
-    { booking_id:2, booking_ref:'BNQ-2026-000002', customer_name:'Priya Patel',   event_name:'Birthday Celebration', booking_date:'2026-07-18', hall_name:'Crystal Hall',    expected_guests:120, grand_total:85000,  booking_status:'confirmed' },
-    { booking_id:3, booking_ref:'BNQ-2026-000003', customer_name:'Rahul Gupta',   event_name:'Corporate Seminar',    booking_date:'2026-07-20', hall_name:'Executive Suite', expected_guests:80,  grand_total:42000,  booking_status:'fully_paid' },
-    { booking_id:4, booking_ref:'BNQ-2026-000004', customer_name:'Anjali Singh',  event_name:'Reception Dinner',     booking_date:'2026-07-22', hall_name:'Garden Lawn',     expected_guests:300, grand_total:148000, booking_status:'confirmed' },
-    { booking_id:5, booking_ref:'BNQ-2026-000005', customer_name:'Vikram Mehta',  event_name:'Silver Anniversary',   booking_date:'2026-07-25', hall_name:'Terrace Lounge',  expected_guests:150, grand_total:68000,  booking_status:'advance_paid' },
-    { booking_id:6, booking_ref:'BNQ-2026-000006', customer_name:'Neha Agarwal',  event_name:'Engagement Ceremony',  booking_date:'2026-07-28', hall_name:'Maharaja Hall',   expected_guests:200, grand_total:185000, booking_status:'completed' },
-    { booking_id:7, booking_ref:'BNQ-2026-000007', customer_name:'Sanjay Kumar',  event_name:'Tech Summit',          booking_date:'2026-08-01', hall_name:'Diamond Hall',    expected_guests:250, grand_total:132000, booking_status:'draft' },
-    { booking_id:8, booking_ref:'BNQ-2026-000008', customer_name:'Kavita Joshi',  event_name:'Baby Shower',          booking_date:'2026-08-05', hall_name:'Executive Suite', expected_guests:60,  grand_total:38000,  booking_status:'cancelled' },
+    { booking_id:1, booking_ref:'BNQ-2026-000001', customer_name:'Arjun Sharma',  event_name:'Wedding Ceremony',     event_date:'2026-07-15', hall_name:'Royal Ballroom',  guest_count:450, total_amount:225000, status:'advance_paid' },
+    { booking_id:2, booking_ref:'BNQ-2026-000002', customer_name:'Priya Patel',   event_name:'Birthday Celebration', event_date:'2026-07-18', hall_name:'Crystal Hall',    guest_count:120, total_amount:85000,  status:'confirmed' },
+    { booking_id:3, booking_ref:'BNQ-2026-000003', customer_name:'Rahul Gupta',   event_name:'Corporate Seminar',    event_date:'2026-07-20', hall_name:'Executive Suite', guest_count:80,  total_amount:42000,  status:'fully_paid' },
+    { booking_id:4, booking_ref:'BNQ-2026-000004', customer_name:'Anjali Singh',  event_name:'Reception Dinner',     event_date:'2026-07-22', hall_name:'Garden Lawn',     guest_count:300, total_amount:148000, status:'confirmed' },
+    { booking_id:5, booking_ref:'BNQ-2026-000005', customer_name:'Vikram Mehta',  event_name:'Silver Anniversary',   event_date:'2026-07-25', hall_name:'Terrace Lounge',  guest_count:150, total_amount:68000,  status:'advance_paid' },
+    { booking_id:6, booking_ref:'BNQ-2026-000006', customer_name:'Neha Agarwal',  event_name:'Engagement Ceremony',  event_date:'2026-07-28', hall_name:'Maharaja Hall',   guest_count:200, total_amount:185000, status:'completed' },
+    { booking_id:7, booking_ref:'BNQ-2026-000007', customer_name:'Sanjay Kumar',  event_name:'Tech Summit',          event_date:'2026-08-01', hall_name:'Diamond Hall',    guest_count:250, total_amount:132000, status:'draft' },
+    { booking_id:8, booking_ref:'BNQ-2026-000008', customer_name:'Kavita Joshi',  event_name:'Baby Shower',          event_date:'2026-08-05', hall_name:'Executive Suite', guest_count:60,  total_amount:38000,  status:'cancelled' },
 ];
 
 async function loadBookings(page = 1) {
@@ -217,26 +240,34 @@ function renderTable(bookings) {
         tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg></div><div class="empty-state-title">No bookings found</div><div class="empty-state-text">Try adjusting your filters or create a new booking.</div></div></td></tr>';
         return;
     }
-    tbody.innerHTML = bookings.map(b => `
+    tbody.innerHTML = bookings.map(b => {
+        const id = b.booking_id;
+        const editable = !['cancelled', 'completed'].includes(b.status);
+        return `
     <tr>
-        <td><input type="checkbox" class="row-check" value="${b.booking_id}" style="accent-color:var(--brand-primary)"></td>
-        <td><a href="detail.html?id=${b.booking_id}" style="color:var(--brand-primary);font-weight:600;text-decoration:none;font-family:var(--font-mono);font-size:12px">${b.booking_ref}</a></td>
+        <td><input type="checkbox" class="row-check" value="${id}" style="accent-color:var(--brand-primary)"></td>
+        <td><a href="detail.html?id=${id}" style="color:var(--brand-primary);font-weight:600;text-decoration:none;font-family:var(--font-mono);font-size:12px">${b.booking_ref}</a></td>
         <td><div style="font-weight:500">${b.customer_name}</div></td>
         <td><div style="max-width:160px" title="${b.event_name}">${Utils.truncate(b.event_name, 22)}</div></td>
-        <td style="white-space:nowrap">${Utils.formatDate(b.booking_date)}</td>
+        <td style="white-space:nowrap">${Utils.formatDate(b.event_date)}</td>
         <td>${Utils.truncate(b.hall_name || '—', 18)}</td>
-        <td>${Utils.formatNumber(b.expected_guests)}</td>
-        <td style="white-space:nowrap;font-weight:600">${Utils.formatCurrency(b.grand_total)}</td>
-        <td>${Utils.statusBadge(b.booking_status)}</td>
+        <td>${Utils.formatNumber(b.guest_count)}</td>
+        <td style="white-space:nowrap;font-weight:600">${Utils.formatCurrency(b.total_amount)}</td>
+        <td>${Utils.statusBadge(b.status)}</td>
         <td>
             <div style="display:flex;gap:4px">
-                <a href="detail.html?id=${b.booking_id}" class="btn-icon" title="View"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M2 12s3-6 10-6 10 6 10 6-3 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></a>
-                ${b.booking_status !== 'cancelled' && b.booking_status !== 'completed'
-                    ? `<button class="btn-icon danger" title="Cancel" onclick="openCancel(${b.booking_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>`
+                <a href="detail.html?id=${id}" class="btn-icon" title="View"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M2 12s3-6 10-6 10 6 10 6-3 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></a>
+                ${editable ? `<a href="create.html?id=${id}&mode=edit" class="btn-icon" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></a>` : ''}
+                <a href="detail.html?id=${id}&action=print" class="btn-icon" title="Print"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path></svg></a>
+                <a href="detail.html?id=${id}&action=invoice" class="btn-icon" title="Invoice"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg></a>
+                <a href="detail.html?id=${id}&action=payments" class="btn-icon" title="Payment History"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></a>
+                ${editable
+                    ? `<button class="btn-icon danger" title="Cancel" onclick="openCancel(${id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>`
                     : ''}
             </div>
         </td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
 }
 
 function updateStats(s) {
@@ -314,6 +345,153 @@ document.addEventListener('DOMContentLoaded', () => {
     loadBookings(1);
     loadHallFilter();
 });
+
+/* ── Import (CSV) ── */
+const REQUIRED_IMPORT_FIELDS = ['hallId', 'customerId', 'eventDate', 'eventTimeStart', 'eventTimeEnd', 'totalAmount'];
+let importModal;
+let importRows = [];
+
+function openImportModal() {
+    document.getElementById('importFile').value = '';
+    document.getElementById('importSummary').innerHTML = '';
+    document.getElementById('importResults').innerHTML = '';
+    document.getElementById('importSubmitBtn').disabled = true;
+    importRows = [];
+    importModal = new bootstrap.Modal(document.getElementById('importModal'));
+    importModal.show();
+}
+
+/** Minimal CSV parser — handles quoted fields and commas within quotes. No external dependency required. */
+function parseCsv(text) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+            if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+            else if (c === '"') { inQuotes = false; }
+            else { field += c; }
+        } else if (c === '"') {
+            inQuotes = true;
+        } else if (c === ',') {
+            row.push(field); field = '';
+        } else if (c === '\n' || c === '\r') {
+            if (c === '\r' && text[i + 1] === '\n') i++;
+            row.push(field); field = '';
+            if (row.some(v => v !== '')) rows.push(row);
+            row = [];
+        } else {
+            field += c;
+        }
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    if (!rows.length) return [];
+    const headers = rows[0].map(h => h.trim());
+    return rows.slice(1).map(r => {
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = (r[idx] ?? '').trim(); });
+        return obj;
+    });
+}
+
+function handleImportFile(input) {
+    const file = input.files?.[0];
+    const summary = document.getElementById('importSummary');
+    document.getElementById('importResults').innerHTML = '';
+    document.getElementById('importSubmitBtn').disabled = true;
+    importRows = [];
+    if (!file) return;
+
+    const isCsv  = /\.csv$/i.test(file.name);
+    const isXlsx = /\.xlsx?$/i.test(file.name);
+
+    if (isXlsx) {
+        summary.innerHTML = `<span style="color:var(--color-warning)">.xlsx import is not yet supported — please export/save your file as .csv and try again.</span>`;
+        return;
+    }
+    if (!isCsv) {
+        summary.innerHTML = `<span style="color:var(--color-danger)">Unsupported file type. Please upload a .csv file.</span>`;
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        const parsed = parseCsv(String(reader.result || ''));
+        if (!parsed.length) {
+            summary.innerHTML = `<span style="color:var(--color-danger)">No rows found in file.</span>`;
+            return;
+        }
+        // Client-side validation of required fields before anything is sent to the API
+        importRows = parsed.map((row, idx) => {
+            const missing = REQUIRED_IMPORT_FIELDS.filter(f => !row[f]);
+            return { rowNum: idx + 2, data: row, missing, status: missing.length ? 'invalid' : 'pending' };
+        });
+        const invalidCount = importRows.filter(r => r.missing.length).length;
+        summary.innerHTML = `${importRows.length} row(s) parsed — ${importRows.length - invalidCount} ready, ${invalidCount} missing required fields.`;
+        document.getElementById('importSubmitBtn').disabled = importRows.every(r => r.missing.length);
+        renderImportResults();
+    };
+    reader.onerror = () => { summary.innerHTML = `<span style="color:var(--color-danger)">Could not read file.</span>`; };
+    reader.readAsText(file);
+}
+
+function renderImportResults() {
+    const wrap = document.getElementById('importResults');
+    wrap.innerHTML = importRows.map(r => {
+        const color = r.status === 'success' ? 'var(--color-success)' : r.status === 'failed' ? 'var(--color-danger)' : r.missing.length ? 'var(--color-danger)' : 'var(--text-muted)';
+        const label = r.status === 'success' ? 'Imported'
+            : r.status === 'failed' ? (r.error || 'Failed')
+            : r.missing.length ? `Missing: ${r.missing.join(', ')}`
+            : 'Ready';
+        return `<div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border-color)">
+            <span>Row ${r.rowNum}${r.data.eventName ? ' — ' + r.data.eventName : ''}</span>
+            <span style="color:${color};font-weight:600">${label}</span>
+        </div>`;
+    }).join('');
+}
+
+async function runImport() {
+    const btn = document.getElementById('importSubmitBtn');
+    btn.disabled = true;
+    Utils.showLoader?.(btn, 'Importing…');
+    for (const r of importRows) {
+        if (r.missing.length) continue;
+        try {
+            await API.bookings.create({
+                hallId:         parseInt(r.data.hallId, 10),
+                customerId:     parseInt(r.data.customerId, 10),
+                eventDate:      r.data.eventDate,
+                eventTimeStart: r.data.eventTimeStart,
+                eventTimeEnd:   r.data.eventTimeEnd,
+                eventName:      r.data.eventName || undefined,
+                eventType:      r.data.eventType || undefined,
+                guestCount:     r.data.guestCount ? parseInt(r.data.guestCount, 10) : undefined,
+                totalAmount:    parseFloat(r.data.totalAmount),
+                advancePaid:    r.data.advancePaid ? parseFloat(r.data.advancePaid) : 0,
+                notes:          r.data.notes || undefined,
+            });
+            r.status = 'success';
+        } catch (err) {
+            r.status = 'failed';
+            r.error  = getErrorMessage?.(err) || err.message || 'Failed';
+        }
+        renderImportResults();
+    }
+    Utils.hideLoader?.(btn);
+    btn.textContent = 'Import Rows';
+    const successCount = importRows.filter(r => r.status === 'success').length;
+    const failedCount  = importRows.filter(r => r.status === 'failed').length;
+    document.getElementById('importSummary').innerHTML = `Import complete — ${successCount} succeeded, ${failedCount} failed.`;
+    if (successCount) loadBookings(currentPage);
+}
+
+function getErrorMessage(err) {
+    if (!err) return 'Something went wrong.';
+    if (typeof err === 'string') return err;
+    if (typeof err?.message === 'string' && err.message.trim()) return err.message;
+    if (err?.data?.message) return err.data.message;
+    return 'Failed';
+}
 </script>
 </body>
 </html>

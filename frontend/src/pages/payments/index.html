@@ -44,7 +44,7 @@
         <div class="page-header">
             <div><h1 class="page-title">Payments</h1><p class="page-subtitle">Record, track and manage all payment transactions</p></div>
             <div style="display:flex;gap:10px">
-                <button class="btn-ghost" onclick="loadPending()">â³ Pending Collections</button>
+                
                 <button class="btn-primary-brand" onclick="openRecordModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Record Payment</button>
             </div>
         </div>
@@ -66,7 +66,7 @@
             <div class="kpi-card">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between">
                     <div><div class="kpi-label">Pending Collections</div><div class="kpi-value" id="pendingTotal" style="color:var(--color-warning)">—</div></div>
-                    <div class="kpi-icon-wrap" style="background:var(--kpi-3-bg)"><span style="font-size:20px;color:var(--kpi-3)">â³</span></div>
+                    <div class="kpi-icon-wrap" style="background:var(--kpi-3-bg)"><span style="font-size:20px;color:var(--kpi-3)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg></span></div>
                 </div>
             </div>
             <div class="kpi-card">
@@ -143,12 +143,13 @@
             <div class="modal-header"><h5 class="modal-title">Record Payment</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
             <div class="modal-body">
                 <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label">Booking Reference *</label>
-                        <div style="display:flex;gap:8px">
-                            <input type="text" class="form-control" id="payBookingRef" placeholder="BNQ-2026-XXXXXX">
-                            <button type="button" class="btn-ghost" onclick="lookupBooking()">Lookup</button>
-                        </div>
+                    <div class="col-12" style="position:relative">
+                        <label class="form-label">Booking *</label>
+                        <input type="text" class="form-control" id="payBookingSearch" autocomplete="off"
+                               placeholder="Search by booking ID, customer name, phone or event date…"
+                               oninput="handleBookingSearch(this.value)"
+                               onfocus="if(this.value) handleBookingSearch(this.value)">
+                        <div id="bookingSuggest" class="dropdown-menu" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:260px;overflow-y:auto;z-index:1080"></div>
                         <div id="bookingInfo" style="margin-top:10px;padding:12px;background:var(--bg-surface-2);border-radius:var(--radius-md);display:none"></div>
                     </div>
                     <input type="hidden" id="payBookingId">
@@ -193,6 +194,16 @@
                 <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn-primary-brand" id="savePayBtn" onclick="recordPayment()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 3h9l4 4v14H6z"></path><path d="M14 3v5h4"></path><path d="M8 13h8"></path><path d="M8 17h8"></path></svg> Record Payment</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Detail Modal -->
+<div class="modal fade" id="paymentDetailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Payment Detail</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body" id="paymentDetailBody"><div class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></div></div>
         </div>
     </div>
 </div>
@@ -247,7 +258,7 @@ function renderPayments(pays) {
     if (!pays.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state" style="padding:24px">No payments found</div></td></tr>'; return; }
     tbody.innerHTML = pays.map(p => `
     <tr>
-        <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--brand-primary)">${p.payment_ref}</span></td>
+        <td><a href="#" onclick="openPaymentDetail(${p.payment_id});return false;" style="font-family:var(--font-mono);font-size:12px;color:var(--brand-primary);text-decoration:underline;cursor:pointer">${p.payment_ref}</a></td>
         <td>${Utils.formatDate(p.payment_date)}</td>
         <td><a href="../bookings/detail.html?ref=${p.booking_ref}" style="color:var(--brand-primary);font-size:12px;font-family:var(--font-mono)">${p.booking_ref}</a></td>
         <td>${p.customer_name}</td>
@@ -295,42 +306,79 @@ function updateKPIs(s) {
     document.getElementById('todayCollection').textContent  = Utils.formatCurrency(s.today   || 84500);
     document.getElementById('monthRevenue').textContent    = Utils.formatCurrency(s.month    || 2850000);
     document.getElementById('pendingTotal').textContent    = Utils.formatCurrency(s.pending  || 485000);
-    document.getElementById('totalTransactions').textContent = Utils.formatNumber(s.total    || 342);
+    document.getElementById('totalTransactions').textContent = Utils.formatNumber(s.totalTransactions || s.total || 342);
 }
 
 let recordModalInstance;
 function openRecordModal(bookingRef = '') {
-    document.getElementById('payBookingRef').value = bookingRef;
+    document.getElementById('payBookingSearch').value = bookingRef;
     document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('bookingInfo').style.display = 'none';
+    document.getElementById('bookingSuggest').style.display = 'none';
     document.getElementById('payBookingId').value   = '';
     document.getElementById('payCustomerId').value  = '';
     document.getElementById('payAmount').value      = '';
     recordModalInstance = new bootstrap.Modal(document.getElementById('recordModal'));
     recordModalInstance.show();
-    if (bookingRef) lookupBooking();
+    if (bookingRef) selectBookingByRef(bookingRef);
 }
 
-async function lookupBooking() {
-    const ref  = document.getElementById('payBookingRef').value.trim().toUpperCase();
-    const info = document.getElementById('bookingInfo');
-    if (!ref) return;
+async function selectBookingByRef(ref) {
     try {
-        const res = await API.get(`/bookings/ref/${ref}`);
-        const b   = res.data;
-        document.getElementById('payBookingId').value  = b.booking_id;
-        document.getElementById('payCustomerId').value = b.customer_id;
-        info.innerHTML = `<div style="font-size:13px"><strong>${b.event_name || ref}</strong> — ${Utils.formatDate(b.event_date)}<br>
-            <span style="color:var(--text-muted)">Customer: ${b.customer_name} | Grand Total: ${Utils.formatCurrency(b.total_amount)} | Balance Due: <strong style="color:var(--color-warning)">${Utils.formatCurrency(b.balance_due)}</strong></span></div>`;
-        info.style.display = '';
-        document.getElementById('payAmount').value = b.balance_due;
+        const res = await API.get(`/bookings/ref/${ref.trim().toUpperCase()}`);
+        applyBookingSelection(res.data);
     } catch (err) {
-        document.getElementById('payBookingId').value  = '';
-        document.getElementById('payCustomerId').value = '';
-        info.innerHTML = `<span style="color:var(--danger,#DC2626)">${err.message || 'Booking not found. Check the reference and try again.'}</span>`;
-        info.style.display = '';
+        Utils.toast(err.message || 'Booking not found', 'error');
     }
 }
+
+function applyBookingSelection(b) {
+    const info = document.getElementById('bookingInfo');
+    document.getElementById('payBookingId').value  = b.booking_id;
+    document.getElementById('payCustomerId').value = b.customer_id;
+    document.getElementById('payBookingSearch').value = b.booking_ref;
+    document.getElementById('bookingSuggest').style.display = 'none';
+    const balanceDue = b.balance_due ?? (b.total_amount - (b.amount_paid || 0));
+    info.innerHTML = `<div style="font-size:13px"><strong>${b.event_name || b.booking_ref}</strong> — ${Utils.formatDate(b.event_date)}<br>
+        <span style="color:var(--text-muted)">Customer: ${b.customer_name || ''} | Grand Total: ${Utils.formatCurrency(b.total_amount)} | Balance Due: <strong style="color:var(--color-warning)">${Utils.formatCurrency(balanceDue)}</strong></span></div>`;
+    info.style.display = '';
+    document.getElementById('payAmount').value = balanceDue;
+}
+
+const handleBookingSearch = Utils.debounce(async (term) => {
+    const suggest = document.getElementById('bookingSuggest');
+    const q = (term || '').trim();
+    if (q.length < 2) { suggest.style.display = 'none'; return; }
+    try {
+        const res = await API.bookings.list({ search: q, limit: 8 });
+        const list = res.data?.bookings || res.data?.rows || [];
+        if (!list.length) {
+            suggest.innerHTML = '<div class="dropdown-item text-muted">No matching bookings</div>';
+        } else {
+            suggest.innerHTML = list.map(b => `
+                <a href="#" class="dropdown-item" data-booking='${JSON.stringify(b).replace(/'/g, "&#39;")}'>
+                    <strong style="font-family:var(--font-mono)">${b.booking_ref}</strong> — ${b.customer_name || ''}<br>
+                    <small style="color:var(--text-muted)">${Utils.formatDate(b.event_date)} · ${b.event_name || ''}</small>
+                </a>`).join('');
+        }
+        suggest.style.display = '';
+        suggest.querySelectorAll('[data-booking]').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                applyBookingSelection(JSON.parse(el.getAttribute('data-booking')));
+            });
+        });
+    } catch {
+        suggest.style.display = 'none';
+    }
+}, 300);
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#payBookingSearch') && !e.target.closest('#bookingSuggest')) {
+        const s = document.getElementById('bookingSuggest');
+        if (s) s.style.display = 'none';
+    }
+});
 
 async function recordPayment() {
     const btn = document.getElementById('savePayBtn');
@@ -373,6 +421,58 @@ function switchTab(tab) {
     document.getElementById('allPaymentsView').style.display = tab === 'all'     ? '' : 'none';
     document.getElementById('pendingView').style.display     = tab === 'pending' ? '' : 'none';
     if (tab === 'pending') loadPendingPayments();
+}
+
+let paymentDetailModalInstance;
+async function openPaymentDetail(paymentId) {
+    const body = document.getElementById('paymentDetailBody');
+    body.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></div>';
+    paymentDetailModalInstance = paymentDetailModalInstance || new bootstrap.Modal(document.getElementById('paymentDetailModal'));
+    paymentDetailModalInstance.show();
+    try {
+        const res = await API.payments.get(paymentId);
+        const p = res.data;
+        let related = [];
+        try { related = (await API.payments.history(p.booking_id)).data?.payments || []; } catch {}
+        let invoice = null;
+        try {
+            const invRes = await API.invoices.list({ booking_id: p.booking_id, limit: 1 });
+            invoice = (invRes.data?.invoices || [])[0] || null;
+        } catch {}
+
+        const events = [];
+        events.push({ ts: p.created_at, label: 'Payment Created', detail: `${Utils.formatCurrency(p.amount)} via ${Utils.titleCase((p.payment_method||'').replace('_',' '))}` });
+        if (p.status === 'refunded' && p.updated_at) {
+            events.push({ ts: p.updated_at, label: 'Payment Refunded', detail: p.notes || '' });
+        }
+        related.filter(r => r.payment_id !== p.payment_id).forEach(r => {
+            if (r.amount < 0) events.push({ ts: r.created_at, label: 'Refund Processed', detail: Utils.formatCurrency(r.amount) });
+            else events.push({ ts: r.created_at, label: 'Partial Payment', detail: `${Utils.formatCurrency(r.amount)} on booking ${r.booking_ref}` });
+        });
+        if (invoice) events.push({ ts: invoice.created_at || invoice.invoice_date, label: 'Invoice Generated', detail: invoice.invoice_number });
+        events.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+
+        body.innerHTML = `
+            <div style="margin-bottom:16px">
+                <div style="font-size:15px;font-weight:700">${p.payment_ref}</div>
+                <div style="color:var(--text-muted);font-size:13px">Booking <a href="../bookings/detail.html?ref=${p.booking_ref}">${p.booking_ref}</a> · ${p.customer_name || ''}</div>
+                <div style="margin-top:8px">${Utils.formatCurrency(p.amount)} — ${Utils.statusBadge(p.payment_status)}</div>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px">
+                <a class="btn-ghost" href="../bookings/detail.html?ref=${p.booking_ref}">View Booking</a>
+                ${invoice ? `<a class="btn-ghost" href="../invoices/index.html?id=${invoice.invoice_id}">View Invoice</a>` : ''}
+            </div>
+            <h6 style="font-size:13px;font-weight:700;margin-bottom:10px">Activity Timeline</h6>
+            <div style="border-left:2px solid var(--border-color);padding-left:14px">
+                ${events.map(e => `
+                    <div style="margin-bottom:14px">
+                        <div style="font-weight:600;font-size:13px">${e.label}</div>
+                        <div style="font-size:12px;color:var(--text-muted)">${Utils.formatDate(e.ts)} — ${e.detail || ''}</div>
+                    </div>`).join('') || '<div style="color:var(--text-muted);font-size:13px">No activity recorded</div>'}
+            </div>`;
+    } catch (err) {
+        body.innerHTML = `<div class="empty-state">${err.message || 'Unable to load payment'}</div>`;
+    }
 }
 
 const handlePaySearch = Utils.debounce(() => loadPayments(1), 350);

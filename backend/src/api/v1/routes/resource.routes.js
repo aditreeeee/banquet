@@ -15,7 +15,7 @@ const router = Router();
 router.get('/', requirePermission(PERMISSIONS.RESOURCES_READ), async (req, res) => {
     const rows = await executeQuery(
         `SELECT resource_id, resource_name, resource_type, unit_price, quantity_available, is_active
-         FROM Resources WHERE company_id = :companyId AND is_active = 1 ORDER BY resource_name`,
+         FROM Resources WHERE company_id = @companyId AND is_active = 1 ORDER BY resource_name`,
         { companyId: req.companyId }
     );
     return response.success(res, rows);
@@ -27,7 +27,8 @@ router.post('/', requirePermission(PERMISSIONS.RESOURCES_CREATE), async (req, re
 
     const result = await executeQuery(
         `INSERT INTO Resources (company_id, resource_name, resource_type, unit_price, quantity_available, is_active, created_at)
-         VALUES (:companyId, :name, :type, :price, :qty, 1, UTC_TIMESTAMP())`,
+         OUTPUT INSERTED.resource_id AS insertId
+         VALUES (@companyId, @name, @type, @price, @qty, 1, GETUTCDATE())`,
         {
             companyId: req.companyId,
             name:      resourceName,
@@ -36,18 +37,18 @@ router.post('/', requirePermission(PERMISSIONS.RESOURCES_CREATE), async (req, re
             qty:       quantityAvailable  || 0,
         }
     );
-    return response.created(res, { resource_id: result.insertId });
+    return response.created(res, { resource_id: result[0].insertId });
 });
 
 router.put('/:id', requirePermission(PERMISSIONS.RESOURCES_UPDATE), async (req, res) => {
     const { resourceName, unitPrice, quantityAvailable, isActive } = req.body;
     await executeQuery(
         `UPDATE Resources
-         SET resource_name      = IFNULL(:name,     resource_name),
-             unit_price         = IFNULL(:price,    unit_price),
-             quantity_available = IFNULL(:qty,      quantity_available),
-             is_active          = IFNULL(:isActive, is_active)
-         WHERE resource_id = :id AND company_id = :companyId`,
+         SET resource_name      = ISNULL(@name,     resource_name),
+             unit_price         = ISNULL(@price,    unit_price),
+             quantity_available = ISNULL(@qty,      quantity_available),
+             is_active          = ISNULL(@isActive, is_active)
+         WHERE resource_id = @id AND company_id = @companyId`,
         {
             id:        parseInt(req.params.id, 10),
             companyId: req.companyId,
@@ -64,11 +65,11 @@ router.patch('/:id', requirePermission(PERMISSIONS.RESOURCES_UPDATE), async (req
     const { resourceName, unitPrice, quantityAvailable, isActive } = req.body;
     await executeQuery(
         `UPDATE Resources
-         SET resource_name      = IFNULL(:name,     resource_name),
-             unit_price         = IFNULL(:price,    unit_price),
-             quantity_available = IFNULL(:qty,      quantity_available),
-             is_active          = IFNULL(:isActive, is_active)
-         WHERE resource_id = :id AND company_id = :companyId`,
+         SET resource_name      = ISNULL(@name,     resource_name),
+             unit_price         = ISNULL(@price,    unit_price),
+             quantity_available = ISNULL(@qty,      quantity_available),
+             is_active          = ISNULL(@isActive, is_active)
+         WHERE resource_id = @id AND company_id = @companyId`,
         {
             id:        parseInt(req.params.id, 10),
             companyId: req.companyId,

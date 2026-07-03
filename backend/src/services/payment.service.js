@@ -20,10 +20,13 @@ const getAll = async (query, actor) => {
         bookingId: query.booking_id ? parseInt(query.booking_id, 10) : null,
         fromDate:  query.from_date  || null,
         toDate:    query.to_date    || null,
+        search:    query.search     || null,
         ...p,
     });
     return { rows, meta: buildMeta(total, p) };
 };
+
+const getStats = async (actor) => payRepo.getStats(actor.companyId);
 
 const getById = async (id, companyId) => {
     const p = await payRepo.findById(id, companyId);
@@ -106,4 +109,4 @@ const refund = async (paymentId, { refundAmount, reason }, actor) => {
     return result;
 };
 
-module.exports = { getAll, getById, getByBooking, create, refund, getPending };
+module.exports = { getAll, getById, getByBooking, create, refund, getPending, getStats };

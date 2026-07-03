@@ -223,6 +223,40 @@ function getDemoData() {
     };
 }
 
+/* ---------- Normalize live API response into the shape this page renders ----------
+   The backend returns { summary, series, from, to, groupBy } (see report.service.js /
+   report.repository.js). It does not currently break revenue down by payment method,
+   event type or hall — those breakdowns fall back to demo data below (see comment). */
+function normalizeApiRevenue(res) {
+    const s = res.summary || {};
+    const series = Array.isArray(res.series) ? res.series : [];
+    return {
+        kpi: {
+            total_revenue:  s.gross_revenue ?? 0,
+            total_bookings: s.total_bookings ?? 0,
+            avg_value:      s.total_bookings ? (s.gross_revenue || 0) / s.total_bookings : 0,
+            gst:            0, // not computed server-side yet
+            cancel_amount:  0, // not computed server-side yet
+            rev_change: 0, book_change: 0, avg_change: 0, cancel_change: 0,
+        },
+        trend: {
+            labels:  series.map(r => r.period_label),
+            revenue: series.map(r => r.total_revenue),
+            target:  series.map(r => r.total_revenue),
+        },
+        table: series.map(r => ({
+            period:   r.period_label,
+            bookings: r.booking_count,
+            revenue:  r.total_revenue,
+            advance:  r.amount_collected,
+            balance:  Math.max((r.total_revenue || 0) - (r.amount_collected || 0), 0),
+            cancel:   0,
+            net:      r.total_revenue,
+            yoy_change: 0,
+        })),
+    };
+}
+
 /* ---------- Load Report ---------- */
 async function loadReport() {
     const from   = document.getElementById('fromDate').value;
@@ -232,7 +266,10 @@ async function loadReport() {
     let data;
     try {
         const res = await API.reports.revenue({ from_date:from, to_date:to, branch_id:branch||undefined, group_by:group });
-        data = res.data;
+        const live = normalizeApiRevenue(res.data || {});
+        const demo = getDemoData();
+        // Breakdowns not yet provided by the API — keep demo placeholders for those panels only.
+        data = { ...demo, kpi: live.kpi, trend: live.trend, table: live.table };
     } catch {
         data = getDemoData();
     }

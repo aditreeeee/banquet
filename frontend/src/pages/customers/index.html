@@ -58,6 +58,8 @@
         <div class="page-header">
             <div><h1 class="page-title">Customers</h1><p class="page-subtitle">Manage customer profiles, booking history and loyalty</p></div>
             <div style="display:flex;gap:10px">
+                <input type="file" id="importFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImportFile(this.files[0])">
+                <button class="btn-ghost" onclick="document.getElementById('importFileInput').click()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg> Import</button>
                 <button class="btn-ghost" onclick="exportCsv()">⬇ Export</button>
                 <button class="btn-primary-brand" onclick="openCustomerModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Add Customer</button>
             </div>
@@ -173,11 +175,21 @@ async function loadCustomers(page = 1) {
     const grid = document.getElementById('customersGrid');
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px"><span class="spinner-border spinner-border-sm me-2"></span>Loading customers…</div>';
 
+    const SORT_MAP = {
+        recent:         { sort_by: 'created_at',     sort_dir: 'DESC' },
+        spend_desc:     { sort_by: 'total_spend',     sort_dir: 'DESC' },
+        bookings_desc:  { sort_by: 'total_bookings',  sort_dir: 'DESC' },
+        name_asc:       { sort_by: 'first_name',      sort_dir: 'ASC'  },
+    };
+    const sortSel = SORT_MAP[document.getElementById('sortFilter').value] || SORT_MAP.recent;
+
     try {
         const res  = await API.customers.list({
             page, limit: 12,
-            search: document.getElementById('custSearch').value || undefined,
-            source: document.getElementById('sourceFilter').value || undefined,
+            search:   document.getElementById('custSearch').value || undefined,
+            source:   document.getElementById('sourceFilter').value || undefined,
+            sort_by:  sortSel.sort_by,
+            sort_dir: sortSel.sort_dir,
         });
         const list = res.data?.customers || [];
         const meta = res.data?.meta || { total: list.length, page, limit: 12 };
@@ -303,6 +315,103 @@ function exportCsv() {
     a.click();
     URL.revokeObjectURL(url);
     Utils.toast(`Exported ${rows.length} customers`, 'success');
+}
+
+/**
+ * Parse a CSV string into an array of row objects keyed by header.
+ * Handles quoted fields (including embedded commas / escaped quotes).
+ */
+function parseCsv(text) {
+    const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim().length);
+    if (!lines.length) return [];
+
+    const parseLine = (line) => {
+        const cells = [];
+        let cur = '', inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (inQuotes) {
+                if (ch === '"') {
+                    if (line[i + 1] === '"') { cur += '"'; i++; }
+                    else inQuotes = false;
+                } else cur += ch;
+            } else if (ch === '"') inQuotes = true;
+            else if (ch === ',') { cells.push(cur); cur = ''; }
+            else cur += ch;
+        }
+        cells.push(cur);
+        return cells.map(c => c.trim());
+    };
+
+    const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''));
+    return lines.slice(1).map(line => {
+        const cells = parseLine(line);
+        const row = {};
+        headers.forEach((h, i) => { row[h] = cells[i] ?? ''; });
+        return row;
+    });
+}
+
+const HEADER_ALIASES = {
+    first_name: ['first_name', 'firstname', 'first'],
+    last_name:  ['last_name', 'lastname', 'last'],
+    email:      ['email', 'email_address'],
+    phone:      ['phone', 'mobile', 'phone_number', 'contact_number'],
+    source:     ['source'],
+    city:       ['city'],
+};
+
+function mapImportRow(row) {
+    const mapped = {};
+    for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+        for (const alias of aliases) {
+            if (row[alias] !== undefined && row[alias] !== '') { mapped[field] = row[alias]; break; }
+        }
+    }
+    return mapped;
+}
+
+async function handleImportFile(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    if (ext === 'xlsx' || ext === 'xls') {
+        Utils.toast('Excel import is not yet supported. Please save the file as CSV and try again.', 'warning');
+        document.getElementById('importFileInput').value = '';
+        return;
+    }
+
+    const text = await file.text();
+    const rawRows = parseCsv(text);
+    document.getElementById('importFileInput').value = '';
+
+    if (!rawRows.length) { Utils.toast('The CSV file is empty', 'warning'); return; }
+
+    let created = 0, failed = 0, skipped = 0;
+    for (const raw of rawRows) {
+        const row = mapImportRow(raw);
+        const hasName    = !!(row.first_name || row.last_name);
+        const hasContact = !!(row.email || row.phone);
+        if (!hasName || !hasContact) { skipped++; continue; }
+        if (row.email && !Utils.Validators.email(row.email)) { skipped++; continue; }
+
+        try {
+            await API.customers.create({
+                first_name: row.first_name || '-',
+                last_name:  row.last_name  || '-',
+                email:      row.email      || undefined,
+                phone:      row.phone      || undefined,
+                source:     row.source     || 'walkin',
+                city:       row.city       || undefined,
+            });
+            created++;
+        } catch {
+            failed++;
+        }
+    }
+
+    Utils.toast(`Import complete: ${created} added, ${skipped} skipped (missing/invalid fields), ${failed} failed`, failed ? 'warning' : 'success');
+    loadCustomers(1);
 }
 
 document.addEventListener('DOMContentLoaded', () => loadCustomers(1));

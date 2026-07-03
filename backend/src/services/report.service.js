@@ -36,9 +36,10 @@ const getRevenueReport = async (query, actor) => {
     const cached = cache.get(key);
     if (cached) return cached;
 
+    const branchId = actor.branchId || query.branch_id || null;
     const [series, summary] = await Promise.all([
-        reportRepo.getRevenueReport({ companyId: actor.companyId, branchId: actor.branchId || null, fromDate: from, toDate: to, groupBy }),
-        reportRepo.getSummaryStats({  companyId: actor.companyId, branchId: actor.branchId || null, fromDate: from, toDate: to }),
+        reportRepo.getRevenueReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to, groupBy }),
+        reportRepo.getSummaryStats({  companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
     ]);
 
     const data = { summary, series, from, to, groupBy };
@@ -48,7 +49,7 @@ const getRevenueReport = async (query, actor) => {
 
 const getBookingReport = async (query, actor) => {
     const { from, to } = validateDateRange(query.from_date, query.to_date);
-    const p = parsePagination(query, ['event_date']);
+    const p = parsePagination(query, ['event_date', 'total_amount', 'customer_name', 'status']);
 
     const { rows, total } = await reportRepo.getBookingReport({
         companyId: actor.companyId,
@@ -56,6 +57,7 @@ const getBookingReport = async (query, actor) => {
         fromDate:  from,
         toDate:    to,
         status:    query.status || null,
+        search:    query.search || null,
         ...p,
     });
 
@@ -75,6 +77,7 @@ const getOccupancyReport = async (query, actor) => {
         fromDate:  from,
         toDate:    to,
     });
+    // NOTE: branchId already falls back to query.branch_id when actor has no fixed branch.
 
     cache.set(key, data);
     return data;
@@ -83,9 +86,10 @@ const getOccupancyReport = async (query, actor) => {
 const getPaymentReport = async (query, actor) => {
     const { from, to } = validateDateRange(query.from_date, query.to_date);
 
+    const branchId = actor.branchId || query.branch_id || null;
     const [payments, summary] = await Promise.all([
-        reportRepo.getPaymentReport({ companyId: actor.companyId, branchId: actor.branchId || null, fromDate: from, toDate: to }),
-        reportRepo.getSummaryStats({  companyId: actor.companyId, branchId: actor.branchId || null, fromDate: from, toDate: to }),
+        reportRepo.getPaymentReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getSummaryStats({  companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
     ]);
 
     return { summary, payments, from, to };

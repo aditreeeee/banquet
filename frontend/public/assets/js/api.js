@@ -170,6 +170,7 @@ const API = (() => {
         /* ─ Payments ─ */
         payments: {
             list:     (p)    => request('GET',  '/payments',          { params: p }),
+            get:      (id)   => request('GET',  `/payments/${id}`),
             record:   (d)    => request('POST', '/payments',          { body: d }),
             refund:   (id,d) => request('POST', `/payments/${id}/refund`, { body: d }),
             history:  (bid)  => request('GET',  `/payments/booking/${bid}`),

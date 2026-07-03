@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
@@ -77,7 +77,7 @@
                     <button class="btn-ghost" onclick="generateInvoice()" id="invoiceBtn"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg> Invoice</button>
                     <button class="btn-primary-brand" onclick="openPayModal()" id="collectBtn"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg> Collect Payment</button>
                     <div class="dropdown">
-                        <button class="btn-ghost" data-bs-toggle="dropdown">â‹¯</button>
+                        <button class="btn-ghost" data-bs-toggle="dropdown" aria-label="More actions"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg></button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#" onclick="sendConfirmation()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 6h16v12H4z"></path><path d="m4 7 8 6 8-6"></path></svg> Send Confirmation</a></li>
                             <li><a class="dropdown-item danger" href="#" onclick="cancelBooking()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"></circle><path d="m8 8 8 8"></path><path d="m16 8-8 8"></path></svg> Cancel Booking</a></li>
@@ -209,8 +209,8 @@ const DEMO_BOOKING = {
     status: 'advance_paid',
     event_name: 'Sharma-Patel Wedding Reception',
     event_type: 'Wedding',
-    booking_date: '2026-08-15',
-    slot_label: 'Full Day (8 AM – 11 PM)',
+    event_date: '2026-08-15',
+    event_time_start: '08:00', event_time_end: '23:00',
     guest_count: 400,
     special_requests: 'Vegetarian only, no beef. Bride prefers rose decorations.',
     banquet_name: 'Royal Heritage Banquet',
@@ -222,16 +222,9 @@ const DEMO_BOOKING = {
     customer_email: 'arjun.sharma@email.com',
     customer_phone: '+91 98765 43210',
     customer_total_bookings: 3,
-    hall_charge: 85000,
-    catering_total: 340000,
-    decoration_amt: 25000,
-    services_total: 12000,
-    subtotal: 462000,
-    discount_amt: 12000,
-    tax_amt: 81000,
-    grand_total: 531000,
+    total_amount: 531000,
+    discount_amount: 12000,
     amount_paid: 132750,
-    balance_due: 398250,
     payments: [
         { payment_ref:'PAY-2026-000001', payment_date:'2026-06-10', payment_type:'Advance', payment_method:'UPI', amount:132750, payment_status:'completed', transaction_id:'UPI123456789' },
     ],
@@ -252,12 +245,18 @@ async function loadBooking() {
     const id  = params.get('id');
     const ref = params.get('ref');
     try {
-        const res = await (id ? API.bookings.detail(id) : API.get(`/bookings/ref/${ref}`));
+        const res = await (id ? API.bookings.get(id) : API.get(`/bookings/ref/${ref}`));
         booking = res.data;
     } catch {
         booking = DEMO_BOOKING;
     }
     render(booking);
+
+    // Support deep-linked actions triggered from the bookings list (Print / Invoice buttons)
+    const action = params.get('action');
+    if (action === 'print')   setTimeout(() => window.print(), 300);
+    if (action === 'invoice') setTimeout(() => generateInvoice(), 300);
+    if (action === 'payments') setTimeout(() => document.getElementById('payHistoryList')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
 }
 
 function render(b) {
@@ -266,19 +265,19 @@ function render(b) {
     document.getElementById('breadcrumbRef').textContent = b.booking_ref;
     document.getElementById('bookingRef').textContent    = b.booking_ref;
     document.getElementById('statusBadge').innerHTML     = Utils.statusBadge(b.status);
-    document.getElementById('eventSummary').textContent  = `${b.event_type} · ${Utils.formatDate(b.booking_date)} · ${b.hall_name}`;
+    document.getElementById('eventSummary').textContent  = `${b.event_type || ''} · ${Utils.formatDate(b.event_date)} · ${b.hall_name}`;
 
     // Event
     set('dEventName', b.event_name);
     set('dEventType', b.event_type);
-    set('dEventDate', Utils.formatDate(b.booking_date));
-    set('dSlot',      b.slot_label);
+    set('dEventDate', Utils.formatDate(b.event_date));
+    set('dSlot',      b.event_time_start && b.event_time_end ? `${Utils.formatTime(b.event_time_start)} – ${Utils.formatTime(b.event_time_end)}` : '—');
     set('dGuests',    Utils.formatNumber(b.guest_count) + ' guests');
     set('dRequests',  b.special_requests || 'None');
     set('dBanquet',   b.banquet_name);
     set('dHall',      b.hall_name);
     set('dCapacity',  b.capacity + ' persons');
-    set('dCatering',  b.catering_package || 'None');
+    set('dCatering',  'N/A');
 
     // Customer
     const initials = Utils.initials(b.customer_name);
@@ -291,22 +290,23 @@ function render(b) {
     set('custBookings', b.customer_total_bookings + ' total');
     document.getElementById('custLink').href = `../customers/detail.html?id=${b.customer_id}`;
 
-    // Pricing
-    set('pHall',     Utils.formatCurrency(b.hall_charge));
-    set('pCatering', Utils.formatCurrency(b.catering_total));
-    set('pDecor',    Utils.formatCurrency(b.decoration_amt));
-    set('pServices', Utils.formatCurrency(b.services_total));
-    set('pSubtotal', Utils.formatCurrency(b.subtotal));
-    set('pDiscount', b.discount_amt ? `–${Utils.formatCurrency(b.discount_amt)}` : '—');
-    set('pGST',      Utils.formatCurrency(b.tax_amt));
-    set('pTotal',    Utils.formatCurrency(b.grand_total));
+    // Pricing (only fields that actually exist on the Bookings table are shown)
+    set('pHall',     Utils.formatCurrency(b.total_amount));
+    set('pCatering', 'N/A');
+    set('pDecor',    'N/A');
+    set('pServices', 'N/A');
+    set('pSubtotal', Utils.formatCurrency(b.total_amount));
+    set('pDiscount', b.discount_amount ? `–${Utils.formatCurrency(b.discount_amount)}` : '—');
+    set('pGST',      'N/A');
+    set('pTotal',    Utils.formatCurrency(b.total_amount));
 
     // Payment progress
-    const pct = Math.min(100, Math.round((b.amount_paid / b.grand_total) * 100));
+    const balanceDue = (b.total_amount || 0) - (b.amount_paid || 0);
+    const pct = b.total_amount ? Math.min(100, Math.round((b.amount_paid / b.total_amount) * 100)) : 0;
     document.getElementById('payCollected').textContent = Utils.formatCurrency(b.amount_paid);
     document.getElementById('payBar').style.width       = pct + '%';
     document.getElementById('payPct').textContent       = pct + '% paid';
-    document.getElementById('payBalance').textContent   = Utils.formatCurrency(b.balance_due);
+    document.getElementById('payBalance').textContent   = Utils.formatCurrency(balanceDue);
     document.getElementById('payHistoryList').innerHTML = (b.payments || []).map(p => `
     <div style="display:flex;justify-content:space-between;padding:8px;background:var(--bg-surface-2);border-radius:6px;margin-bottom:6px;font-size:12px">
         <div>
@@ -381,7 +381,7 @@ function sendConfirmation() {
         .catch(() => Utils.toast('Sent (demo mode)', 'success'));
 }
 
-function editBooking()  { location.href = `create.html?edit=${booking.booking_id}`; }
+function editBooking()  { location.href = `create.html?id=${booking.booking_id}&mode=edit`; }
 function printBooking() { window.print(); }
 
 document.addEventListener('DOMContentLoaded', loadBooking);

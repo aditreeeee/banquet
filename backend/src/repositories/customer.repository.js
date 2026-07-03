@@ -7,18 +7,18 @@ const { executeQuery } = require('../config/database');
 
 const BASE_SELECT = `
     SELECT c.customer_id, c.first_name, c.last_name, c.email, c.phone,
-           c.alternate_phone, c.address, c.city, c.state, c.notes,
+           c.alternate_phone, c.address, c.city, c.state, c.notes, c.source,
            c.is_active, c.company_id, c.branch_id, c.created_at,
-           (SELECT COUNT(*) FROM Bookings b WHERE b.customer_id = c.customer_id AND b.status NOT IN ('draft','cancelled')) AS booking_count,
-           IFNULL((SELECT SUM(total_amount) FROM Bookings b WHERE b.customer_id = c.customer_id AND b.status NOT IN ('draft','cancelled')), 0) AS lifetime_value
+           (SELECT COUNT(*) FROM Bookings b WHERE b.customer_id = c.customer_id AND b.status NOT IN ('draft','cancelled')) AS total_bookings,
+           ISNULL((SELECT SUM(total_amount) FROM Bookings b WHERE b.customer_id = c.customer_id AND b.status NOT IN ('draft','cancelled')), 0) AS total_spend
     FROM Customers c
 `;
 
 const findById = async (customerId, companyId = null) => {
     const rows = await executeQuery(
         `${BASE_SELECT}
-         WHERE c.customer_id = :id
-           AND (:companyId IS NULL OR c.company_id = :companyId)`,
+         WHERE c.customer_id = @id
+           AND (@companyId IS NULL OR c.company_id = @companyId)`,
         { id: customerId, companyId: companyId || null }
     );
     return rows[0] || null;
@@ -26,34 +26,43 @@ const findById = async (customerId, companyId = null) => {
 
 const findByEmail = async (email, companyId) => {
     const rows = await executeQuery(
-        `SELECT customer_id FROM Customers WHERE email = :email AND company_id = :companyId`,
+        `SELECT customer_id FROM Customers WHERE email = @email AND company_id = @companyId`,
         { email, companyId }
     );
     return rows[0] || null;
 };
 
-const findAll = async ({ companyId, branchId, search, isActive, offset, limit, sortBy, sortDir }) => {
+const SORT_COLUMN_MAP = {
+    first_name:     'c.first_name',
+    created_at:     'c.created_at',
+    total_bookings: 'total_bookings',
+    total_spend:    'total_spend',
+};
+
+const findAll = async ({ companyId, branchId, search, isActive, source, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'c.company_id = :companyId',
-        '(:branchId IS NULL OR c.branch_id = :branchId)',
-        '(:isActive IS NULL OR c.is_active = :isActive)',
-        `(:search IS NULL OR CONCAT(c.first_name, ' ', c.last_name) LIKE CONCAT('%', :search, '%')
-          OR c.email LIKE CONCAT('%', :search, '%') OR c.phone LIKE CONCAT('%', :search, '%'))`,
+        'c.company_id = @companyId',
+        '(@branchId IS NULL OR c.branch_id = @branchId)',
+        '(@isActive IS NULL OR c.is_active = @isActive)',
+        '(@source IS NULL OR c.source = @source)',
+        `(@search IS NULL OR CONCAT(c.first_name, ' ', c.last_name) LIKE CONCAT('%', @search, '%')
+          OR c.email LIKE CONCAT('%', @search, '%') OR c.phone LIKE CONCAT('%', @search, '%'))`,
     ].join(' AND ');
 
-    const col = ['first_name', 'created_at'].includes(sortBy) ? `c.${sortBy}` : 'c.first_name';
+    const col = SORT_COLUMN_MAP[sortBy] || 'c.created_at';
     const dir = sortDir === 'DESC' ? 'DESC' : 'ASC';
 
     const params = {
         companyId,
         branchId: branchId || null,
         isActive: isActive != null ? isActive : null,
+        source:   source   || null,
         search:   search   || null,
     };
 
     const [rows, countRows] = await Promise.all([
         executeQuery(
-            `${BASE_SELECT} WHERE ${where} ORDER BY ${col} ${dir} LIMIT :limit OFFSET :offset`,
+            `${BASE_SELECT} WHERE ${where} ORDER BY ${col} ${dir} OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
             { ...params, limit, offset }
         ),
         executeQuery(`SELECT COUNT(*) AS total FROM Customers c WHERE ${where}`, params),
@@ -66,8 +75,9 @@ const create = async (data) => {
     const result = await executeQuery(
         `INSERT INTO Customers
             (company_id, branch_id, first_name, last_name, email, phone, alternate_phone, address, city, state, notes, source, is_active, created_at, updated_at)
+         OUTPUT INSERTED.customer_id AS id
          VALUES
-            (:companyId, :branchId, :firstName, :lastName, :email, :phone, :altPhone, :address, :city, :state, :notes, :source, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+            (@companyId, @branchId, @firstName, @lastName, @email, @phone, @altPhone, @address, @city, @state, @notes, @source, 1, GETUTCDATE(), GETUTCDATE())`,
         {
             companyId: data.companyId,
             branchId:  data.branchId  || null,
@@ -83,23 +93,24 @@ const create = async (data) => {
             source:    data.source    || 'walkin',
         }
     );
-    return findById(result.insertId, data.companyId);
+    return findById(result[0].id, data.companyId);
 };
 
 const update = async (customerId, companyId, data) => {
     await executeQuery(
         `UPDATE Customers
-         SET first_name      = IFNULL(:firstName, first_name),
-             last_name       = IFNULL(:lastName,  last_name),
-             email           = IFNULL(:email,     email),
-             phone           = IFNULL(:phone,     phone),
-             alternate_phone = IFNULL(:altPhone,  alternate_phone),
-             address         = IFNULL(:address,   address),
-             city            = IFNULL(:city,      city),
-             state           = IFNULL(:state,     state),
-             notes           = IFNULL(:notes,     notes),
-             updated_at      = UTC_TIMESTAMP()
-         WHERE customer_id = :id AND company_id = :companyId`,
+         SET first_name      = ISNULL(@firstName, first_name),
+             last_name       = ISNULL(@lastName,  last_name),
+             email           = ISNULL(@email,     email),
+             phone           = ISNULL(@phone,     phone),
+             alternate_phone = ISNULL(@altPhone,  alternate_phone),
+             address         = ISNULL(@address,   address),
+             city            = ISNULL(@city,      city),
+             state           = ISNULL(@state,     state),
+             notes           = ISNULL(@notes,     notes),
+             source          = ISNULL(@source,    source),
+             updated_at      = GETUTCDATE()
+         WHERE customer_id = @id AND company_id = @companyId`,
         {
             id:        customerId,
             companyId,
@@ -112,6 +123,7 @@ const update = async (customerId, companyId, data) => {
             city:      data.city           || null,
             state:     data.state          || null,
             notes:     data.notes          || null,
+            source:    data.source         || null,
         }
     );
     return findById(customerId, companyId);
@@ -123,12 +135,13 @@ const getBookingHistory = async (customerId, companyId, { offset, limit }) => {
                 b.status, b.total_amount, h.hall_name
          FROM Bookings b
          JOIN Halls h ON h.hall_id = b.hall_id
-         WHERE b.customer_id = :customerId AND b.company_id = :companyId
+         WHERE b.customer_id = @customerId AND b.company_id = @companyId
          ORDER BY b.event_date DESC
-         LIMIT :limit OFFSET :offset`,
+         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
         { customerId, companyId, limit, offset }
     );
     return rows;
 };
 
 module.exports = { findById, findByEmail, findAll, create, update, getBookingHistory };
+

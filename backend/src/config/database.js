@@ -1,81 +1,114 @@
 /**
- * Database Configuration — MySQL
- * Uses mysql2/promise with connection pooling and named placeholders
- * Supports 1000+ concurrent users via pool settings
+ * Database Configuration — MSSQL (Microsoft SQL Server)
+ * Uses the `mssql` package (Tedious driver) with connection pooling.
+ * Supports 1000+ concurrent users via pool settings.
  */
 
 'use strict';
 
-const mysql  = require('mysql2/promise');
+const sql    = require('mssql');
 const logger = require('../utils/logger');
 
 // ─── Pool Configuration ────────────────────────────────────────────────────
 const poolConfig = {
-    host:                 process.env.DB_HOST     || 'localhost',
-    port:                 parseInt(process.env.DB_PORT, 10) || 3306,
-    database:             process.env.DB_NAME     || 'banquet_booking',
-    user:                 process.env.DB_USER     || 'root',
-    password:             process.env.DB_PASSWORD || '',
-    connectionLimit:      parseInt(process.env.DB_POOL_MAX, 10) || 20,
-    queueLimit:           0,
-    waitForConnections:   true,
-    timezone:             '+00:00',        // all dates stored / retrieved as UTC
-    charset:              'utf8mb4',
-    connectTimeout:       parseInt(process.env.DB_CONNECT_TIMEOUT, 10) || 15000,
-    enableKeepAlive:      true,
-    keepAliveInitialDelay: 10000,
-    namedPlaceholders:    true,            // enables :param syntax in queries
+    server:   process.env.DB_HOST || 'localhost',
+    port:     parseInt(process.env.DB_PORT, 10) || 1433,
+    database: process.env.DB_NAME || 'banquet_booking',
+    user:     process.env.DB_USER || 'sa',
+    password: process.env.DB_PASSWORD || '',
+    pool: {
+        max:                     parseInt(process.env.DB_POOL_MAX, 10) || 20,
+        min:                     parseInt(process.env.DB_POOL_MIN, 10) || 0,
+        idleTimeoutMillis:       30000,
+    },
+    options: {
+        encrypt:                String(process.env.DB_ENCRYPT).toLowerCase() === 'true',
+        trustServerCertificate: String(process.env.DB_TRUST_SERVER_CERTIFICATE).toLowerCase() === 'true',
+        enableArithAbort:       true,
+        useUTC:                 true,
+    },
+    connectionTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT, 10) || 15000,
+    requestTimeout:    parseInt(process.env.DB_REQUEST_TIMEOUT, 10) || 15000,
 };
 
 // ─── Singleton Pool Instance ───────────────────────────────────────────────
 let pool = null;
+let poolPromise = null;
 
 /**
  * Get or lazily create the connection pool.
- * mysql2 createPool is synchronous; actual connections are made on first use.
- * @returns {mysql.Pool}
+ * mssql pool creation is asynchronous, so we cache the connect promise
+ * to avoid creating multiple pools under concurrent first-use calls.
+ * @returns {Promise<sql.ConnectionPool>}
  */
-const getPool = () => {
-    if (!pool) {
-        pool = mysql.createPool(poolConfig);
-
-        logger.info('MySQL connection pool created', {
-            host:     poolConfig.host,
-            database: poolConfig.database,
-            limit:    poolConfig.connectionLimit,
-        });
+const getPool = async () => {
+    if (pool && pool.connected) {
+        return pool;
     }
-    return pool;
+    if (!poolPromise) {
+        poolPromise = new sql.ConnectionPool(poolConfig)
+            .connect()
+            .then((connectedPool) => {
+                pool = connectedPool;
+                pool.on('error', (err) => {
+                    logger.error('MSSQL pool error', { error: err.message });
+                });
+                logger.info('MSSQL connection pool created', {
+                    host:     poolConfig.server,
+                    database: poolConfig.database,
+                    max:      poolConfig.pool.max,
+                });
+                return pool;
+            })
+            .catch((err) => {
+                poolPromise = null;
+                throw err;
+            });
+    }
+    return poolPromise;
 };
 
 /**
- * Execute a parameterized query (SQL-injection safe via mysql2 prepared stmts)
+ * Bind a params object onto an mssql Request via request.input().
+ * The mssql driver infers native JS types (string/number/boolean/Date/Buffer)
+ * automatically, which is sufficient for the vast majority of queries here.
  *
- * @param {string} query   - SQL with :paramName placeholders
+ * @param {sql.Request} request
+ * @param {Object} params - { paramName: value }
+ */
+const bindParams = (request, params = {}) => {
+    Object.entries(params).forEach(([key, value]) => {
+        request.input(key, value === undefined ? null : value);
+    });
+};
+
+/**
+ * Execute a parameterized query (SQL-injection safe via mssql prepared params)
+ *
+ * @param {string} query   - SQL with @paramName placeholders
  * @param {Object} params  - Named params object  { paramName: value }
- * @returns {Promise<Array|Object>}
- *   SELECT → array of row objects
- *   INSERT / UPDATE / DELETE → ResultSetHeader { insertId, affectedRows, … }
+ * @returns {Promise<Array>} recordset rows
  */
 const executeQuery = async (query, params = {}) => {
-    const db = getPool();
-    // query() does client-side interpolation and handles LIMIT/OFFSET correctly.
-    // execute() uses server-side prepared statements which reject LIMIT as a bound param.
-    const [rows] = await db.query(query, params);
-    return rows;
+    const db      = await getPool();
+    const request = db.request();
+    bindParams(request, params);
+    const result = await request.query(query);
+    return result.recordset || [];
 };
 
 /**
  * Execute a stored procedure
  * @param {string} procedureName
- * @param {Array}  values  - positional values (stored procedures use ? placeholders)
+ * @param {Object} params - named params object { paramName: value }
  * @returns {Promise<Array>}
  */
-const executeStoredProcedure = async (procedureName, values = []) => {
-    const db   = getPool();
-    const ph   = values.map(() => '?').join(', ');
-    const [rows] = await db.query(`CALL ${procedureName}(${ph})`, values);
-    return rows;
+const executeStoredProcedure = async (procedureName, params = {}) => {
+    const db      = await getPool();
+    const request = db.request();
+    bindParams(request, params);
+    const result = await request.execute(procedureName);
+    return result.recordset || [];
 };
 
 /**
@@ -86,28 +119,31 @@ const executeStoredProcedure = async (procedureName, values = []) => {
  * @returns {Promise<any>} whatever callback returns
  */
 const withTransaction = async (callback) => {
-    const db   = getPool();
-    const conn = await db.getConnection();
+    const db  = await getPool();
+    const tx  = new sql.Transaction(db);
+
+    await tx.begin();
 
     try {
-        await conn.beginTransaction();
-
-        // Thin wrapper so repository callbacks use the same API as executeQuery
-        const tx = {
+        const txApi = {
             execute: async (query, params = {}) => {
-                const [rows] = await conn.query(query, params);
-                return rows;
+                const request = new sql.Request(tx);
+                bindParams(request, params);
+                const result = await request.query(query);
+                return result.recordset || [];
             },
         };
 
-        const result = await callback(tx);
-        await conn.commit();
+        const result = await callback(txApi);
+        await tx.commit();
         return result;
     } catch (err) {
-        await conn.rollback();
+        try {
+            await tx.rollback();
+        } catch (rollbackErr) {
+            logger.error('MSSQL transaction rollback failed', { error: rollbackErr.message });
+        }
         throw err;
-    } finally {
-        conn.release();
     }
 };
 
@@ -128,9 +164,10 @@ const healthCheck = async () => {
  */
 const closePool = async () => {
     if (pool) {
-        await pool.end();
+        await pool.close();
         pool = null;
-        logger.info('MySQL connection pool closed');
+        poolPromise = null;
+        logger.info('MSSQL connection pool closed');
     }
 };
 

@@ -13,7 +13,7 @@ const router = Router();
 router.get('/packages', async (req, res) => {
     const rows = await executeQuery(
         `SELECT package_id, package_name, package_type, description, price_per_plate, is_active
-         FROM CateringPackages WHERE company_id = :companyId AND is_active = 1 ORDER BY package_name`,
+         FROM CateringPackages WHERE company_id = @companyId AND is_active = 1 ORDER BY package_name`,
         { companyId: req.companyId }
     );
     return response.success(res, rows);
@@ -26,7 +26,8 @@ router.post('/packages', async (req, res) => {
 
     const result = await executeQuery(
         `INSERT INTO CateringPackages (company_id, package_name, package_type, description, price_per_plate, min_plates, is_active, created_at)
-         VALUES (:companyId, :name, :type, :desc, :price, :minPlates, 1, UTC_TIMESTAMP())`,
+         OUTPUT INSERTED.package_id AS insertId
+         VALUES (@companyId, @name, @type, @desc, @price, @minPlates, 1, GETUTCDATE())`,
         {
             companyId: req.companyId,
             name:      packageName,
@@ -36,7 +37,7 @@ router.post('/packages', async (req, res) => {
             minPlates: minPlates    || 50,
         }
     );
-    return response.created(res, { package_id: result.insertId });
+    return response.created(res, { package_id: result[0].insertId });
 });
 
 module.exports = router;

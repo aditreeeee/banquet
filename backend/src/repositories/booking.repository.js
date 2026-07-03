@@ -1,6 +1,6 @@
 /**
  * Booking Repository — All DB operations for the booking engine
- * Uses transactions + SELECT FOR UPDATE to prevent double-booking race conditions
+ * Uses transactions + locking hints to prevent double-booking race conditions
  */
 
 'use strict';
@@ -11,18 +11,18 @@ const { executeQuery, withTransaction } = require('../config/database');
 
 /**
  * Check if a hall is available for a given date/time window.
- * Must be called inside a transaction — FOR UPDATE serializes concurrent checks.
+ * Must be called inside a transaction — the UPDLOCK/HOLDLOCK table hint
+ * serializes concurrent checks against the same hall/date.
  */
 const checkAvailabilityInTx = async (tx, { hallId, eventDate, startTime, endTime, excludeBookingId }) => {
     const rows = await tx.execute(
         `SELECT COUNT(*) AS conflict_count
-         FROM Bookings
-         WHERE hall_id    = :hallId
-           AND event_date = :eventDate
+         FROM Bookings WITH (UPDLOCK, ROWLOCK, HOLDLOCK)
+         WHERE hall_id    = @hallId
+           AND event_date = @eventDate
            AND status NOT IN ('cancelled', 'draft')
-           AND (:excludeId IS NULL OR booking_id <> :excludeId)
-           AND (event_time_start < :endTime AND event_time_end > :startTime)
-         FOR UPDATE`,
+           AND (@excludeId IS NULL OR booking_id <> @excludeId)
+           AND (event_time_start < @endTime AND event_time_end > @startTime)`,
         {
             hallId,
             eventDate: new Date(eventDate),
@@ -41,11 +41,11 @@ const checkAvailability = async ({ hallId, eventDate, startTime, endTime, exclud
     const rows = await executeQuery(
         `SELECT COUNT(*) AS conflict_count
          FROM Bookings
-         WHERE hall_id    = :hallId
-           AND event_date = :eventDate
+         WHERE hall_id    = @hallId
+           AND event_date = @eventDate
            AND status NOT IN ('cancelled', 'draft')
-           AND (:excludeId IS NULL OR booking_id <> :excludeId)
-           AND (event_time_start < :endTime AND event_time_end > :startTime)`,
+           AND (@excludeId IS NULL OR booking_id <> @excludeId)
+           AND (event_time_start < @endTime AND event_time_end > @startTime)`,
         {
             hallId,
             eventDate: new Date(eventDate),
@@ -62,11 +62,11 @@ const checkAvailability = async ({ hallId, eventDate, startTime, endTime, exclud
  */
 const getBookedDates = async ({ hallId, fromDate, toDate, companyId }) => {
     const rows = await executeQuery(
-        `SELECT DISTINCT DATE(event_date) AS booked_date
+        `SELECT DISTINCT CAST(event_date AS DATE) AS booked_date
          FROM Bookings
-         WHERE hall_id    = :hallId
-           AND company_id = :companyId
-           AND event_date BETWEEN :fromDate AND :toDate
+         WHERE hall_id    = @hallId
+           AND company_id = @companyId
+           AND event_date BETWEEN @fromDate AND @toDate
            AND status NOT IN ('cancelled', 'draft')
          ORDER BY booked_date`,
         {
@@ -110,12 +110,14 @@ const create = async (data) => {
                 event_name, event_type, guest_count,
                 total_amount, advance_paid, amount_paid,
                 notes, status, created_by, created_at, updated_at
-            ) VALUES (
-                :companyId, :branchId, :hallId, :customerId, :bookingRef,
-                :eventDate, :eventTimeStart, :eventTimeEnd,
-                :eventName, :eventType, :guestCount,
-                :totalAmount, :advancePaid, :amountPaid,
-                :notes, 'confirmed', :createdBy, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+            )
+            OUTPUT INSERTED.booking_id AS id
+            VALUES (
+                @companyId, @branchId, @hallId, @customerId, @bookingRef,
+                @eventDate, @eventTimeStart, @eventTimeEnd,
+                @eventName, @eventType, @guestCount,
+                @totalAmount, @advancePaid, @amountPaid,
+                @notes, 'confirmed', @createdBy, GETUTCDATE(), GETUTCDATE()
             )`,
             {
                 companyId:      data.companyId,
@@ -136,7 +138,7 @@ const create = async (data) => {
                 createdBy:      data.createdBy,
             }
         );
-        createdBookingId = result.insertId;
+        createdBookingId = result[0].id;
     });
 
     return findById(createdBookingId);
@@ -154,14 +156,14 @@ const findById = async (bookingId, companyId = null) => {
             CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
             c.email AS customer_email, c.phone AS customer_phone,
             CONCAT(u.first_name, ' ', u.last_name) AS created_by_name,
-            IFNULL((SELECT SUM(amount) FROM Payments WHERE booking_id = b.booking_id AND status = 'completed'), 0) AS total_paid
+            ISNULL((SELECT SUM(amount) FROM Payments WHERE booking_id = b.booking_id AND status = 'completed'), 0) AS total_paid
          FROM Bookings b
          JOIN Halls     h  ON h.hall_id     = b.hall_id
          JOIN Banquets  bq ON bq.banquet_id = h.banquet_id
          JOIN Customers c  ON c.customer_id = b.customer_id
          LEFT JOIN Users u ON u.user_id     = b.created_by
-         WHERE b.booking_id = :bookingId
-           AND (:companyId IS NULL OR b.company_id = :companyId)`,
+         WHERE b.booking_id = @bookingId
+           AND (@companyId IS NULL OR b.company_id = @companyId)`,
         { bookingId, companyId: companyId || null }
     );
     return rows[0] || null;
@@ -172,15 +174,15 @@ const findById = async (bookingId, companyId = null) => {
  */
 const findAll = async ({ companyId, branchId, status, hallId, customerId, fromDate, toDate, search, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'b.company_id = :companyId',
-        '(:branchId IS NULL OR b.branch_id = :branchId)',
-        '(:status IS NULL OR b.status = :status)',
-        '(:hallId IS NULL OR b.hall_id = :hallId)',
-        '(:customerId IS NULL OR b.customer_id = :customerId)',
-        '(:fromDate IS NULL OR b.event_date >= :fromDate)',
-        '(:toDate IS NULL OR b.event_date <= :toDate)',
-        `(:search IS NULL OR b.booking_ref LIKE CONCAT('%', :search, '%')
-          OR CONCAT(c.first_name, ' ', c.last_name) LIKE CONCAT('%', :search, '%'))`,
+        'b.company_id = @companyId',
+        '(@branchId IS NULL OR b.branch_id = @branchId)',
+        '(@status IS NULL OR b.status = @status)',
+        '(@hallId IS NULL OR b.hall_id = @hallId)',
+        '(@customerId IS NULL OR b.customer_id = @customerId)',
+        '(@fromDate IS NULL OR b.event_date >= @fromDate)',
+        '(@toDate IS NULL OR b.event_date <= @toDate)',
+        `(@search IS NULL OR b.booking_ref LIKE CONCAT('%', @search, '%')
+          OR CONCAT(c.first_name, ' ', c.last_name) LIKE CONCAT('%', @search, '%'))`,
     ].join(' AND ');
 
     const orderCol = ['event_date', 'created_at', 'total_amount', 'status'].includes(sortBy)
@@ -213,7 +215,7 @@ const findAll = async ({ companyId, branchId, status, hallId, customerId, fromDa
              JOIN Customers c ON c.customer_id = b.customer_id
              WHERE ${where}
              ORDER BY ${orderCol} ${dir}
-             LIMIT :limit OFFSET :offset`,
+             OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
             { ...params, limit, offset }
         ),
         executeQuery(
@@ -234,12 +236,12 @@ const findAll = async ({ companyId, branchId, status, hallId, customerId, fromDa
 const update = async (bookingId, companyId, data) => {
     await executeQuery(
         `UPDATE Bookings
-         SET event_name  = IFNULL(:eventName,  event_name),
-             event_type  = IFNULL(:eventType,  event_type),
-             guest_count = IFNULL(:guestCount, guest_count),
-             notes       = IFNULL(:notes,      notes),
-             updated_at  = UTC_TIMESTAMP()
-         WHERE booking_id = :bookingId AND company_id = :companyId`,
+         SET event_name  = ISNULL(@eventName,  event_name),
+             event_type  = ISNULL(@eventType,  event_type),
+             guest_count = ISNULL(@guestCount, guest_count),
+             notes       = ISNULL(@notes,      notes),
+             updated_at  = GETUTCDATE()
+         WHERE booking_id = @bookingId AND company_id = @companyId`,
         {
             bookingId,
             companyId,
@@ -273,11 +275,11 @@ const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eve
 
         await tx.execute(
             `UPDATE Bookings
-             SET event_date       = :eventDate,
-                 event_time_start = :eventTimeStart,
-                 event_time_end   = :eventTimeEnd,
-                 updated_at       = UTC_TIMESTAMP()
-             WHERE booking_id = :bookingId AND company_id = :companyId`,
+             SET event_date       = @eventDate,
+                 event_time_start = @eventTimeStart,
+                 event_time_end   = @eventTimeEnd,
+                 updated_at       = GETUTCDATE()
+             WHERE booking_id = @bookingId AND company_id = @companyId`,
             { bookingId, companyId, eventDate: new Date(eventDate), eventTimeStart, eventTimeEnd }
         );
     });
@@ -291,10 +293,10 @@ const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eve
 const updateStatus = async (bookingId, companyId, status, updatedBy) => {
     await executeQuery(
         `UPDATE Bookings
-         SET status     = :status,
-             updated_at = UTC_TIMESTAMP(),
-             updated_by = :updatedBy
-         WHERE booking_id = :bookingId AND company_id = :companyId`,
+         SET status     = @status,
+             updated_at = GETUTCDATE(),
+             updated_by = @updatedBy
+         WHERE booking_id = @bookingId AND company_id = @companyId`,
         { bookingId, companyId, status, updatedBy }
     );
     return findById(bookingId, companyId);
@@ -307,11 +309,11 @@ const cancel = async (bookingId, companyId, reason, cancelledBy) => {
     await executeQuery(
         `UPDATE Bookings
          SET status              = 'cancelled',
-             cancellation_reason = :reason,
-             cancelled_at        = UTC_TIMESTAMP(),
-             cancelled_by        = :cancelledBy,
-             updated_at          = UTC_TIMESTAMP()
-         WHERE booking_id = :bookingId AND company_id = :companyId
+             cancellation_reason = @reason,
+             cancelled_at        = GETUTCDATE(),
+             cancelled_by        = @cancelledBy,
+             updated_at          = GETUTCDATE()
+         WHERE booking_id = @bookingId AND company_id = @companyId
            AND status NOT IN ('cancelled', 'completed')`,
         { bookingId, companyId, reason: reason || null, cancelledBy }
     );
@@ -328,12 +330,12 @@ const findByRef = async (bookingRef, companyId) => {
             h.hall_name,
             CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
             c.email AS customer_email, c.phone AS customer_phone,
-            IFNULL(b.total_amount - b.amount_paid, 0) AS balance_due
+            ISNULL(b.total_amount - b.amount_paid, 0) AS balance_due
          FROM Bookings b
          JOIN Halls     h ON h.hall_id     = b.hall_id
          JOIN Customers c ON c.customer_id = b.customer_id
-         WHERE b.booking_ref = :bookingRef
-           AND (:companyId IS NULL OR b.company_id = :companyId)`,
+         WHERE b.booking_ref = @bookingRef
+           AND (@companyId IS NULL OR b.company_id = @companyId)`,
         { bookingRef, companyId: companyId || null }
     );
     return rows[0] || null;

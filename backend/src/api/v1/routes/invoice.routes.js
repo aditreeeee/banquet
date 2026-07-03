@@ -22,17 +22,17 @@ router.get('/', requirePermission(PERMISSIONS.INVOICES_READ), async (req, res) =
     const month     = req.query.month   || null; // "YYYY-MM"
 
     const conditions = [
-        'i.company_id = :companyId',
+        'i.company_id = @companyId',
         'i.is_cancelled = 0',
-        '(:status IS NULL OR i.payment_status = :status)',
-        '(:month  IS NULL OR DATE_FORMAT(i.invoice_date, \'%Y-%m\') = :month)',
-        `(:search IS NULL
-          OR i.invoice_number LIKE CONCAT('%', :search, '%')
-          OR b.booking_ref   LIKE CONCAT('%', :search, '%')
-          OR CONCAT(c.first_name, ' ', c.last_name) LIKE CONCAT('%', :search, '%'))`,
+        '(@status IS NULL OR i.payment_status = @status)',
+        '(@month  IS NULL OR FORMAT(i.invoice_date, \'yyyy-MM\') = @month)',
+        `(@search IS NULL
+          OR i.invoice_number LIKE CONCAT('%', @search, '%')
+          OR b.booking_ref   LIKE CONCAT('%', @search, '%')
+          OR CONCAT(c.first_name, ' ', c.last_name) LIKE CONCAT('%', @search, '%'))`,
     ].join(' AND ');
 
-    const [rows, countRows] = await Promise.all([
+    const [rows, countRows, statsRows] = await Promise.all([
         executeQuery(
             `SELECT i.invoice_id,
                     i.invoice_number  AS invoice_ref,
@@ -51,7 +51,7 @@ router.get('/', requirePermission(PERMISSIONS.INVOICES_READ), async (req, res) =
              JOIN Customers c ON c.customer_id = i.customer_id
              WHERE ${conditions}
              ORDER BY i.invoice_date DESC
-             LIMIT :limit OFFSET :offset`,
+             OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
             { companyId, search, status, month, limit, offset }
         ),
         executeQuery(
@@ -62,12 +62,23 @@ router.get('/', requirePermission(PERMISSIONS.INVOICES_READ), async (req, res) =
              WHERE ${conditions}`,
             { companyId, search, status, month }
         ),
+        executeQuery(
+            `SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN i.payment_status = 'paid'    THEN 1 ELSE 0 END) AS paid,
+                SUM(CASE WHEN i.payment_status = 'partial' THEN 1 ELSE 0 END) AS partial,
+                SUM(CASE WHEN i.payment_status = 'unpaid'  THEN 1 ELSE 0 END) AS unpaid,
+                SUM(CASE WHEN i.payment_status = 'unpaid' AND i.due_date < CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END) AS overdue
+             FROM Invoices i
+             WHERE i.company_id = @companyId AND i.is_cancelled = 0`,
+            { companyId }
+        ),
     ]);
 
     return response.success(res, {
         invoices: rows,
         meta:  { page, limit, total: countRows[0].total },
-        stats: {},
+        stats: statsRows[0] || {},
     });
 });
 
@@ -81,7 +92,7 @@ router.get('/:id', requirePermission(PERMISSIONS.INVOICES_READ), async (req, res
          FROM Invoices i
          JOIN Bookings  b ON b.booking_id  = i.booking_id
          JOIN Customers c ON c.customer_id = i.customer_id
-         WHERE i.invoice_id = :id AND i.company_id = :companyId`,
+         WHERE i.invoice_id = @id AND i.company_id = @companyId`,
         {
             id:        parseInt(req.params.id, 10),
             companyId: req.companyId,
@@ -99,9 +110,9 @@ router.post('/', requirePermission(PERMISSIONS.INVOICES_CREATE), async (req, res
     const bookingRows = await executeQuery(
         `SELECT b.booking_id, b.total_amount, b.booking_ref, b.customer_id
          FROM Bookings b
-         WHERE (:bookingId IS NULL OR b.booking_id = :bookingId)
-           AND (:bookingRef IS NULL OR b.booking_ref = :bookingRef)
-           AND b.company_id = :companyId`,
+         WHERE (@bookingId IS NULL OR b.booking_id = @bookingId)
+           AND (@bookingRef IS NULL OR b.booking_ref = @bookingRef)
+           AND b.company_id = @companyId`,
         { bookingId: bookingId ? parseInt(bookingId, 10) : null, bookingRef: booking_ref || null, companyId: req.companyId }
     );
     if (!bookingRows[0]) return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -117,12 +128,13 @@ router.post('/', requirePermission(PERMISSIONS.INVOICES_CREATE), async (req, res
              subtotal, discount_amount, taxable_amount,
              grand_total, amount_paid, balance_due,
              payment_status, created_by, created_at)
+         OUTPUT INSERTED.invoice_id AS insertId
          VALUES
-            (:invoiceNumber, :companyId, :bookingId, :customerId,
-             DATE(UTC_TIMESTAMP()), DATE_ADD(DATE(UTC_TIMESTAMP()), INTERVAL 7 DAY),
-             :amount, 0, :amount,
-             :amount, 0, :amount,
-             'pending', :createdBy, UTC_TIMESTAMP())`,
+            (@invoiceNumber, @companyId, @bookingId, @customerId,
+             CAST(GETUTCDATE() AS DATE), DATEADD(day, 7, CAST(GETUTCDATE() AS DATE)),
+             @amount, 0, @amount,
+             @amount, 0, @amount,
+             'pending', @createdBy, GETUTCDATE())`,
         {
             invoiceNumber,
             companyId:  req.companyId,
@@ -133,21 +145,21 @@ router.post('/', requirePermission(PERMISSIONS.INVOICES_CREATE), async (req, res
         }
     );
 
-    return response.created(res, { invoice_id: result.insertId, invoice_number: invoiceNumber });
+    return response.created(res, { invoice_id: result[0].insertId, invoice_number: invoiceNumber });
 });
 
 // Cancel invoice (soft delete — sets is_cancelled = 1)
 router.delete('/:id', requirePermission(PERMISSIONS.INVOICES_CREATE), async (req, res) => {
     const rows = await executeQuery(
         `SELECT invoice_id FROM Invoices
-         WHERE invoice_id = :id AND company_id = :companyId AND is_cancelled = 0`,
+         WHERE invoice_id = @id AND company_id = @companyId AND is_cancelled = 0`,
         { id: parseInt(req.params.id, 10), companyId: req.companyId }
     );
     if (!rows[0]) return res.status(404).json({ success: false, message: 'Invoice not found' });
 
     await executeQuery(
-        `UPDATE Invoices SET is_cancelled = 1, updated_at = UTC_TIMESTAMP()
-         WHERE invoice_id = :id AND company_id = :companyId`,
+        `UPDATE Invoices SET is_cancelled = 1, updated_at = GETUTCDATE()
+         WHERE invoice_id = @id AND company_id = @companyId`,
         { id: parseInt(req.params.id, 10), companyId: req.companyId }
     );
     return response.success(res, null, 'Invoice cancelled');

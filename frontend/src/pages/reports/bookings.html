@@ -234,13 +234,78 @@ function formatStatusLabel(status) {
     return status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 }
 
+/* Map the report-page sort field names to the API's sort_by values */
+const SORT_FIELD_MAP = { date: 'event_date', amount: 'total_amount', customer: 'customer_name', status: 'status' };
+
+function normalizeApiReport(res) {
+    const rows = Array.isArray(res?.data) ? res.data : [];
+    const table = rows.map(r => ({
+        booking_id:   r.booking_ref,
+        customer:     r.customer_name,
+        hall:         r.hall_name,
+        event_type:   r.event_type,
+        status:       r.status,
+        amount:       r.total_amount,
+        branch:       r.banquet_name || '—',
+        booking_date: (r.event_date || '').toString().substring(0, 10),
+    }));
+
+    const statusOf = s => table.filter(r => r.status === s).length;
+    const monthEntries = {};
+    table.forEach(row => {
+        if (!row.booking_date) return;
+        const month = new Date(row.booking_date).toLocaleString('en', { month: 'short', year: 'numeric' });
+        if (!monthEntries[month]) monthEntries[month] = { total: 0, cancelled: 0 };
+        monthEntries[month].total += 1;
+        if (row.status === 'cancelled') monthEntries[month].cancelled += 1;
+    });
+    const monthLabels = Object.keys(monthEntries);
+
+    return {
+        kpi: {
+            total: res?.meta?.total ?? table.length,
+            confirmed: statusOf('confirmed'),
+            advance_paid: statusOf('advance_paid'),
+            fully_paid: statusOf('fully_paid'),
+            cancelled: statusOf('cancelled'),
+        },
+        trend: {
+            labels: monthLabels,
+            datasets: [
+                { label: 'Total', data: monthLabels.map(m => monthEntries[m].total), borderColor: '#7C3AED', backgroundColor: 'rgba(124,58,237,.08)', fill: true, tension: .35, borderWidth: 2.5 },
+                { label: 'Cancelled', data: monthLabels.map(m => monthEntries[m].cancelled), borderColor: '#EF4444', borderDash: [4, 2], fill: false, tension: .35, borderWidth: 1.5 },
+            ],
+        },
+        by_status: {
+            labels: ['Confirmed', 'Advance Paid', 'Fully Paid', 'Cancelled'],
+            data: ['confirmed', 'advance_paid', 'fully_paid', 'cancelled'].map(statusOf),
+        },
+        by_event: (() => {
+            const types = [...new Set(table.map(r => r.event_type).filter(Boolean))];
+            return { labels: types, data: types.map(t => table.filter(r => r.event_type === t).length) };
+        })(),
+        table,
+    };
+}
+
 async function loadReport() {
     let data;
     try {
-        const res = await API.reports.bookings({ from_date: document.getElementById('fromDate').value, to_date: document.getElementById('toDate').value, branch_id: document.getElementById('branchFilter').value || undefined, status: document.getElementById('statusFilter').value || undefined });
-        if (res?.data) {
-            data = res.data;
-        } else {
+        const sortField = document.getElementById('sortField').value;
+        const res = await API.reports.bookings({
+            from_date:  document.getElementById('fromDate').value,
+            to_date:    document.getElementById('toDate').value,
+            branch_id:  document.getElementById('branchFilter').value || undefined,
+            status:     document.getElementById('statusFilter').value || undefined,
+            search:     document.getElementById('searchInput').value.trim() || undefined,
+            sort_by:    SORT_FIELD_MAP[sortField] || 'event_date',
+            sort_dir:   document.getElementById('sortDirection').value,
+            page: 1,
+            limit: 100,
+        });
+        data = res ? normalizeApiReport(res) : getDemoData();
+        if (!data.table.length && !document.getElementById('searchInput').value && !document.getElementById('statusFilter').value) {
+            // No live rows and no filters applied — likely no data/backend yet, fall back to demo so the page isn't blank.
             data = getDemoData();
         }
     } catch {

@@ -7,7 +7,11 @@ const svc      = require('../../../services/payment.service');
 const response = require('../../../utils/response');
 const actor    = (req) => ({ companyId: req.companyId, branchId: req.user.branch_id, userId: req.user.user_id });
 
-const getAll      = async (req, res) => { const { rows, meta } = await svc.getAll(req.query, actor(req)); return response.success(res, { payments: rows, meta, stats: {} }); };
+const getAll      = async (req, res) => {
+    const a = actor(req);
+    const [{ rows, meta }, stats] = await Promise.all([svc.getAll(req.query, a), svc.getStats(a)]);
+    return response.success(res, { payments: rows, meta, stats });
+};
 const getPending  = async (req, res) => response.success(res, { pending: await svc.getPending(req.query, actor(req)) });
 const getById     = async (req, res) => response.success(res, await svc.getById(parseInt(req.params.id, 10), req.companyId));
 const getByBooking = async (req, res) => response.success(res, await svc.getByBooking(parseInt(req.params.bookingId, 10), req.companyId));

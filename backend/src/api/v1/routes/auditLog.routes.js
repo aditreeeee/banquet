@@ -20,12 +20,12 @@ router.get('/', requirePermission(PERMISSIONS.AUDIT_LOGS_READ), async (req, res)
     const { entity_type, action, user_id, from_date, to_date } = req.query;
 
     const where = [
-        'al.company_id = :companyId',
-        '(:entityType IS NULL OR al.entity_type = :entityType)',
-        '(:action     IS NULL OR al.action      = :action)',
-        '(:userId     IS NULL OR al.user_id     = :userId)',
-        '(:fromDate   IS NULL OR DATE(al.created_at) >= :fromDate)',
-        '(:toDate     IS NULL OR DATE(al.created_at) <= :toDate)',
+        'al.company_id = @companyId',
+        '(@entityType IS NULL OR al.entity_type = @entityType)',
+        '(@action     IS NULL OR al.action      = @action)',
+        '(@userId     IS NULL OR al.user_id     = @userId)',
+        '(@fromDate   IS NULL OR CAST(al.created_at AS DATE) >= @fromDate)',
+        '(@toDate     IS NULL OR CAST(al.created_at AS DATE) <= @toDate)',
     ].join(' AND ');
 
     const params = {
@@ -48,7 +48,7 @@ router.get('/', requirePermission(PERMISSIONS.AUDIT_LOGS_READ), async (req, res)
              JOIN Users u ON u.user_id = al.user_id
              WHERE ${where}
              ORDER BY al.created_at DESC
-             LIMIT :limit OFFSET :offset`,
+             OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
             { ...params, limit, offset }
         ),
         executeQuery(

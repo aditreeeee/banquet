@@ -29,11 +29,13 @@ const parsePagination = (query, allowedSortFields = []) => {
 };
 
 /**
- * Build MySQL paging clause
- * Appended after ORDER BY in the query
+ * Build MSSQL paging clause (T-SQL)
+ * Appended after ORDER BY in the query. Requires an ORDER BY clause.
+ * Uses literal integers (page/limit/offset are validated integers above,
+ * never raw user input) rather than bound params to keep call sites simple.
  */
 const buildSqlPaging = ({ offset, limit }) =>
-    `LIMIT ${limit} OFFSET ${offset}`;
+    `OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
 
 /**
  * Build pagination meta for response

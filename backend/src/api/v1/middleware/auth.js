@@ -40,7 +40,7 @@ const authenticate = async (req, res, next) => {
                 u.role_id, r.role_slug
              FROM Users u
              INNER JOIN Roles r ON r.role_id = u.role_id
-             WHERE u.user_id = :userId AND u.is_active = 1`,
+             WHERE u.user_id = @userId AND u.is_active = 1`,
             { userId: decoded.userId }
         );
 
@@ -59,7 +59,7 @@ const authenticate = async (req, res, next) => {
                 `SELECT p.permission_key
                  FROM RolePermissions rp
                  INNER JOIN Permissions p ON p.permission_id = rp.permission_id
-                 WHERE rp.role_id = :roleId`,
+                 WHERE rp.role_id = @roleId`,
                 { roleId: user.role_id }
             );
 

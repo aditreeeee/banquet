@@ -12,7 +12,7 @@ const router = Router();
 router.get('/', async (req, res) => {
     const rows = await executeQuery(
         `SELECT branch_id, branch_name, city, phone, is_active, created_at
-         FROM Branches WHERE company_id = :companyId ORDER BY branch_name`,
+         FROM Branches WHERE company_id = @companyId ORDER BY branch_name`,
         { companyId: req.companyId }
     );
     return response.success(res, rows);
@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
     const rows = await executeQuery(
-        `SELECT * FROM Branches WHERE branch_id = :id AND company_id = :companyId`,
+        `SELECT * FROM Branches WHERE branch_id = @id AND company_id = @companyId`,
         { id: parseInt(req.params.id, 10), companyId: req.companyId }
     );
     if (!rows[0]) return res.status(404).json({ success: false, message: 'Branch not found' });
@@ -33,7 +33,8 @@ router.post('/', async (req, res) => {
 
     const result = await executeQuery(
         `INSERT INTO Branches (company_id, branch_name, city, address, phone, is_active, created_at, updated_at)
-         VALUES (:companyId, :name, :city, :address, :phone, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+         OUTPUT INSERTED.branch_id AS insertId
+         VALUES (@companyId, @name, @city, @address, @phone, 1, GETUTCDATE(), GETUTCDATE())`,
         {
             companyId: req.companyId,
             name:      branchName,
@@ -42,20 +43,20 @@ router.post('/', async (req, res) => {
             phone:     phone   || null,
         }
     );
-    return response.created(res, { branch_id: result.insertId });
+    return response.created(res, { branch_id: result[0].insertId });
 });
 
 router.patch('/:id', async (req, res) => {
     const { branchName, city, address, phone, isActive } = req.body;
     await executeQuery(
         `UPDATE Branches
-         SET branch_name = IFNULL(:name,     branch_name),
-             city        = IFNULL(:city,     city),
-             address     = IFNULL(:address,  address),
-             phone       = IFNULL(:phone,    phone),
-             is_active   = IFNULL(:isActive, is_active),
-             updated_at  = UTC_TIMESTAMP()
-         WHERE branch_id = :id AND company_id = :companyId`,
+         SET branch_name = ISNULL(@name,     branch_name),
+             city        = ISNULL(@city,     city),
+             address     = ISNULL(@address,  address),
+             phone       = ISNULL(@phone,    phone),
+             is_active   = ISNULL(@isActive, is_active),
+             updated_at  = GETUTCDATE()
+         WHERE branch_id = @id AND company_id = @companyId`,
         {
             id:        parseInt(req.params.id, 10),
             companyId: req.companyId,

@@ -17,7 +17,7 @@ const BASE_SELECT = `
 
 const findById = async (banquetId, companyId) => {
     const rows = await executeQuery(
-        `${BASE_SELECT} WHERE b.banquet_id = :id AND b.company_id = :companyId`,
+        `${BASE_SELECT} WHERE b.banquet_id = @id AND b.company_id = @companyId`,
         { id: banquetId, companyId }
     );
     return rows[0] || null;
@@ -25,10 +25,10 @@ const findById = async (banquetId, companyId) => {
 
 const findAll = async ({ companyId, branchId, search, isActive, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'b.company_id = :companyId',
-        '(:branchId IS NULL OR b.branch_id = :branchId)',
-        '(:isActive IS NULL OR b.is_active = :isActive)',
-        `(:search IS NULL OR b.banquet_name LIKE CONCAT('%', :search, '%') OR b.city LIKE CONCAT('%', :search, '%'))`,
+        'b.company_id = @companyId',
+        '(@branchId IS NULL OR b.branch_id = @branchId)',
+        '(@isActive IS NULL OR b.is_active = @isActive)',
+        `(@search IS NULL OR b.banquet_name LIKE CONCAT('%', @search, '%') OR b.city LIKE CONCAT('%', @search, '%'))`,
     ].join(' AND ');
 
     const col = ['banquet_name', 'city', 'created_at'].includes(sortBy) ? `b.${sortBy}` : 'b.banquet_name';
@@ -43,7 +43,7 @@ const findAll = async ({ companyId, branchId, search, isActive, offset, limit, s
 
     const [rows, countRows] = await Promise.all([
         executeQuery(
-            `${BASE_SELECT} WHERE ${where} ORDER BY ${col} ${dir} LIMIT :limit OFFSET :offset`,
+            `${BASE_SELECT} WHERE ${where} ORDER BY ${col} ${dir} OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
             { ...params, limit, offset }
         ),
         executeQuery(
@@ -65,7 +65,8 @@ const slugify = (name) =>
 const create = async (data) => {
     const result = await executeQuery(
         `INSERT INTO Banquets (company_id, branch_id, banquet_name, banquet_slug, description, address_line1, city, state, phone, email, is_active, created_at, updated_at)
-         VALUES (:companyId, :branchId, :name, :slug, :desc, :address, :city, :state, :phone, :email, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+         OUTPUT INSERTED.banquet_id AS id
+         VALUES (@companyId, @branchId, @name, @slug, @desc, @address, @city, @state, @phone, @email, 1, GETUTCDATE(), GETUTCDATE())`,
         {
             companyId: data.companyId,
             branchId:  data.branchId  || null,
@@ -79,21 +80,21 @@ const create = async (data) => {
             email:     data.email     || null,
         }
     );
-    return findById(result.insertId, data.companyId);
+    return findById(result[0].id, data.companyId);
 };
 
 const update = async (banquetId, companyId, data) => {
     await executeQuery(
         `UPDATE Banquets
-         SET banquet_name = IFNULL(:name,    banquet_name),
-             description  = IFNULL(:desc,    description),
-             address      = IFNULL(:address, address),
-             city         = IFNULL(:city,    city),
-             state        = IFNULL(:state,   state),
-             phone        = IFNULL(:phone,   phone),
-             email        = IFNULL(:email,   email),
-             updated_at   = UTC_TIMESTAMP()
-         WHERE banquet_id = :id AND company_id = :companyId`,
+         SET banquet_name = ISNULL(@name,    banquet_name),
+             description  = ISNULL(@desc,    description),
+             address      = ISNULL(@address, address),
+             city         = ISNULL(@city,    city),
+             state        = ISNULL(@state,   state),
+             phone        = ISNULL(@phone,   phone),
+             email        = ISNULL(@email,   email),
+             updated_at   = GETUTCDATE()
+         WHERE banquet_id = @id AND company_id = @companyId`,
         {
             id:        banquetId,
             companyId,
@@ -111,8 +112,8 @@ const update = async (banquetId, companyId, data) => {
 
 const toggleActive = async (banquetId, companyId, isActive) => {
     await executeQuery(
-        `UPDATE Banquets SET is_active = :isActive, updated_at = UTC_TIMESTAMP()
-         WHERE banquet_id = :id AND company_id = :companyId`,
+        `UPDATE Banquets SET is_active = @isActive, updated_at = GETUTCDATE()
+         WHERE banquet_id = @id AND company_id = @companyId`,
         { id: banquetId, companyId, isActive }
     );
 };

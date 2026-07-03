@@ -570,7 +570,14 @@ const HALLS_D = [
   {n:'Diamond Hall',  occ:43,bk:8, cap:600},
 ];
 const BK_DATES = ['2026-07-03','2026-07-04','2026-07-05','2026-07-07','2026-07-08','2026-07-10','2026-07-12','2026-07-14','2026-07-17','2026-07-19','2026-07-21','2026-07-25','2026-07-28'];
-const TODAY = '2026-07-01';
+const todayDate = new Date();
+const TODAY = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  return 'Good Evening';
+};
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 const fmtS = n => n>=10000000?'₹'+(n/10000000).toFixed(1)+'Cr':n>=100000?'₹'+(n/100000).toFixed(1)+'L':n>=1000?'₹'+(n/1000).toFixed(0)+'K':'₹'+n;
@@ -653,6 +660,16 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
    ════════════════════════════════════════════════════════════════ */
 const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMode, setDarkMode, notifications, unreadCount, notifOpen, setNotifOpen, onMarkNotificationRead, onMarkAllNotificationsRead }) => {
   const PERIODS = [{k:'week',l:'This Week'},{k:'month',l:'This Month'},{k:'quarter',l:'This Quarter'},{k:'year',l:'This Year'}];
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'Suresh',last_name:'Mehta'};
+  const userName = `${user.first_name} ${user.last_name}`;
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    if (typeof Auth==='undefined') return;
+    if (await (typeof Utils!=='undefined' && Utils.confirm ? Utils.confirm('Are you sure you want to log out?', { title:'Log Out' }) : Promise.resolve(true))) {
+      await Auth.logout();
+    }
+  };
   return (
     <header id="topbar">
       <button className="tb-btn" onClick={onMenu} title="Toggle sidebar">{I.menu()}</button>
@@ -698,7 +715,18 @@ const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMo
       <button className="tb-btn" title={darkMode?'Switch to light mode':'Switch to dark mode'} onClick={()=>setDarkMode(v=>!v)}>
         {darkMode?'☀':'☾'}
       </button>
-      <div className="user-avatar">SM</div>
+      <div style={{position:'relative',flexShrink:0,zIndex:70}}>
+        <div className="user-avatar" onClick={()=>setUserMenuOpen(v=>!v)} title={userName}>{ini(userName)}</div>
+        {userMenuOpen&&(
+          <div style={{position:'absolute',right:0,top:'calc(100% + 8px)',minWidth:180,background:'var(--surface-strong)',border:'1px solid var(--border-color)',borderRadius:12,boxShadow:'0 16px 40px rgba(0,0,0,.16)',padding:8,zIndex:70}}>
+            <div style={{padding:'6px 10px',fontSize:12.5,fontWeight:700,color:'var(--text-primary)',borderBottom:'1px solid var(--border-color)',marginBottom:6}}>{userName}</div>
+            <button type="button" onClick={handleLogout} style={{display:'flex',alignItems:'center',gap:8,width:'100%',padding:'8px 10px',border:'none',background:'transparent',color:'#dc2626',fontWeight:600,fontSize:13,borderRadius:8,cursor:'pointer',textAlign:'left'}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"/><path d="M9 20v-4h6v4"/><path d="M12 8v6"/></svg>
+              Log Out
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 };
@@ -706,10 +734,10 @@ const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMo
 /* ════════════════════════════════════════════════════════════════
    KPI CARD
    ════════════════════════════════════════════════════════════════ */
-const KPICard = ({ IconEl, label, value, delta, color, anim }) => {
+const KPICard = ({ IconEl, label, value, delta, color, anim, href }) => {
   const up = delta>=0;
   return (
-    <Card hover className={`fu ${anim}`} style={{padding:'18px 20px'}}>
+    <Card hover className={`fu ${anim}`} style={{padding:'18px 20px', cursor: href ? 'pointer' : 'default'}} onClick={href ? () => window.location.assign(href) : undefined}>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
         <div className="kpi-icon-wrap" style={{background:`${color}1A`,color}}><IconEl/></div>
         <span className={`kpi-badge ${up?'badge-up':'badge-dn'}`}>
@@ -819,7 +847,7 @@ const StatusDonut = ({ data }) => {
    MINI CALENDAR
    ════════════════════════════════════════════════════════════════ */
 const MiniCalendar = ({ selected, onSelect, dots }) => {
-  const [cur, setCur] = useState(new Date(2026,6,1));
+  const [cur, setCur] = useState(new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
   const y=cur.getFullYear(), m=cur.getMonth();
   const dim=new Date(y,m+1,0).getDate(), fdow=new Date(y,m,1).getDay();
   const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -984,6 +1012,7 @@ const DashboardView = ({ period, searchQuery }) => {
   const [hallFilter, setHallFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
   const kpi=KPI_D[period], rev=REV_D[period], sts=STS_D[period];
+  const firstName = (typeof Auth!=='undefined'?Auth.getUser():null)?.first_name || 'there';
 
   useEffect(()=>{
     let dead=false;
@@ -1050,8 +1079,8 @@ const DashboardView = ({ period, searchQuery }) => {
       {/* Greeting */}
       <div className="fu fu-1" style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
         <div>
-          <h1 style={{fontSize:24,fontWeight:700,color:C.navy,lineHeight:1.2,fontFamily:"'Playfair Display', serif"}}>Good morning, Suresh</h1>
-          <p style={{fontSize:13,color:'#9ca3af',marginTop:4}}>BanquetPro overview · Wednesday, 1 July 2026</p>
+          <h1 style={{fontSize:24,fontWeight:700,color:C.navy,lineHeight:1.2,fontFamily:"'Playfair Display', serif"}}>{getGreeting()}, {firstName}</h1>
+          <p style={{fontSize:13,color:'#9ca3af',marginTop:4}}>BanquetPro overview · {todayDate.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
         </div>
         <div style={{display:'flex',gap:8}}>
           <a href="../bookings/index.html">
@@ -1072,10 +1101,10 @@ const DashboardView = ({ period, searchQuery }) => {
 
       {/* KPI row */}
       <div className="resp-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
-        <KPICard IconEl={()=>I.calendar({width:22,height:22})}   label="Total Bookings"   value={kpi.bookings.toLocaleString()} delta={kpi.bd} color={C.purple} anim="fu-1"/>
-        <KPICard IconEl={()=>I.dollarSign()}                       label="Revenue"          value={fmtS(kpi.revenue)}             delta={kpi.rd} color={C.green}  anim="fu-2"/>
-        <KPICard IconEl={()=>I.clock()}                            label="Pending Payments" value={fmtS(kpi.pending)}             delta={kpi.pd} color={C.amber}  anim="fu-3"/>
-        <KPICard IconEl={()=>I.building({width:22,height:22})}    label="Avg Occupancy"    value={kpi.occ+'%'}                   delta={kpi.od} color={C.blue}   anim="fu-4"/>
+        <KPICard IconEl={()=>I.calendar({width:22,height:22})}   label="Total Bookings"   value={kpi.bookings.toLocaleString()} delta={kpi.bd} color={C.purple} anim="fu-1" href="../bookings/index.html"/>
+        <KPICard IconEl={()=>I.dollarSign()}                       label="Revenue"          value={fmtS(kpi.revenue)}             delta={kpi.rd} color={C.green}  anim="fu-2" href="../reports/revenue.html"/>
+        <KPICard IconEl={()=>I.clock()}                            label="Pending Payments" value={fmtS(kpi.pending)}             delta={kpi.pd} color={C.amber}  anim="fu-3" href="../payments/index.html"/>
+        <KPICard IconEl={()=>I.building({width:22,height:22})}    label="Avg Occupancy"    value={kpi.occ+'%'}                   delta={kpi.od} color={C.blue}   anim="fu-4" href="../reports/occupancy.html"/>
       </div>
 
       {/* Charts */}

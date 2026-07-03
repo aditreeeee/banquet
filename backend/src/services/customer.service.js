@@ -8,11 +8,12 @@ const { NotFoundError, ConflictError } = require('../api/v1/middleware/errorHand
 const { parsePagination, buildMeta } = require('../utils/pagination');
 
 const getAll = async (query, actor) => {
-    const p = parsePagination(query, ['first_name', 'created_at']);
+    const p = parsePagination(query, ['created_at', 'first_name', 'total_bookings', 'total_spend']);
     const { rows, total } = await repo.findAll({
         companyId: actor.companyId,
         branchId:  actor.branchId || query.branch_id || null,
         search:    query.search   || null,
+        source:    query.source   || null,
         isActive:  query.is_active != null ? query.is_active === 'true' : null,
         ...p,
     });

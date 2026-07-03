@@ -6,11 +6,12 @@
   "scripts": {
     "start":          "node server.js",
     "dev":            "nodemon server.js",
+    "pm2:start":      "pm2 start ecosystem.config.js",
+    "pm2:stop":       "pm2 stop banquetpro-api",
+    "pm2:restart":    "pm2 restart banquetpro-api",
+    "pm2:logs":       "pm2 logs banquetpro-api",
     "db:setup":       "node scripts/setup.js",
     "db:setup:reset": "node scripts/setup.js --reset",
-    "db:migrate":     "node scripts/migrate.js",
-    "db:seed":        "node scripts/seed.js",
-    "db:rollback":    "node scripts/rollback.js",
     "test":           "jest --coverage",
     "test:watch":     "jest --watch",
     "lint":           "eslint src/ --ext .js",
@@ -31,7 +32,7 @@
     "joi":                       "^17.13.1",
     "jsonwebtoken":              "^9.0.2",
     "morgan":                    "^1.10.0",
-    "mysql2":                    "^3.11.0",
+    "mssql":                     "^11.0.1",
     "multer":                    "^1.4.5-lts.1",
     "node-cache":                "^5.1.2",
     "node-cron":                 "^3.0.3",
@@ -50,6 +51,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["banquet", "booking", "management", "saas", "nodejs", "express", "mysql"],
+  "keywords": ["banquet", "booking", "management", "saas", "nodejs", "express", "mssql"],
   "license": "UNLICENSED"
 }

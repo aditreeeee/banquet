@@ -21,8 +21,8 @@ const BASE_SELECT = `
 const findById = async (userId, companyId = null) => {
     const rows = await executeQuery(
         `${BASE_SELECT}
-         WHERE u.user_id = :id
-           AND (:companyId IS NULL OR u.company_id = :companyId)`,
+         WHERE u.user_id = @id
+           AND (@companyId IS NULL OR u.company_id = @companyId)`,
         { id: userId, companyId: companyId || null }
     );
     return rows[0] || null;
@@ -30,7 +30,7 @@ const findById = async (userId, companyId = null) => {
 
 const findByEmail = async (email, companyId) => {
     const rows = await executeQuery(
-        `SELECT user_id FROM Users WHERE email = :email AND company_id = :companyId`,
+        `SELECT user_id FROM Users WHERE email = @email AND company_id = @companyId`,
         { email, companyId }
     );
     return rows[0] || null;
@@ -38,11 +38,11 @@ const findByEmail = async (email, companyId) => {
 
 const findAll = async ({ companyId, branchId, roleId, isActive, search, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'u.company_id = :companyId',
-        '(:branchId IS NULL OR u.branch_id = :branchId)',
-        '(:roleId   IS NULL OR u.role_id   = :roleId)',
-        '(:isActive IS NULL OR u.is_active = :isActive)',
-        `(:search IS NULL OR CONCAT(u.first_name, ' ', u.last_name) LIKE CONCAT('%', :search, '%') OR u.email LIKE CONCAT('%', :search, '%'))`,
+        'u.company_id = @companyId',
+        '(@branchId IS NULL OR u.branch_id = @branchId)',
+        '(@roleId   IS NULL OR u.role_id   = @roleId)',
+        '(@isActive IS NULL OR u.is_active = @isActive)',
+        `(@search IS NULL OR CONCAT(u.first_name, ' ', u.last_name) LIKE CONCAT('%', @search, '%') OR u.email LIKE CONCAT('%', @search, '%'))`,
     ].join(' AND ');
 
     const col = ['first_name', 'created_at', 'last_login_at'].includes(sortBy) ? `u.${sortBy}` : 'u.first_name';
@@ -58,7 +58,7 @@ const findAll = async ({ companyId, branchId, roleId, isActive, search, offset, 
 
     const [rows, countRows] = await Promise.all([
         executeQuery(
-            `${BASE_SELECT} WHERE ${where} ORDER BY ${col} ${dir} LIMIT :limit OFFSET :offset`,
+            `${BASE_SELECT} WHERE ${where} ORDER BY ${col} ${dir} OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
             { ...params, limit, offset }
         ),
         executeQuery(`SELECT COUNT(*) AS total FROM Users u WHERE ${where}`, params),
@@ -72,9 +72,10 @@ const create = async (data, passwordHash) => {
         `INSERT INTO Users
             (company_id, branch_id, role_id, first_name, last_name, email, phone,
              password_hash, is_active, is_email_verified, created_at, updated_at)
+         OUTPUT INSERTED.user_id AS id
          VALUES
-            (:companyId, :branchId, :roleId, :firstName, :lastName, :email, :phone,
-             :passwordHash, 1, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+            (@companyId, @branchId, @roleId, @firstName, @lastName, @email, @phone,
+             @passwordHash, 1, 0, GETUTCDATE(), GETUTCDATE())`,
         {
             companyId:    data.companyId,
             branchId:     data.branchId  || null,
@@ -86,20 +87,20 @@ const create = async (data, passwordHash) => {
             passwordHash,
         }
     );
-    return findById(result.insertId, data.companyId);
+    return findById(result[0].id, data.companyId);
 };
 
 const update = async (userId, companyId, data) => {
     await executeQuery(
         `UPDATE Users
-         SET first_name = IFNULL(:firstName, first_name),
-             last_name  = IFNULL(:lastName,  last_name),
-             phone      = IFNULL(:phone,     phone),
-             branch_id  = IFNULL(:branchId,  branch_id),
-             role_id    = IFNULL(:roleId,    role_id),
-             is_active  = IFNULL(:isActive,  is_active),
-             updated_at = UTC_TIMESTAMP()
-         WHERE user_id = :id AND company_id = :companyId`,
+         SET first_name = ISNULL(@firstName, first_name),
+             last_name  = ISNULL(@lastName,  last_name),
+             phone      = ISNULL(@phone,     phone),
+             branch_id  = ISNULL(@branchId,  branch_id),
+             role_id    = ISNULL(@roleId,    role_id),
+             is_active  = ISNULL(@isActive,  is_active),
+             updated_at = GETUTCDATE()
+         WHERE user_id = @id AND company_id = @companyId`,
         {
             id:        userId,
             companyId,

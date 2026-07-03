@@ -56,32 +56,28 @@ const errorHandler = (err, req, res, next) => {
     let code       = err.code       || 'INTERNAL_ERROR';
     let errors     = err.errors     || undefined;
 
-    // Handle MySQL errors (mysql2 uses err.code string, not err.number)
-    if (err.code && typeof err.code === 'string' && err.code.startsWith('ER_')) {
-        switch (err.code) {
-            case 'ER_DUP_ENTRY':           // Unique constraint violation
+    // Handle MSSQL errors (the `mssql` package surfaces the SQL Server error
+    // number as err.number, unlike mysql2 which used a string err.code)
+    if (typeof err.number === 'number') {
+        switch (err.number) {
+            case 2627: // Violation of PRIMARY KEY / UNIQUE constraint
+            case 2601: // Cannot insert duplicate key row (unique index)
                 statusCode = 409;
                 message    = 'A record with these details already exists';
                 code       = 'DUPLICATE_ENTRY';
                 break;
-            case 'ER_NO_REFERENCED_ROW_2': // FK constraint violation (child row)
-            case 'ER_NO_REFERENCED_ROW':
+            case 547:  // FOREIGN KEY constraint violation (insert/update/delete)
                 statusCode = 422;
                 message    = 'Related record not found or constraint violated';
                 code       = 'CONSTRAINT_VIOLATION';
                 break;
-            case 'ER_ROW_IS_REFERENCED_2': // FK constraint (parent row deletion)
-            case 'ER_ROW_IS_REFERENCED':
-                statusCode = 409;
-                message    = 'Cannot delete — record is referenced by other data';
-                code       = 'CONSTRAINT_VIOLATION';
-                break;
-            case 'ER_DATA_TOO_LONG':
+            case 8152: // String or binary data would be truncated
+            case 2628: // String or binary data would be truncated in table/variable
                 statusCode = 422;
                 message    = 'One or more fields exceed the maximum allowed length';
                 code       = 'VALIDATION_ERROR';
                 break;
-            case 'ER_BAD_NULL_ERROR':
+            case 515:  // Cannot insert the value NULL into column (NOT NULL violation)
                 statusCode = 422;
                 message    = 'A required field is missing';
                 code       = 'VALIDATION_ERROR';

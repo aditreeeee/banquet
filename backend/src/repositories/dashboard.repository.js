@@ -8,21 +8,38 @@ const { executeQuery } = require('../config/database');
 
 /**
  * Build a WHERE fragment for the event_date column based on period.
- * Returns pure SQL — no bound params (all values are MySQL date functions).
+ * Returns pure SQL — no bound params (all values are MSSQL date functions).
  */
 const buildDateRange = (period) => {
     switch (period) {
         case 'week':
-            return `event_date BETWEEN DATE_SUB(UTC_DATE(), INTERVAL 6 DAY) AND UTC_DATE()`;
+            return `event_date BETWEEN DATEADD(DAY, -6, CAST(GETUTCDATE() AS DATE)) AND CAST(GETUTCDATE() AS DATE)`;
         case 'month':
-            return `event_date BETWEEN DATE(CONCAT(YEAR(UTC_DATE()), '-', LPAD(MONTH(UTC_DATE()), 2, '0'), '-01'))
-                                   AND LAST_DAY(UTC_DATE())`;
+            return `event_date BETWEEN DATEFROMPARTS(YEAR(GETUTCDATE()), MONTH(GETUTCDATE()), 1)
+                                   AND EOMONTH(GETUTCDATE())`;
         case 'quarter':
-            return `event_date BETWEEN DATE(CONCAT(YEAR(UTC_DATE()), '-', LPAD((QUARTER(UTC_DATE())-1)*3+1, 2, '0'), '-01'))
-                                   AND LAST_DAY(DATE(CONCAT(YEAR(UTC_DATE()), '-', LPAD(QUARTER(UTC_DATE())*3, 2, '0'), '-01')))`;
+            return `event_date BETWEEN DATEFROMPARTS(YEAR(GETUTCDATE()), ((DATEPART(QUARTER, GETUTCDATE()) - 1) * 3) + 1, 1)
+                                   AND EOMONTH(DATEFROMPARTS(YEAR(GETUTCDATE()), DATEPART(QUARTER, GETUTCDATE()) * 3, 1))`;
         case 'year':
         default:
-            return `YEAR(event_date) = YEAR(UTC_DATE())`;
+            return `YEAR(event_date) = YEAR(GETUTCDATE())`;
+    }
+};
+
+/**
+ * SQL expression for the start-of-period date, used by occupancy % calculations.
+ */
+const buildPeriodStartExpr = (period) => {
+    switch (period) {
+        case 'week':
+            return `DATEADD(DAY, -6, CAST(GETUTCDATE() AS DATE))`;
+        case 'month':
+            return `DATEFROMPARTS(YEAR(GETUTCDATE()), MONTH(GETUTCDATE()), 1)`;
+        case 'quarter':
+            return `DATEFROMPARTS(YEAR(GETUTCDATE()), ((DATEPART(QUARTER, GETUTCDATE()) - 1) * 3) + 1, 1)`;
+        case 'year':
+        default:
+            return `DATEFROMPARTS(YEAR(GETUTCDATE()), 1, 1)`;
     }
 };
 
@@ -35,12 +52,12 @@ const getKpiStats = async ({ companyId, branchId, period = 'month' }) => {
             COUNT(CASE WHEN status = 'confirmed'  THEN 1 END)  AS confirmed_bookings,
             COUNT(CASE WHEN status = 'cancelled'  THEN 1 END)  AS cancelled_bookings,
             COUNT(CASE WHEN status = 'completed'  THEN 1 END)  AS completed_bookings,
-            IFNULL(SUM(total_amount), 0)                       AS total_revenue,
-            IFNULL(SUM(advance_paid), 0)                       AS advance_collected,
-            IFNULL(SUM(total_amount) - SUM(IFNULL(amount_paid, 0)), 0) AS pending_amount
+            ISNULL(SUM(total_amount), 0)                       AS total_revenue,
+            ISNULL(SUM(advance_paid), 0)                       AS advance_collected,
+            ISNULL(SUM(total_amount) - SUM(ISNULL(amount_paid, 0)), 0) AS pending_amount
          FROM Bookings
-         WHERE company_id = :companyId
-           AND (:branchId IS NULL OR branch_id = :branchId)
+         WHERE company_id = @companyId
+           AND (@branchId IS NULL OR branch_id = @branchId)
            AND ${dateFilter}
            AND status NOT IN ('draft')`,
         { companyId, branchId: branchId || null }
@@ -54,8 +71,8 @@ const getNewCustomers = async ({ companyId, branchId, period = 'month' }) => {
     const rows = await executeQuery(
         `SELECT COUNT(*) AS new_customers
          FROM Customers
-         WHERE company_id = :companyId
-           AND (:branchId IS NULL OR branch_id = :branchId)
+         WHERE company_id = @companyId
+           AND (@branchId IS NULL OR branch_id = @branchId)
            AND ${dateFilter}`,
         { companyId, branchId: branchId || null }
     );
@@ -66,30 +83,30 @@ const getRevenueSeries = async ({ companyId, branchId, period = 'month' }) => {
     let groupBy, labelExpr;
     switch (period) {
         case 'week':
-            groupBy   = `DATE(event_date)`;
-            labelExpr = `DATE_FORMAT(event_date, '%a %e')`;
+            groupBy   = `CAST(event_date AS DATE)`;
+            labelExpr = `FORMAT(event_date, 'ddd d')`;
             break;
         case 'month':
-            groupBy   = `WEEK(event_date, 1)`;
-            labelExpr = `CONCAT('Wk ', WEEK(event_date, 1))`;
+            groupBy   = `DATEPART(ISO_WEEK, event_date)`;
+            labelExpr = `CONCAT('Wk ', DATEPART(ISO_WEEK, event_date))`;
             break;
         case 'quarter':
         case 'year':
         default:
             groupBy   = `MONTH(event_date)`;
-            labelExpr = `DATE_FORMAT(event_date, '%b')`;
+            labelExpr = `FORMAT(event_date, 'MMM')`;
     }
 
     const dateFilter = buildDateRange(period);
 
     const rows = await executeQuery(
         `SELECT
-            ANY_VALUE(${labelExpr})       AS label,
-            IFNULL(SUM(total_amount), 0)  AS revenue,
+            MAX(${labelExpr})              AS label,
+            ISNULL(SUM(total_amount), 0)  AS revenue,
             0                             AS target
          FROM Bookings
-         WHERE company_id = :companyId
-           AND (:branchId IS NULL OR branch_id = :branchId)
+         WHERE company_id = @companyId
+           AND (@branchId IS NULL OR branch_id = @branchId)
            AND ${dateFilter}
            AND status NOT IN ('draft', 'cancelled')
          GROUP BY ${groupBy}
@@ -105,8 +122,8 @@ const getStatusDistribution = async ({ companyId, branchId, period = 'month' }) 
     const rows = await executeQuery(
         `SELECT status, COUNT(*) AS count
          FROM Bookings
-         WHERE company_id = :companyId
-           AND (:branchId IS NULL OR branch_id = :branchId)
+         WHERE company_id = @companyId
+           AND (@branchId IS NULL OR branch_id = @branchId)
            AND ${dateFilter}
          GROUP BY status`,
         { companyId, branchId: branchId || null }
@@ -116,7 +133,7 @@ const getStatusDistribution = async ({ companyId, branchId, period = 'month' }) 
 
 const getUpcomingBookings = async ({ companyId, branchId, limit = 10 }) => {
     const rows = await executeQuery(
-        `SELECT
+        `SELECT TOP (@limit)
             b.booking_id, b.booking_ref, b.event_date, b.event_time_start,
             b.status, b.total_amount,
             h.hall_name,
@@ -125,12 +142,11 @@ const getUpcomingBookings = async ({ companyId, branchId, limit = 10 }) => {
          FROM Bookings b
          JOIN Halls     h ON h.hall_id     = b.hall_id
          JOIN Customers c ON c.customer_id = b.customer_id
-         WHERE b.company_id = :companyId
-           AND (:branchId IS NULL OR b.branch_id = :branchId)
-           AND b.event_date BETWEEN UTC_DATE() AND DATE_ADD(UTC_DATE(), INTERVAL 30 DAY)
+         WHERE b.company_id = @companyId
+           AND (@branchId IS NULL OR b.branch_id = @branchId)
+           AND b.event_date BETWEEN CAST(GETUTCDATE() AS DATE) AND DATEADD(DAY, 30, CAST(GETUTCDATE() AS DATE))
            AND b.status NOT IN ('cancelled', 'draft')
-         ORDER BY b.event_date ASC, b.event_time_start ASC
-         LIMIT :limit`,
+         ORDER BY b.event_date ASC, b.event_time_start ASC`,
         { companyId, branchId: branchId || null, limit }
     );
     return rows;
@@ -138,6 +154,7 @@ const getUpcomingBookings = async ({ companyId, branchId, limit = 10 }) => {
 
 const getHallOccupancy = async ({ companyId, branchId, period = 'month' }) => {
     const dateFilter = buildDateRange(period);
+    const periodStartExpr = buildPeriodStartExpr(period);
 
     const rows = await executeQuery(
         `SELECT
@@ -146,22 +163,15 @@ const getHallOccupancy = async ({ companyId, branchId, period = 'month' }) => {
             COUNT(b.booking_id)  AS bookings_count,
             CAST(
                 COUNT(b.booking_id) * 100.0 /
-                NULLIF(DATEDIFF(UTC_DATE(),
-                    CASE '${period}'
-                        WHEN 'week'    THEN DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
-                        WHEN 'month'   THEN DATE(CONCAT(YEAR(UTC_DATE()), '-', LPAD(MONTH(UTC_DATE()), 2, '0'), '-01'))
-                        WHEN 'quarter' THEN DATE(CONCAT(YEAR(UTC_DATE()), '-', LPAD((QUARTER(UTC_DATE())-1)*3+1, 2, '0'), '-01'))
-                        ELSE DATE(CONCAT(YEAR(UTC_DATE()), '-01-01'))
-                    END
-                ), 0)
+                NULLIF(DATEDIFF(DAY, ${periodStartExpr}, CAST(GETUTCDATE() AS DATE)), 0)
             AS DECIMAL(5,1))  AS occupancy_pct
          FROM Halls h
          LEFT JOIN Bookings b ON b.hall_id = h.hall_id
-             AND b.company_id = :companyId
+             AND b.company_id = @companyId
              AND ${dateFilter.replace(/event_date/g, 'b.event_date')}
              AND b.status NOT IN ('draft', 'cancelled')
-         WHERE h.company_id = :companyId
-           AND (:branchId IS NULL OR h.branch_id = :branchId)
+         WHERE h.company_id = @companyId
+           AND (@branchId IS NULL OR h.branch_id = @branchId)
            AND h.is_active = 1
          GROUP BY h.hall_id, h.hall_name, h.capacity
          ORDER BY occupancy_pct DESC`,
@@ -172,15 +182,14 @@ const getHallOccupancy = async ({ companyId, branchId, period = 'month' }) => {
 
 const getRecentActivity = async ({ companyId, limit = 15 }) => {
     const rows = await executeQuery(
-        `SELECT
+        `SELECT TOP (@limit)
             al.log_id, al.action, al.entity_type, al.entity_id,
             al.description, al.created_at,
             CONCAT(u.first_name, ' ', u.last_name) AS user_name
          FROM AuditLogs al
          JOIN Users u ON u.user_id = al.user_id
-         WHERE al.company_id = :companyId
-         ORDER BY al.created_at DESC
-         LIMIT :limit`,
+         WHERE al.company_id = @companyId
+         ORDER BY al.created_at DESC`,
         { companyId, limit }
     );
     return rows;
@@ -196,9 +205,9 @@ const getBookingsByDate = async ({ companyId, branchId, date }) => {
          FROM Bookings b
          JOIN Halls     h ON h.hall_id     = b.hall_id
          JOIN Customers c ON c.customer_id = b.customer_id
-         WHERE b.company_id = :companyId
-           AND (:branchId IS NULL OR b.branch_id = :branchId)
-           AND DATE(b.event_date) = :date
+         WHERE b.company_id = @companyId
+           AND (@branchId IS NULL OR b.branch_id = @branchId)
+           AND CAST(b.event_date AS DATE) = @date
            AND b.status NOT IN ('draft')
          ORDER BY b.event_time_start`,
         { companyId, branchId: branchId || null, date: new Date(date) }

@@ -20,10 +20,12 @@ A production-ready, multi-tenant Banquet Hall Booking & Management System design
 ## Phase Roadmap
 
 - [x] **Phase 1** — Architecture, Folder Structure, DB Design, ER Diagram, Roles & Permissions
-- [ ] **Phase 2** — Complete MSSQL Database (Tables, SPs, Views, Triggers, Seeds)
-- [ ] **Phase 3** — Production Frontend (Dashboard, Forms, Tables, Calendar, Charts)
-- [ ] **Phase 4** — Node.js + Express Backend (REST APIs, Auth, Booking Engine)
+- [x] **Phase 2** — Complete MSSQL Database (Tables, SPs, Views, Triggers, Seeds)
+- [x] **Phase 3** — Production Frontend (Dashboard, Forms, Tables, Calendar, Charts)
+- [x] **Phase 4** — Node.js + Express Backend (REST APIs, Auth, Booking Engine)
 - [ ] **Phase 5** — Testing, Security Hardening, Performance, Deployment Guide
+
+The entire backend data-access layer runs on the `mssql` (Tedious) driver against Microsoft SQL Server — there is no MySQL dependency anywhere in the codebase. All schema, seed data, stored procedures, views, and triggers under `database/` use T-SQL syntax (`IDENTITY`, `NVARCHAR`, `MERGE`, `STRING_AGG`, `OFFSET…FETCH NEXT`, etc.).
 
 ## Project Structure
 
@@ -86,23 +88,24 @@ banquet-booking-system/
 
 ```bash
 # 1. Clone and install dependencies
-git clone <repo-url>
+git clone https://github.com/aditreeeee/banquet.git
 cd banquet-booking-system/backend
 npm install
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env with your MSSQL credentials
+# Edit .env with your MSSQL Server host/port/user/password (requires SQL Server 2017+)
 
-# 3. Run database migrations
-npm run db:migrate
+# 3. Create the database + run schema/seed setup (idempotent)
+npm run db:setup
+# or, to drop and recreate from scratch:
+npm run db:setup:reset
 
-# 4. Seed sample data
-npm run db:seed
-
-# 5. Start development server
+# 4. Start development server
 npm run dev
 ```
+
+The API listens on `http://localhost:3000/api/v1` by default. The frontend is static HTML/JS served from `frontend/` — open `frontend/src/pages/auth/login.html` (or serve the `frontend/` folder with any static file server) to log in; a successful login redirects to `frontend/src/pages/dashboard/index.html`.
 
 ## Documentation
 

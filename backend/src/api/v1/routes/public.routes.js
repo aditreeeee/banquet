@@ -17,7 +17,7 @@ router.get('/banquets', async (req, res) => {
     const { city, min_capacity } = req.query;
 
     const rows = await executeQuery(
-        `SELECT
+        `SELECT TOP 50
             b.banquet_id, b.banquet_name, b.city, b.state, b.address,
             b.phone, b.email,
             (SELECT COUNT(*) FROM Halls h WHERE h.banquet_id = b.banquet_id AND h.is_active = 1) AS hall_count,
@@ -25,13 +25,12 @@ router.get('/banquets', async (req, res) => {
             (SELECT MAX(capacity)   FROM Halls h WHERE h.banquet_id = b.banquet_id AND h.is_active = 1) AS max_capacity
          FROM Banquets b
          WHERE b.is_active = 1
-           AND (:city IS NULL OR b.city LIKE CONCAT('%', :city, '%'))
-           AND (:minCap IS NULL OR EXISTS (
+           AND (@city IS NULL OR b.city LIKE CONCAT('%', @city, '%'))
+           AND (@minCap IS NULL OR EXISTS (
                SELECT 1 FROM Halls h
-               WHERE h.banquet_id = b.banquet_id AND h.capacity >= :minCap AND h.is_active = 1
+               WHERE h.banquet_id = b.banquet_id AND h.capacity >= @minCap AND h.is_active = 1
            ))
-         ORDER BY b.banquet_name
-         LIMIT 50`,
+         ORDER BY b.banquet_name`,
         {
             city:   city        || null,
             minCap: min_capacity ? parseInt(min_capacity, 10) : null,
@@ -55,8 +54,8 @@ router.get('/halls/:id/availability', async (req, res) => {
     const rows = await executeQuery(
         `SELECT event_time_start, event_time_end, status
          FROM Bookings
-         WHERE hall_id  = :hallId
-           AND DATE(event_date) = :date
+         WHERE hall_id  = @hallId
+           AND CAST(event_date AS DATE) = @date
            AND status NOT IN ('cancelled', 'draft')
          ORDER BY event_time_start`,
         { hallId, date: event_date }

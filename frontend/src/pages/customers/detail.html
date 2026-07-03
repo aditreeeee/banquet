@@ -199,7 +199,7 @@ let customer = null;
 async function loadCustomer() {
     const id = new URLSearchParams(location.search).get('id');
     try {
-        const res = await API.customers.detail(id);
+        const res = await API.customers.get(id);
         customer  = res.data;
     } catch {
         customer  = DEMO_CUSTOMER;

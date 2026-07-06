@@ -185,9 +185,9 @@ const getRecentActivity = async ({ companyId, limit = 15 }) => {
         `SELECT TOP (@limit)
             al.log_id, al.action, al.entity_type, al.entity_id,
             al.description, al.created_at,
-            CONCAT(u.first_name, ' ', u.last_name) AS user_name
+            CASE WHEN al.user_id IS NULL THEN 'System' ELSE CONCAT(u.first_name, ' ', u.last_name) END AS user_name
          FROM AuditLogs al
-         JOIN Users u ON u.user_id = al.user_id
+         LEFT JOIN Users u ON u.user_id = al.user_id
          WHERE al.company_id = @companyId
          ORDER BY al.created_at DESC`,
         { companyId, limit }

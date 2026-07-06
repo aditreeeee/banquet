@@ -63,6 +63,373 @@ const runBatches = async (pool, script) => {
     }
 };
 
+// ─── Extended demo data (employees, bookings, payments, invoices, leads) ───────
+// Kept as its own function (rather than inline in main()) so the financial
+// math for Payments/Invoices can be computed once from each booking's real
+// total_amount/amount_paid — every downstream number is derived, not hand
+// typed twice, so it can't drift out of sync with the booking it describes.
+const seedExtendedDemoData = async (pool) => {
+    const exists = async (table, idCol, id) => {
+        const rows = await pool.request().query(`SELECT 1 AS x FROM ${table} WHERE ${idCol} = ${id}`);
+        return rows.recordset.length > 0;
+    };
+
+    // ── Employees (Users 3-10) — one per role in the extended hierarchy ──────
+    if (!(await exists('Users', 'user_id', 3))) {
+        const empHash = await bcrypt.hash('Employee@123', 12);
+        const employees = [
+            { id: 3,  role: 3,  first: 'Neha',   last: 'Kulkarni',   email: 'neha.kulkarni@banquetpro.com' },
+            { id: 4,  role: 4,  first: 'Arjun',   last: 'Verma',      email: 'arjun.verma@banquetpro.com' },
+            { id: 5,  role: 6,  first: 'Kavya',   last: 'Reddy',      email: 'kavya.reddy@banquetpro.com' },
+            { id: 6,  role: 7,  first: 'Rohan',   last: 'Desai',      email: 'rohan.desai@banquetpro.com' },
+            { id: 7,  role: 8,  first: 'Ishita',  last: 'Bhatt',      email: 'ishita.bhatt@banquetpro.com' },
+            { id: 8,  role: 9,  first: 'Suresh',  last: 'Iyer',       email: 'suresh.iyer@banquetpro.com' },
+            { id: 9,  role: 10, first: 'Pooja',   last: 'Nair',       email: 'pooja.nair@banquetpro.com' },
+            { id: 10, role: 11, first: 'Karan',   last: 'Malhotra',   email: 'karan.malhotra@banquetpro.com' },
+        ];
+        for (const e of employees) {
+            await pool.request()
+                .input('email', sql.NVarChar, e.email)
+                .input('hash', sql.NVarChar, empHash)
+                .query(`
+                    SET IDENTITY_INSERT Users ON;
+                    INSERT INTO Users (user_id, company_id, branch_id, role_id, first_name, last_name, email, password_hash, is_active, is_email_verified, created_at, updated_at)
+                    VALUES (${e.id}, 1, 1, ${e.role}, N'${e.first}', N'${e.last}', @email, @hash, 1, 1, GETUTCDATE(), GETUTCDATE());
+                    SET IDENTITY_INSERT Users OFF;
+                `);
+        }
+        ok('Employee accounts seeded (branch manager, booking exec, owner, ops, sales, finance, staff, receptionist — password Employee@123).');
+    }
+
+    // ── More customers (9-15) ────────────────────────────────────────────────
+    if (!(await exists('Customers', 'customer_id', 9))) {
+        await pool.request().batch(`
+            SET IDENTITY_INSERT Customers ON;
+            INSERT INTO Customers (customer_id, company_id, branch_id, first_name, last_name, email, phone, city, state, source, is_active) VALUES
+                (9,  1, 1, N'Rohit',   N'Malviya',      'rohit.malviya@email.com',      '+91-9900112233', N'Delhi',      N'Delhi',       'direct',   1),
+                (10, 1, 1, N'Divya',   N'Choudhary',    'divya.choudhary@email.com',    '+91-9900223344', N'Jaipur',     N'Rajasthan',   'referral', 1),
+                (11, 1, 1, N'Amit',    N'Trivedi',       'amit.trivedi@email.com',       '+91-9900334455', N'Surat',      N'Gujarat',     'online',   1),
+                (12, 1, 1, N'Sunita',  N'Rao',           'sunita.rao@email.com',         '+91-9900445566', N'Hyderabad',  N'Telangana',   'direct',   1),
+                (13, 1, 1, N'Farhan',  N'Sheikh',        'farhan.sheikh@email.com',      '+91-9900556677', N'Mumbai',     N'Maharashtra', 'referral', 1),
+                (14, 1, 1, N'Meera',   N'Pillai',        'meera.pillai@email.com',       '+91-9900667788', N'Chennai',    N'Tamil Nadu',  'online',   1),
+                (15, 1, 1, N'Karthik', N'Subramaniam',   'karthik.subramaniam@email.com','+91-9900778899', N'Bengaluru',  N'Karnataka',   'direct',   1);
+            SET IDENTITY_INSERT Customers OFF;
+        `);
+        ok('Additional customers seeded.');
+    }
+
+    // ── More bookings (9-32): historical (Jan-Jun 2026, mostly completed) +
+    // upcoming (Aug-Nov 2026, mixed pipeline stages) — "today" is 2026-07-06,
+    // so completed bookings truthfully sit in the past and open ones in the future. ──
+    if (!(await exists('Bookings', 'booking_id', 9))) {
+        const HALL_CAP = { 1: 1200, 2: 600, 3: 300, 4: 800, 5: 80 };
+        const newBookings = [
+            { id:9,  ref:'BKG-2026-00009', hall:2, cust:9,  name:'Malviya Wedding Sangeet',      type:'wedding',       date:'2026-01-18', start:'17:00:00', end:'23:00:00', guests:400, status:'completed', total:165000, priority:0 },
+            { id:10, ref:'BKG-2026-00010', hall:4, cust:10, name:'Choudhary Reception',          type:'reception',     date:'2026-02-05', start:'18:00:00', end:'23:00:00', guests:550, status:'completed', total:210000, priority:0 },
+            { id:11, ref:'BKG-2026-00011', hall:1, cust:11, name:'Trivedi Corporate Gala',       type:'corporate',     date:'2026-02-20', start:'10:00:00', end:'22:00:00', guests:700, status:'completed', total:285000, priority:0 },
+            { id:12, ref:'BKG-2026-00012', hall:3, cust:12, name:'Rao Baby Shower',              type:'baby_shower',   date:'2026-03-02', start:'11:00:00', end:'15:00:00', guests:90,  status:'completed', total:32000,  priority:0 },
+            { id:13, ref:'BKG-2026-00013', hall:5, cust:13, name:'Sheikh Product Launch',        type:'corporate',     date:'2026-03-14', start:'09:00:00', end:'13:00:00', guests:60,  status:'completed', total:45000,  priority:0 },
+            { id:14, ref:'BKG-2026-00014', hall:2, cust:14, name:'Pillai Engagement',             type:'engagement',    date:'2026-03-29', start:'18:00:00', end:'22:00:00', guests:250, status:'completed', total:98000,  priority:0 },
+            { id:15, ref:'BKG-2026-00015', hall:1, cust:15, name:'Subramaniam Wedding',           type:'wedding',       date:'2026-04-10', start:'17:00:00', end:'23:00:00', guests:900, status:'completed', total:320000, priority:1 },
+            { id:16, ref:'BKG-2026-00016', hall:4, cust:1,  name:'Sharma Family Reunion',         type:'private_party', date:'2026-04-22', start:'12:00:00', end:'18:00:00', guests:180, status:'completed', total:68000,  priority:0 },
+            { id:17, ref:'BKG-2026-00017', hall:3, cust:2,  name:'Mehta Anniversary',             type:'anniversary',   date:'2026-05-03', start:'19:00:00', end:'23:00:00', guests:130, status:'completed', total:54000,  priority:0 },
+            { id:18, ref:'BKG-2026-00018', hall:2, cust:5,  name:'Singh Corporate Offsite',       type:'corporate',     date:'2026-05-16', start:'09:00:00', end:'17:00:00', guests:220, status:'cancelled', total:88000,  priority:0, cancelReason:'Company budget cuts postponed the offsite indefinitely' },
+            { id:19, ref:'BKG-2026-00019', hall:5, cust:9,  name:'Malviya Investor Conference',   type:'conference',    date:'2026-05-28', start:'10:00:00', end:'16:00:00', guests:70,  status:'completed', total:40000,  priority:0 },
+            { id:20, ref:'BKG-2026-00020', hall:1, cust:3,  name:'Gupta Wedding Reception',       type:'reception',     date:'2026-06-08', start:'18:00:00', end:'23:30:00', guests:750, status:'completed', total:260000, priority:0 },
+            { id:21, ref:'BKG-2026-00021', hall:4, cust:11, name:'Trivedi Golden Jubilee',        type:'anniversary',   date:'2026-06-19', start:'18:00:00', end:'23:00:00', guests:400, status:'cancelled', total:145000, priority:0, cancelReason:'Postponed indefinitely by customer due to a family emergency' },
+            { id:22, ref:'BKG-2026-00022', hall:2, cust:14, name:'Pillai Birthday Bash',          type:'birthday',      date:'2026-06-27', start:'19:00:00', end:'23:00:00', guests:150, status:'completed', total:62000,  priority:0 },
+            { id:23, ref:'BKG-2026-00023', hall:1, cust:4,  name:'Patel Wedding',                 type:'wedding',       date:'2026-08-08', start:'17:00:00', end:'23:30:00', guests:850, status:'confirmed',    total:310000, priority:1 },
+            { id:24, ref:'BKG-2026-00024', hall:3, cust:6,  name:'Joshi Corporate Retreat',       type:'corporate',     date:'2026-08-19', start:'09:00:00', end:'18:00:00', guests:200, status:'tentative',    total:78000,  priority:0 },
+            { id:25, ref:'BKG-2026-00025', hall:2, cust:7,  name:'Agarwal Engagement',            type:'engagement',    date:'2026-08-25', start:'18:00:00', end:'22:00:00', guests:260, status:'advance_paid', total:110000, priority:0 },
+            { id:26, ref:'BKG-2026-00026', hall:5, cust:12, name:'Rao Conference',                type:'conference',    date:'2026-09-02', start:'10:00:00', end:'16:00:00', guests:70,  status:'confirmed',    total:48000,  priority:0 },
+            { id:27, ref:'BKG-2026-00027', hall:4, cust:10, name:'Choudhary Reception Round Two',type:'reception',     date:'2026-09-14', start:'18:00:00', end:'23:00:00', guests:500, status:'tentative',    total:190000, priority:0 },
+            { id:28, ref:'BKG-2026-00028', hall:1, cust:13, name:'Sheikh Wedding',                type:'wedding',       date:'2026-09-27', start:'17:00:00', end:'23:30:00', guests:950, status:'advance_paid', total:340000, priority:1 },
+            { id:29, ref:'BKG-2026-00029', hall:3, cust:15, name:'Subramaniam Baby Shower',       type:'baby_shower',   date:'2026-10-05', start:'11:00:00', end:'15:00:00', guests:100, status:'confirmed',    total:36000,  priority:0 },
+            { id:30, ref:'BKG-2026-00030', hall:2, cust:8,  name:'Nair Anniversary',              type:'anniversary',   date:'2026-10-20', start:'19:00:00', end:'23:00:00', guests:180, status:'tentative',    total:72000,  priority:0 },
+            { id:31, ref:'BKG-2026-00031', hall:5, cust:1,  name:'Sharma Board Meeting',          type:'conference',    date:'2026-11-03', start:'09:00:00', end:'13:00:00', guests:40,  status:'confirmed',    total:22000,  priority:0 },
+            { id:32, ref:'BKG-2026-00032', hall:4, cust:2,  name:'Mehta Festive Gala',            type:'private_party', date:'2026-11-15', start:'18:00:00', end:'23:00:00', guests:300, status:'draft',        total:115000, priority:0 },
+        ];
+
+        for (const b of newBookings) {
+            if (b.guests > HALL_CAP[b.hall]) throw new Error(`Seed data error: booking ${b.id} guests exceed hall ${b.hall} capacity`);
+            const advancePct = 0.5;
+            let amountPaid;
+            if (b.status === 'completed') amountPaid = b.total;
+            else if (b.status === 'cancelled' || b.status === 'tentative' || b.status === 'draft') amountPaid = 0;
+            else amountPaid = Math.round(b.total * advancePct); // confirmed / advance_paid
+            const advancePaid = Math.round(b.total * advancePct);
+
+            await pool.request().query(`
+                SET IDENTITY_INSERT Bookings ON;
+                INSERT INTO Bookings
+                    (booking_id, booking_ref, company_id, branch_id, hall_id, customer_id,
+                     event_name, event_type, event_date, event_time_start, event_time_end,
+                     guest_count, status, total_amount, advance_paid, amount_paid,
+                     is_priority, setup_minutes, cleanup_minutes, cooloff_minutes,
+                     cancellation_reason, cancelled_at,
+                     created_by, created_at)
+                VALUES
+                    (${b.id}, '${b.ref}', 1, 1, ${b.hall}, ${b.cust},
+                     N'${b.name.replace(/'/g, "''")}', '${b.type}', '${b.date}', '${b.start}', '${b.end}',
+                     ${b.guests}, '${b.status}', ${b.total}, ${advancePaid}, ${amountPaid},
+                     ${b.priority}, ${b.priority ? 60 : 30}, ${b.priority ? 60 : 30}, ${b.priority ? 30 : 0},
+                     ${b.cancelReason ? `N'${b.cancelReason.replace(/'/g, "''")}'` : 'NULL'}, ${b.status === 'cancelled' ? 'GETUTCDATE()' : 'NULL'},
+                     2, GETUTCDATE());
+                SET IDENTITY_INSERT Bookings OFF;
+            `);
+        }
+        ok('Additional bookings seeded (historical completed/cancelled + upcoming pipeline).');
+
+        // ── Payments matching each booking's real amount_paid ────────────────
+        const methods = ['upi', 'bank_transfer', 'cash', 'cheque'];
+        let paymentId = 9; // 1-8 already exist
+        for (const b of newBookings) {
+            const amountPaid = b.status === 'completed' ? b.total
+                : (b.status === 'confirmed' || b.status === 'advance_paid') ? Math.round(b.total * 0.5)
+                : 0;
+            if (amountPaid <= 0) continue;
+            const isFull = amountPaid >= b.total;
+            const payDate = b.date; // paid on/around the booking date for simplicity of the demo timeline
+            await pool.request().query(`
+                SET IDENTITY_INSERT Payments ON;
+                INSERT INTO Payments (payment_id, payment_ref, company_id, booking_id, customer_id, payment_type, payment_method, amount, status, payment_date, created_by, created_at)
+                VALUES (${paymentId}, 'PAY-2026-${String(paymentId).padStart(5,'0')}', 1, ${b.id}, ${b.cust}, '${isFull ? 'full' : 'advance'}', '${methods[paymentId % methods.length]}', ${amountPaid}, 'completed', '${payDate}', 2, GETUTCDATE());
+                SET IDENTITY_INSERT Payments OFF;
+            `);
+            paymentId++;
+        }
+        ok('Payments for additional bookings seeded.');
+    }
+
+    // ── Invoices for every booking (original 1-8 + new 9-32) — GST math is
+    // derived from each booking's own total_amount/amount_paid, never re-typed. ──
+    if (!(await exists('Invoices', 'invoice_id', 1))) {
+        const bookingRows = (await pool.request().query(`
+            SELECT booking_id, booking_ref, customer_id, event_date, total_amount, amount_paid, status
+            FROM Bookings WHERE company_id = 1 AND status <> 'draft' ORDER BY booking_id
+        `)).recordset;
+
+        let invoiceId = 1;
+        for (const b of bookingRows) {
+            const grandTotal = Number(b.total_amount);
+            const subtotal = Math.round((grandTotal / 1.18) * 100) / 100;
+            const cgst = Math.round(subtotal * 0.09 * 100) / 100;
+            const sgst = Math.round(subtotal * 0.09 * 100) / 100;
+            const totalTax = Math.round((cgst + sgst) * 100) / 100;
+            const amountPaid = Number(b.amount_paid);
+            const balanceDue = Math.round((grandTotal - amountPaid) * 100) / 100;
+            const paymentStatus = b.status === 'cancelled' ? 'cancelled' : balanceDue <= 0 ? 'paid' : amountPaid > 0 ? 'partial' : 'pending';
+            const invoiceDate = new Date(b.event_date);
+            invoiceDate.setDate(invoiceDate.getDate() - 3); // invoiced a few days before the event
+            const dueDate = new Date(invoiceDate);
+            dueDate.setDate(dueDate.getDate() + 15);
+
+            await pool.request().query(`
+                SET IDENTITY_INSERT Invoices ON;
+                INSERT INTO Invoices
+                    (invoice_id, invoice_number, company_id, booking_id, customer_id, invoice_date, due_date, invoice_type,
+                     subtotal, discount_amount, taxable_amount, cgst_rate, cgst_amount, sgst_rate, sgst_amount,
+                     total_tax, grand_total, amount_paid, balance_due, payment_status, is_cancelled, created_by, created_at)
+                VALUES
+                    (${invoiceId}, 'INV-2026-${String(invoiceId).padStart(6,'0')}', 1, ${b.booking_id}, ${b.customer_id},
+                     '${invoiceDate.toISOString().slice(0,10)}', '${dueDate.toISOString().slice(0,10)}', 'tax_invoice',
+                     ${subtotal}, 0, ${subtotal}, 9.00, ${cgst}, 9.00, ${sgst},
+                     ${totalTax}, ${grandTotal}, ${amountPaid}, ${balanceDue}, '${paymentStatus}', ${b.status === 'cancelled' ? 1 : 0}, 2, GETUTCDATE());
+                SET IDENTITY_INSERT Invoices OFF;
+            `);
+            invoiceId++;
+        }
+        ok(`Invoices seeded for all ${bookingRows.length} non-draft bookings.`);
+    }
+
+    // ── Sales pipeline leads — mix of fresh prospects and leads that map onto
+    // the bookings above, so the pipeline and the booking list tell one story. ──
+    if (!(await exists('Leads', 'lead_id', 1))) {
+        const leads = [
+            { name:'Ritu Kapoor',              phone:'+91-9911002233', email:'ritu.kapoor@email.com',            type:'wedding',      date:'2026-12-05', guests:400, budget:250000, score:'high',   source:'website',   stage:'inquiry',   assigned:7, notes:'Interested in Crystal Ballroom for a December wedding.' },
+            { name:'Vivek Menon',              phone:'+91-9911003344', email:'vivek.menon@email.com',            type:'corporate',    date:'2026-09-20', guests:150, budget:60000,  score:'medium', source:'referral',  stage:'lead',      assigned:4, notes:'Follow up on venue shortlist sent last week.' },
+            { customerId:6,  name:'Kavita Joshi',   phone:'+91-9834567890', email:'kavita.joshi@email.com',    type:'reception',    date:'2026-11-08', guests:300, budget:150000, score:'high',   source:'direct',    stage:'quotation', assigned:7, notes:'Sent quotation for Diamond Hall, awaiting confirmation.' },
+            { customerId:6,  name:'Kavita Joshi',   phone:'+91-9834567890', email:'kavita.joshi@email.com',    type:'corporate',    date:'2026-08-19', guests:200, budget:78000,  score:'medium', source:'direct',    stage:'tentative', assigned:4, convertedBookingId:24, notes:'Corporate retreat — tentative hold on Pearl Terrace.' },
+            { customerId:4,  name:'Sneha Patel',    phone:'+91-9845671234', email:'sneha.patel@email.com',     type:'wedding',      date:'2026-08-08', guests:850, budget:310000, score:'high',   source:'direct',    stage:'confirmed', assigned:7, convertedBookingId:23, notes:'Confirmed — Crystal Ballroom, priority booking.' },
+            { customerId:13, name:'Farhan Sheikh',  phone:'+91-9900556677', email:'farhan.sheikh@email.com',   type:'wedding',      date:'2026-09-27', guests:950, budget:340000, score:'high',   source:'referral',  stage:'confirmed', assigned:7, convertedBookingId:28, notes:'Confirmed — Crystal Ballroom, largest wedding this quarter.' },
+            { customerId:3,  name:'Rahul Gupta',    phone:'+91-9856781234', email:'rahul.gupta@email.com',     type:'reception',    date:'2026-06-08', guests:750, budget:260000, score:'high',   source:'online',    stage:'completed', assigned:4, convertedBookingId:20, notes:'Event completed successfully, full payment received.' },
+            { name:'Anand Bhosale',            phone:'+91-9911004455', email:'anand.bhosale@email.com',          type:'birthday',     date:'2026-08-01', guests:100, budget:45000,  score:'low',    source:'cold_call', stage:'lost',      assigned:10, lostReason:'Chose a competitor venue closer to their home.' },
+            { name:'Priyanka Iyer',            phone:'+91-9911005566', email:'priyanka.iyer@email.com',          type:'engagement',   date:'2026-12-20', guests:180, budget:130000, score:'medium', source:'instagram', stage:'inquiry',   assigned:7, notes:'Asked for pricing on Garden Arena.' },
+            { customerId:8,  name:'Anjali Nair',   phone:'+91-9812367890', email:'anjali.nair@email.com',     type:'anniversary',   date:'2026-10-20', guests:180, budget:72000,  score:'medium', source:'online',    stage:'tentative', assigned:4, convertedBookingId:30, notes:'Tentative hold pending guest count confirmation.' },
+            { name:'Devendra Rao',             phone:'+91-9911006677', email:'devendra.rao@email.com',           type:'corporate',    date:'2027-01-15', guests:120, budget:95000,  score:'medium', source:'direct',    stage:'quotation', assigned:7, notes:'Awaiting board approval on quotation.' },
+            { customerId:5,  name:'Vikram Singh',  phone:'+91-9867453210', email:'vikram.singh@email.com',    type:'corporate',    date:'2026-05-16', guests:220, budget:88000,  score:'low',    source:'direct',    stage:'lost',      assigned:6, lostReason:'Company budget cuts postponed the offsite indefinitely.' },
+            { name:'Meenal Kulshreshtha',      phone:'+91-9911007788', email:'meenal.kulshreshtha@email.com',    type:'baby_shower',  date:'2027-02-10', guests:80,  budget:40000,  score:'low',    source:'walk_in',   stage:'inquiry',   assigned:10, notes:'Walk-in inquiry, requested callback.' },
+            { customerId:11, name:'Amit Trivedi', phone:'+91-9900334455', email:'amit.trivedi@email.com',    type:'anniversary',   date:'2026-06-19', guests:400, budget:145000, score:'medium', source:'referral',  stage:'lost',      assigned:4, lostReason:'Postponed indefinitely by customer due to a family emergency.' },
+        ];
+
+        let leadId = 1;
+        for (const l of leads) {
+            await pool.request().query(`
+                SET IDENTITY_INSERT Leads ON;
+                INSERT INTO Leads
+                    (lead_id, company_id, branch_id, customer_id, contact_name, contact_phone, contact_email,
+                     event_type, preferred_date, guest_count, estimated_budget, score, source, stage,
+                     assigned_to, notes, lost_reason, converted_booking_id, created_by, created_at, updated_at)
+                VALUES
+                    (${leadId}, 1, 1, ${l.customerId || 'NULL'}, N'${l.name.replace(/'/g, "''")}', '${l.phone}', '${l.email}',
+                     '${l.type}', '${l.date}', ${l.guests}, ${l.budget}, '${l.score}', '${l.source}', '${l.stage}',
+                     ${l.assigned}, N'${(l.notes || '').replace(/'/g, "''")}',
+                     ${l.lostReason ? `N'${l.lostReason.replace(/'/g, "''")}'` : 'NULL'},
+                     ${l.convertedBookingId || 'NULL'}, ${l.assigned}, GETUTCDATE(), GETUTCDATE());
+                SET IDENTITY_INSERT Leads OFF;
+            `);
+            leadId++;
+        }
+        ok('Sales pipeline leads seeded (interconnected with existing customers/bookings).');
+    }
+
+    // ── Staff assignments on a few upcoming bookings (Command Center "Staff" panel) ──
+    if (!(await exists('BookingStaffAssignments', 'assignment_id', 1))) {
+        const assignments = [
+            { booking:23, user:6, role:'Operations lead for the wedding' },
+            { booking:23, user:9, role:'Floor staff coordinator' },
+            { booking:25, user:9, role:'Floor staff coordinator' },
+            { booking:28, user:6, role:'Operations lead for the wedding' },
+            { booking:28, user:4, role:'Booking executive on-site contact' },
+            { booking:26, user:9, role:'Floor staff coordinator' },
+        ];
+        for (const a of assignments) {
+            await pool.request().query(`
+                INSERT INTO BookingStaffAssignments (booking_id, user_id, role_note, status, created_at)
+                VALUES (${a.booking}, ${a.user}, N'${a.role.replace(/'/g, "''")}', 'assigned', SYSUTCDATETIME());
+            `);
+        }
+        ok('Staff assignments seeded for upcoming bookings.');
+    }
+
+    // ── Resource allocations on a few bookings (Command Center "Inventory" panel) ──
+    if (!(await exists('BookingResources', 'allocation_id', 1))) {
+        const allocations = [
+            { booking:23, resource:5, qty:60 },  // Tables (Round) for Patel Wedding
+            { booking:23, resource:6, qty:850 }, // Chairs for Patel Wedding
+            { booking:23, resource:3, qty:1 },   // Flower Decoration
+            { booking:28, resource:5, qty:70 },
+            { booking:28, resource:6, qty:950 },
+            { booking:28, resource:2, qty:1 },   // LED Video Wall
+            { booking:15, resource:5, qty:65 },
+            { booking:15, resource:6, qty:900 },
+        ];
+        for (const a of allocations) {
+            await pool.request().query(`
+                INSERT INTO BookingResources (booking_id, resource_id, quantity_allocated, created_at)
+                VALUES (${a.booking}, ${a.resource}, ${a.qty}, SYSUTCDATETIME());
+            `);
+        }
+        ok('Resource allocations seeded for a few large bookings.');
+    }
+
+    // ── Master Menu: more categories + items, linked into the existing
+    // Catering Packages so "package price computed from Master Menu" has
+    // real, varied items behind it instead of just one test row. ──
+    if (!(await exists('MenuCategories', 'category_id', 5))) {
+        await pool.request().batch(`
+            SET IDENTITY_INSERT MenuCategories ON;
+            INSERT INTO MenuCategories (category_id, company_id, category_name, food_type, sort_order, is_active) VALUES
+                (5, 1, N'Non-Veg Specialties', 'non_veg', 5, 1),
+                (6, 1, N'Live Counters',       'mixed',   6, 1);
+            SET IDENTITY_INSERT MenuCategories OFF;
+        `);
+        ok('Additional Master Menu categories seeded.');
+    }
+
+    if (!(await exists('MenuItems', 'item_id', 1))) {
+        const items = [
+            { name:'Paneer Tikka',            cat:1, food:'veg',     unit:'plate', price:150, tax:5,  cost:60  },
+            { name:'Veg Spring Rolls',        cat:1, food:'veg',     unit:'plate', price:120, tax:5,  cost:45  },
+            { name:'Hara Bhara Kebab',        cat:1, food:'veg',     unit:'plate', price:110, tax:5,  cost:40  },
+            { name:'Dal Makhani',             cat:2, food:'veg',     unit:'plate', price:140, tax:5,  cost:50  },
+            { name:'Paneer Butter Masala',    cat:2, food:'veg',     unit:'plate', price:180, tax:5,  cost:70  },
+            { name:'Veg Biryani',             cat:2, food:'veg',     unit:'plate', price:160, tax:5,  cost:65  },
+            { name:'Jain Kofta Curry',        cat:2, food:'jain',    unit:'plate', price:170, tax:5,  cost:68  },
+            { name:'Gulab Jamun',             cat:3, food:'veg',     unit:'piece', price:40,  tax:5,  cost:12  },
+            { name:'Rasmalai',                cat:3, food:'veg',     unit:'piece', price:50,  tax:5,  cost:18  },
+            { name:'Live Chocolate Fountain', cat:3, food:'veg',     unit:'plate', price:90,  tax:5,  cost:35  },
+            { name:'Masala Chaas',            cat:4, food:'vegan',   unit:'glass', price:35,  tax:5,  cost:10  },
+            { name:'Fresh Lime Soda',         cat:4, food:'vegan',   unit:'glass', price:30,  tax:5,  cost:8   },
+            { name:'Butter Chicken',          cat:5, food:'non_veg', unit:'plate', price:220, tax:5,  cost:95  },
+            { name:'Mutton Rogan Josh',       cat:5, food:'non_veg', unit:'plate', price:280, tax:5,  cost:120 },
+            { name:'Tandoori Chicken',        cat:5, food:'non_veg', unit:'plate', price:210, tax:5,  cost:85  },
+            { name:'Live Pasta Counter',      cat:6, food:'veg',     unit:'plate', price:130, tax:5,  cost:50  },
+            { name:'Live Dosa Counter',       cat:6, food:'veg',     unit:'plate', price:100, tax:5,  cost:38  },
+        ];
+        let itemId = 1;
+        for (const i of items) {
+            await pool.request().query(`
+                SET IDENTITY_INSERT MenuItems ON;
+                INSERT INTO MenuItems (item_id, company_id, category_id, item_name, description, food_type, unit, base_price, tax_percent, unit_cost, is_active, created_at)
+                VALUES (${itemId}, 1, ${i.cat}, N'${i.name.replace(/'/g, "''")}', NULL, '${i.food}', '${i.unit}', ${i.price}, ${i.tax}, ${i.cost}, 1, GETUTCDATE());
+                SET IDENTITY_INSERT MenuItems OFF;
+            `);
+            itemId++;
+        }
+        ok('Master Menu items seeded across all categories.');
+
+        // Link a representative subset of items into the existing Catering Packages
+        // so each package's price is genuinely computed from the Master Menu.
+        const packageLinks = [
+            // Classic Veg Menu (package 1)
+            { pkg:1, item:1, qty:1 }, { pkg:1, item:4, qty:1 }, { pkg:1, item:8, qty:1 }, { pkg:1, item:11, qty:1 },
+            // Premium Veg Menu (package 2)
+            { pkg:2, item:1, qty:1 }, { pkg:2, item:5, qty:1 }, { pkg:2, item:6, qty:1 }, { pkg:2, item:9, qty:1 }, { pkg:2, item:10, qty:1 },
+            // Non-Veg Standard (package 3)
+            { pkg:3, item:2, qty:1 }, { pkg:3, item:13, qty:1 }, { pkg:3, item:4, qty:1 }, { pkg:3, item:8, qty:1 },
+            // Non-Veg Premium (package 4)
+            { pkg:4, item:3, qty:1 }, { pkg:4, item:13, qty:1 }, { pkg:4, item:14, qty:1 }, { pkg:4, item:15, qty:1 }, { pkg:4, item:9, qty:1 },
+            // Jain Special Menu (package 5)
+            { pkg:5, item:7, qty:1 }, { pkg:5, item:1, qty:1 }, { pkg:5, item:8, qty:1 },
+            // Fusion Buffet (package 6)
+            { pkg:6, item:16, qty:1 }, { pkg:6, item:17, qty:1 }, { pkg:6, item:13, qty:1 }, { pkg:6, item:10, qty:1 }, { pkg:6, item:12, qty:1 },
+        ];
+        for (const l of packageLinks) {
+            await pool.request().query(`
+                INSERT INTO CateringPackageItems (package_id, item_id, quantity_per_plate, created_at)
+                VALUES (${l.pkg}, ${l.item}, ${l.qty}, SYSUTCDATETIME());
+            `);
+        }
+        // Recompute each package's stored price_per_plate from its linked Master Menu items.
+        await pool.request().query(`
+            UPDATE cp
+            SET cp.price_per_plate = ISNULL(sub.computed, cp.price_per_plate)
+            FROM CateringPackages cp
+            OUTER APPLY (
+                SELECT SUM(mi.base_price * (1 + mi.tax_percent / 100) * cpi.quantity_per_plate) AS computed
+                FROM CateringPackageItems cpi
+                JOIN MenuItems mi ON mi.item_id = cpi.item_id
+                WHERE cpi.package_id = cp.package_id
+            ) sub
+            WHERE cp.company_id = 1;
+        `);
+        ok('Catering packages linked to Master Menu items with computed pricing.');
+    }
+
+    // ── More structured inventory across every category ─────────────────────
+    if (!(await exists('Resources', 'resource_id', 9))) {
+        const resources = [
+            { name:'Banquet Sofa Set',        type:'seating',    cat:'furniture', supplier:'EventFurn Co',          price:1200, cost:500,  qty:30  },
+            { name:'Cocktail Tables',         type:'seating',    cat:'furniture', supplier:'EventFurn Co',          price:300,  cost:120,  qty:60  },
+            { name:'Backdrop Wall (Floral)',  type:'decor',      cat:'decor',     supplier:'Bloom Decorators',      price:18000,cost:7500, qty:6   },
+            { name:'Fairy Light Curtain',     type:'lighting',   cat:'lighting',  supplier:'GlowScape Lighting',    price:3500, cost:1400, qty:20  },
+            { name:'Uplighting Set (RGB)',    type:'lighting',   cat:'lighting',  supplier:'GlowScape Lighting',    price:4500, cost:1800, qty:15  },
+            { name:'Wireless Mic Set (x4)',   type:'audio',      cat:'audio',     supplier:'SoundWave Rentals',     price:6000, cost:2500, qty:8   },
+            { name:'Confetti Cannon',         type:'visual',     cat:'visual',    supplier:'Candid Moments Co',     price:2500, cost:900,  qty:12  },
+            { name:'Digital Welcome Signage', type:'signage',    cat:'signage',   supplier:'BrightTech Rentals',    price:5000, cost:2000, qty:5   },
+            { name:'Nameplate & Seating Chart', type:'signage',  cat:'signage',   supplier:'PrintCraft Studio',     price:800,  cost:250,  qty:40  },
+        ];
+        for (const r of resources) {
+            await pool.request().query(`
+                INSERT INTO Resources (company_id, resource_name, resource_type, category, supplier, unit_price, cost_price, quantity_available, is_active, created_at, updated_at)
+                VALUES (1, N'${r.name.replace(/'/g, "''")}', '${r.type}', '${r.cat}', N'${r.supplier.replace(/'/g, "''")}', ${r.price}, ${r.cost}, ${r.qty}, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+            `);
+        }
+        ok('Additional structured inventory items seeded across all categories.');
+    }
+};
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 (async () => {
     console.log('\n=============================================================');
@@ -109,7 +476,10 @@ const runBatches = async (pool, script) => {
         log('Importing schema …');
         let schemaSql = fs.readFileSync(schemaPath, 'utf8');
         // Remove CREATE DATABASE / USE directives — we already selected the DB.
+        // Strip the whole guarding IF/BEGIN...END block, not just the CREATE DATABASE
+        // statement inside it — an empty BEGIN...END is a T-SQL syntax error.
         schemaSql = schemaSql
+            .replace(/IF\s+DB_ID\([^)]*\)\s+IS\s+NULL\s*\r?\n\s*BEGIN\b[\s\S]*?CREATE\s+DATABASE[^;]+;[\s\S]*?\bEND\b/gi, '')
             .replace(/CREATE\s+DATABASE[^;]+;/gi, '')
             .replace(/^\s*USE\s+\[?\w+\]?\s*;?\s*$/gim, '');
         await runBatches(pool, schemaSql);
@@ -117,6 +487,98 @@ const runBatches = async (pool, script) => {
     } else {
         warn(`Schema file not found at ${schemaPath} — skipping.`);
     }
+
+    // ── 2b. Widen Bookings status CHECK to include 'tentative' / 'archived' ──
+    await pool.request().batch(`
+        IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_booking_status')
+           AND NOT EXISTS (
+               SELECT 1 FROM sys.check_constraints
+               WHERE name = 'CHK_booking_status' AND definition LIKE '%tentative%'
+           )
+        BEGIN
+            ALTER TABLE Bookings DROP CONSTRAINT CHK_booking_status;
+            ALTER TABLE Bookings ADD CONSTRAINT CHK_booking_status
+                CHECK (status IN ('draft','tentative','confirmed','advance_paid','fully_paid','cancelled','completed','archived','no_show'));
+        END
+    `);
+    ok('Bookings status constraint ensured (tentative/archived).');
+
+    // ── 2c. Seed Roles early — later steps grant permissions to role IDs 6-11,
+    // so those rows must exist before any of the "3x" patches below run. This
+    // used to live in the "Seeding reference data" phase (much later in this
+    // script), which meant a truly fresh --reset failed with a FK violation
+    // the very first time it was exercised end-to-end.
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM Roles WHERE role_id = 1)
+        BEGIN
+            SET IDENTITY_INSERT Roles ON;
+            INSERT INTO Roles (role_id, role_name, role_slug, description, is_system) VALUES
+                (1, N'Super Admin',       'super_admin',       N'Full platform control. Manages all companies and tenants.', 1),
+                (2, N'Company Admin',     'company_admin',     N'Manages a single company: branches, banquets, staff, reports.', 1),
+                (3, N'Branch Manager',    'branch_manager',    N'Manages daily operations of a specific branch.', 1),
+                (4, N'Booking Executive', 'booking_executive', N'Creates and manages bookings, customers, invoices.', 1),
+                (5, N'Customer',          'customer',          N'End-user who searches, books, and manages their bookings.', 1);
+            SET IDENTITY_INSERT Roles OFF;
+        END
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM Roles WHERE role_id = 6)
+        BEGIN
+            SET IDENTITY_INSERT Roles ON;
+            INSERT INTO Roles (role_id, role_name, role_slug, description, is_system) VALUES
+                (6,  N'Business Owner',      'business_owner',      N'Owns the company: bookings, halls, customers, inventory, staff, analytics, reports.', 1),
+                (7,  N'Operations Manager',  'operations_manager',  N'Manages daily operations: bookings, scheduling, occupancy, event planning.', 1),
+                (8,  N'Sales Manager',       'sales_manager',       N'Manages inquiries, quotations, follow-ups, promotional campaigns, customers.', 1),
+                (9,  N'Finance Manager',     'finance_manager',     N'Manages invoices, payments, refunds, taxes, deposits.', 1),
+                (10, N'Staff',               'staff',               N'Read-only operational dashboard, assigned events only.', 1),
+                (11, N'Receptionist',        'receptionist',        N'Creates inquiries/bookings, edits customer details. Cannot delete bookings.', 1);
+            SET IDENTITY_INSERT Roles OFF;
+        END
+    `);
+    ok('Roles seeded early (before permission grants that reference them).');
+
+    // ── 2d. Seed Countries + demo Company/Branch early too — later patches
+    // (e.g. demo MenuCategories) insert rows scoped to company_id=1, so that
+    // company (and the Countries row its country_id FK needs) must exist first.
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM Countries WHERE country_id = 1)
+        BEGIN
+            SET IDENTITY_INSERT Countries ON;
+            INSERT INTO Countries (country_id, country_name, country_code, phone_code, currency_code, currency_symbol)
+            VALUES
+                (1, N'India', 'IN', '+91', 'INR', N'₹'),
+                (2, N'United States', 'US', '+1', 'USD', N'$'),
+                (3, N'United Arab Emirates', 'AE', '+971', 'AED', N'د.إ');
+            SET IDENTITY_INSERT Countries OFF;
+        END
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM Companies WHERE company_id = 1)
+        BEGIN
+            SET IDENTITY_INSERT Companies ON;
+            INSERT INTO Companies
+                (company_id, company_name, company_slug, email, phone, address_line1,
+                 country_id, currency_code, timezone, is_active, is_verified, subscription_plan)
+            VALUES
+                (1, N'BanquetPro Demo', 'banquetpro-demo',
+                 'admin@banquetpro.com', '+91-9876543210',
+                 N'101, Corporate Tower, Bandra Kurla Complex',
+                 1, 'INR', 'Asia/Kolkata', 1, 1, 'enterprise');
+            SET IDENTITY_INSERT Companies OFF;
+        END
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM Branches WHERE branch_id = 1)
+        BEGIN
+            SET IDENTITY_INSERT Branches ON;
+            INSERT INTO Branches
+                (branch_id, company_id, branch_name, branch_code, address_line1, is_main_branch, is_active)
+            VALUES
+                (1, 1, N'Mumbai Head Office', 'MUM-HQ', N'101, Corporate Tower, BKC, Mumbai', 1, 1);
+            SET IDENTITY_INSERT Branches OFF;
+        END
+    `);
+    ok('Countries + demo Company/Branch seeded early.');
 
     // ── 3. Add Resources table (if not in main schema) ───────────────────────
     await pool.request().batch(`
@@ -140,6 +602,482 @@ const runBatches = async (pool, script) => {
     `);
     ok('Resources table ensured.');
 
+    // ── 3b. Add BookingResources table (shared inventory allocation) ────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'BookingResources')
+        BEGIN
+            CREATE TABLE BookingResources (
+                allocation_id       INT             NOT NULL IDENTITY(1,1),
+                booking_id          BIGINT          NOT NULL,
+                resource_id         INT             NOT NULL,
+                quantity_allocated  INT             NOT NULL,
+                created_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_booking_resources PRIMARY KEY (allocation_id),
+                CONSTRAINT FK_br_booking  FOREIGN KEY (booking_id)  REFERENCES Bookings(booking_id),
+                CONSTRAINT FK_br_resource FOREIGN KEY (resource_id) REFERENCES Resources(resource_id),
+                CONSTRAINT UQ_br_booking_resource UNIQUE (booking_id, resource_id),
+                CONSTRAINT CHK_br_qty CHECK (quantity_allocated > 0)
+            );
+
+            CREATE INDEX IX_br_resource ON BookingResources(resource_id, booking_id);
+        END
+    `);
+    ok('BookingResources table ensured.');
+
+    // ── 3c. Add BookingContacts table (Alternative Contacts) ────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'BookingContacts')
+        BEGIN
+            CREATE TABLE BookingContacts (
+                contact_id      INT             NOT NULL IDENTITY(1,1),
+                booking_id      BIGINT          NOT NULL,
+                contact_name    NVARCHAR(150)   NOT NULL,
+                mobile          NVARCHAR(20)    NULL,
+                email           NVARCHAR(150)   NULL,
+                relationship    NVARCHAR(100)   NULL,
+                notes           NVARCHAR(500)   NULL,
+                created_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_booking_contacts PRIMARY KEY (contact_id),
+                CONSTRAINT FK_bc_booking FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id)
+            );
+
+            CREATE INDEX IX_bc_booking ON BookingContacts(booking_id);
+        END
+    `);
+    ok('BookingContacts table ensured.');
+
+    // ── 3d. Add priority-booking columns to Bookings ─────────────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'is_priority')
+        BEGIN
+            ALTER TABLE Bookings ADD is_priority BIT NOT NULL DEFAULT 0;
+        END
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'priority_surcharge')
+        BEGIN
+            ALTER TABLE Bookings ADD priority_surcharge DECIMAL(12,2) NOT NULL DEFAULT 0;
+        END
+    `);
+    ok('Priority booking columns ensured.');
+
+    // ── 3e. Bookings.created_at/updated_at defaults: GETDATE() -> GETUTCDATE() ──
+    // The app always supplies GETUTCDATE() explicitly on insert/update, but the
+    // column DEFAULT (used by raw inserts / seed data) still used local server
+    // time, which is inconsistent with the rest of the UTC-only schema.
+    await pool.request().batch(`
+        DECLARE @constraintName NVARCHAR(200);
+
+        SELECT @constraintName = dc.name
+        FROM sys.default_constraints dc
+        JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+        WHERE dc.parent_object_id = OBJECT_ID('Bookings') AND c.name = 'created_at' AND dc.definition = '(getdate())';
+        IF @constraintName IS NOT NULL
+        BEGIN
+            EXEC('ALTER TABLE Bookings DROP CONSTRAINT ' + @constraintName);
+            EXEC('ALTER TABLE Bookings ADD CONSTRAINT DF_bookings_created_at DEFAULT GETUTCDATE() FOR created_at');
+        END
+
+        SELECT @constraintName = dc.name
+        FROM sys.default_constraints dc
+        JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+        WHERE dc.parent_object_id = OBJECT_ID('Bookings') AND c.name = 'updated_at' AND dc.definition = '(getdate())';
+        IF @constraintName IS NOT NULL
+        BEGIN
+            EXEC('ALTER TABLE Bookings DROP CONSTRAINT ' + @constraintName);
+            EXEC('ALTER TABLE Bookings ADD CONSTRAINT DF_bookings_updated_at DEFAULT GETUTCDATE() FOR updated_at');
+        END
+    `);
+    ok('Bookings UTC timestamp defaults ensured.');
+
+    // Same GETDATE() -> GETUTCDATE() fix for Invoices.created_at (found while
+    // seeding invoice demo data — it had the identical latent bug as Bookings).
+    await pool.request().batch(`
+        DECLARE @constraintName NVARCHAR(200);
+        SELECT @constraintName = dc.name
+        FROM sys.default_constraints dc
+        JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+        WHERE dc.parent_object_id = OBJECT_ID('Invoices') AND c.name = 'created_at' AND dc.definition = '(getdate())';
+        IF @constraintName IS NOT NULL
+        BEGIN
+            EXEC('ALTER TABLE Invoices DROP CONSTRAINT ' + @constraintName);
+            EXEC('ALTER TABLE Invoices ADD CONSTRAINT DF_invoices_created_at DEFAULT GETUTCDATE() FOR created_at');
+        END
+    `);
+    ok('Invoices UTC timestamp default ensured.');
+
+    // Systemic fix: the ORIGINAL schema (001_create_schema.sql) defaults nearly
+    // every created_at/updated_at/date column to local-server-time GETDATE()
+    // across 30+ tables. App code mostly supplies GETUTCDATE() explicitly on
+    // INSERT, but any INSERT that omits one of these columns (e.g. Payments.
+    // updated_at, never set on create()) silently falls back to local time —
+    // found via a real 5.5-hour timestamp skew during a full application audit.
+    // Rather than patch tables one at a time as each gets discovered, sweep
+    // every remaining plain-GETDATE()/CAST(GETDATE() AS DATE) default in one pass.
+    await pool.request().batch(`
+        DECLARE @tbl NVARCHAR(128), @col NVARCHAR(128), @cname NVARCHAR(200), @isDateOnly BIT;
+        DECLARE cur CURSOR FOR
+            SELECT t.name, c.name, dc.name,
+                   CASE WHEN dc.definition LIKE '%CONVERT([date]%' THEN 1 ELSE 0 END
+            FROM sys.default_constraints dc
+            JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+            JOIN sys.tables t ON t.object_id = dc.parent_object_id
+            WHERE dc.definition LIKE '%getdate%';
+        OPEN cur;
+        FETCH NEXT FROM cur INTO @tbl, @col, @cname, @isDateOnly;
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            EXEC('ALTER TABLE ' + @tbl + ' DROP CONSTRAINT ' + @cname);
+            IF @isDateOnly = 1
+                EXEC('ALTER TABLE ' + @tbl + ' ADD CONSTRAINT DF_' + @tbl + '_' + @col + ' DEFAULT CAST(GETUTCDATE() AS DATE) FOR ' + @col);
+            ELSE
+                EXEC('ALTER TABLE ' + @tbl + ' ADD CONSTRAINT DF_' + @tbl + '_' + @col + ' DEFAULT GETUTCDATE() FOR ' + @col);
+            FETCH NEXT FROM cur INTO @tbl, @col, @cname, @isDateOnly;
+        END
+        CLOSE cur;
+        DEALLOCATE cur;
+    `);
+    ok('All remaining GETDATE() column defaults swept to GETUTCDATE() across the schema.');
+
+    // ── 3f. Add MenuItems tax/cost fields ────────────────────────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MenuItems') AND name = 'tax_percent')
+        BEGIN
+            ALTER TABLE MenuItems ADD tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0;
+        END
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MenuItems') AND name = 'unit_cost')
+        BEGIN
+            ALTER TABLE MenuItems ADD unit_cost DECIMAL(10,2) NOT NULL DEFAULT 0;
+        END
+    `);
+    ok('MenuItems tax/cost columns ensured.');
+
+    // ── 3g. Seed catering:* permissions (existing constant keys had no rows) ─
+    const cateringPerms = [
+        ['catering', 'read',   'catering:read',   'View menu items and catering packages'],
+        ['catering', 'create', 'catering:create', 'Create menu items'],
+        ['catering', 'update', 'catering:update', 'Edit menu items'],
+    ];
+    for (const [module_, action, key, desc] of cateringPerms) {
+        await pool.request()
+            .input('module', sql.NVarChar, module_)
+            .input('action', sql.NVarChar, action)
+            .input('key', sql.NVarChar, key)
+            .input('desc', sql.NVarChar, desc)
+            .query(`
+                IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = @key)
+                INSERT INTO Permissions (module, action, permission_key, description)
+                VALUES (@module, @action, @key, @desc);
+            `);
+    }
+    // Grant to Business Owner (role 6) — covers menu/catering management
+    await pool.request().batch(`
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT 6, p.permission_id FROM Permissions p
+        WHERE p.permission_key IN ('catering:read','catering:create','catering:update')
+          AND NOT EXISTS (
+              SELECT 1 FROM RolePermissions rp WHERE rp.role_id = 6 AND rp.permission_id = p.permission_id
+          );
+    `);
+    ok('Catering permissions ensured.');
+
+    // ── 3h. Seed demo MenuCategories (needed for MenuItems FK) ───────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM MenuCategories WHERE company_id = 1)
+        BEGIN
+            INSERT INTO MenuCategories (company_id, category_name, food_type, sort_order, is_active) VALUES
+                (1, N'Starters',    'veg',     1, 1),
+                (1, N'Main Course', 'veg',     2, 1),
+                (1, N'Desserts',    'veg',     3, 1),
+                (1, N'Beverages',   'veg',     4, 1);
+        END
+    `);
+    ok('Demo menu categories seeded.');
+
+    // ── 3i. Add parent_booking_id (Master Booking / Child Occupancy Slots) ───
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'parent_booking_id')
+        BEGIN
+            ALTER TABLE Bookings ADD parent_booking_id BIGINT NULL;
+            ALTER TABLE Bookings ADD CONSTRAINT FK_bookings_parent FOREIGN KEY (parent_booking_id) REFERENCES Bookings(booking_id);
+            CREATE INDEX IX_bookings_parent ON Bookings(parent_booking_id);
+        END
+    `);
+    ok('Master/child booking column ensured.');
+
+    // ── 3j. Event details expansion + multi-day + cool-off/setup/cleanup buffers ──
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'theme')
+            ALTER TABLE Bookings ADD theme NVARCHAR(200) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'decoration_notes')
+            ALTER TABLE Bookings ADD decoration_notes NVARCHAR(1000) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'utilities')
+            ALTER TABLE Bookings ADD utilities NVARCHAR(MAX) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'staff_count')
+            ALTER TABLE Bookings ADD staff_count INT NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'event_end_date')
+            ALTER TABLE Bookings ADD event_end_date DATE NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'setup_minutes')
+            ALTER TABLE Bookings ADD setup_minutes INT NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'cleanup_minutes')
+            ALTER TABLE Bookings ADD cleanup_minutes INT NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'cooloff_minutes')
+            ALTER TABLE Bookings ADD cooloff_minutes INT NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'cleanup_charge')
+            ALTER TABLE Bookings ADD cleanup_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'late_exit_charge')
+            ALTER TABLE Bookings ADD late_exit_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
+    `);
+    ok('Event details / multi-day / buffer columns ensured.');
+
+    // ── 3k. Owner overrides: block_type on HallBlockedDates ──────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('HallBlockedDates') AND name = 'block_type')
+        BEGIN
+            ALTER TABLE HallBlockedDates ADD block_type NVARCHAR(30) NOT NULL DEFAULT 'maintenance';
+        END
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_block_type')
+        BEGIN
+            ALTER TABLE HallBlockedDates ADD CONSTRAINT CHK_block_type
+                CHECK (block_type IN ('maintenance', 'vip_hold', 'emergency_closure', 'blackout'));
+        END
+    `);
+    ok('Owner override (block_type) column ensured.');
+
+    // ── 3l. Sales pipeline: Leads table ───────────────────────────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Leads')
+        BEGIN
+            CREATE TABLE Leads (
+                lead_id             INT             NOT NULL IDENTITY(1,1),
+                company_id          INT             NOT NULL,
+                branch_id           INT             NULL,
+                customer_id         INT             NULL,
+                contact_name        NVARCHAR(150)   NOT NULL,
+                contact_phone       NVARCHAR(20)    NULL,
+                contact_email       NVARCHAR(150)   NULL,
+                event_type          NVARCHAR(50)    NULL,
+                preferred_date      DATE            NULL,
+                guest_count         INT             NULL,
+                estimated_budget    DECIMAL(14,2)   NULL,
+                score               NVARCHAR(10)    NOT NULL DEFAULT 'low',
+                source              NVARCHAR(50)    NULL,
+                stage               NVARCHAR(20)    NOT NULL DEFAULT 'inquiry',
+                assigned_to         INT             NULL,
+                notes               NVARCHAR(2000)  NULL,
+                lost_reason         NVARCHAR(500)   NULL,
+                converted_booking_id BIGINT         NULL,
+                created_by          INT             NOT NULL,
+                created_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                updated_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_leads PRIMARY KEY (lead_id),
+                CONSTRAINT FK_leads_company FOREIGN KEY (company_id) REFERENCES Companies(company_id),
+                CONSTRAINT FK_leads_customer FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
+                CONSTRAINT FK_leads_assigned FOREIGN KEY (assigned_to) REFERENCES Users(user_id),
+                CONSTRAINT FK_leads_booking FOREIGN KEY (converted_booking_id) REFERENCES Bookings(booking_id),
+                CONSTRAINT FK_leads_creator FOREIGN KEY (created_by) REFERENCES Users(user_id),
+                CONSTRAINT CHK_lead_stage CHECK (stage IN ('inquiry','lead','quotation','tentative','confirmed','completed','lost')),
+                CONSTRAINT CHK_lead_score CHECK (score IN ('high','medium','low'))
+            );
+
+            CREATE INDEX IX_leads_company_stage ON Leads(company_id, stage);
+            CREATE INDEX IX_leads_score ON Leads(company_id, score);
+        END
+    `);
+    ok('Leads (sales pipeline) table ensured.');
+
+    // ── 3m. Seed leads:* permissions ──────────────────────────────────────────
+    const leadPerms = [
+        ['leads', 'read',   'leads:read',   'View sales pipeline / leads'],
+        ['leads', 'create', 'leads:create', 'Create leads / inquiries'],
+        ['leads', 'update', 'leads:update', 'Edit leads, advance pipeline stage'],
+    ];
+    for (const [module_, action, key, desc] of leadPerms) {
+        await pool.request()
+            .input('module', sql.NVarChar, module_)
+            .input('action', sql.NVarChar, action)
+            .input('key', sql.NVarChar, key)
+            .input('desc', sql.NVarChar, desc)
+            .query(`
+                IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = @key)
+                INSERT INTO Permissions (module, action, permission_key, description)
+                VALUES (@module, @action, @key, @desc);
+            `);
+    }
+    // Grant to Business Owner (6) and Sales Manager (8)
+    await pool.request().batch(`
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id
+        FROM Permissions p
+        CROSS JOIN (SELECT 6 AS role_id UNION SELECT 8) r
+        WHERE p.permission_key IN ('leads:read','leads:create','leads:update')
+          AND NOT EXISTS (
+              SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id
+          );
+    `);
+    ok('Sales pipeline permissions ensured.');
+
+    // ── 3n. Marketing Automation: MarketingCommunications table ──────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'MarketingCommunications')
+        BEGIN
+            CREATE TABLE MarketingCommunications (
+                comm_id         INT             NOT NULL IDENTITY(1,1),
+                company_id      INT             NOT NULL,
+                lead_id         INT             NULL,
+                customer_id     INT             NULL,
+                campaign_type   NVARCHAR(30)    NOT NULL,
+                channel         NVARCHAR(20)    NOT NULL DEFAULT 'email',
+                subject         NVARCHAR(200)   NULL,
+                message         NVARCHAR(MAX)   NOT NULL,
+                sent_to_email   NVARCHAR(150)   NULL,
+                sent_to_phone   NVARCHAR(20)    NULL,
+                delivery_status NVARCHAR(20)    NOT NULL DEFAULT 'sent',
+                sent_by         INT             NOT NULL,
+                created_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_marketing_comm PRIMARY KEY (comm_id),
+                CONSTRAINT FK_mktcomm_company FOREIGN KEY (company_id) REFERENCES Companies(company_id),
+                CONSTRAINT FK_mktcomm_lead FOREIGN KEY (lead_id) REFERENCES Leads(lead_id),
+                CONSTRAINT FK_mktcomm_customer FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
+                CONSTRAINT FK_mktcomm_sentby FOREIGN KEY (sent_by) REFERENCES Users(user_id),
+                CONSTRAINT CHK_mktcomm_campaign_type CHECK (campaign_type IN (
+                    'flyer','discount','festival_offer','wedding_package','anniversary_package','birthday_package'
+                )),
+                CONSTRAINT CHK_mktcomm_target CHECK (lead_id IS NOT NULL OR customer_id IS NOT NULL)
+            );
+
+            CREATE INDEX IX_mktcomm_lead ON MarketingCommunications(lead_id);
+            CREATE INDEX IX_mktcomm_customer ON MarketingCommunications(customer_id);
+        END
+    `);
+    ok('Marketing communications table ensured.');
+
+    // ── 3o. Seed marketing:* permissions ─────────────────────────────────────
+    const marketingPerms = [
+        ['marketing', 'read', 'marketing:read', 'View marketing communication history'],
+        ['marketing', 'send', 'marketing:send', 'Send promotional campaigns to leads/customers'],
+    ];
+    for (const [module_, action, key, desc] of marketingPerms) {
+        await pool.request()
+            .input('module', sql.NVarChar, module_)
+            .input('action', sql.NVarChar, action)
+            .input('key', sql.NVarChar, key)
+            .input('desc', sql.NVarChar, desc)
+            .query(`
+                IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = @key)
+                INSERT INTO Permissions (module, action, permission_key, description)
+                VALUES (@module, @action, @key, @desc);
+            `);
+    }
+    await pool.request().batch(`
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id
+        FROM Permissions p
+        CROSS JOIN (SELECT 6 AS role_id UNION SELECT 8) r
+        WHERE p.permission_key IN ('marketing:read','marketing:send')
+          AND NOT EXISTS (
+              SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id
+          );
+    `);
+    ok('Marketing automation permissions ensured.');
+
+    // ── 3p. Master Menu: CateringPackageItems (packages reference MenuItems) ──
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CateringPackageItems')
+        BEGIN
+            CREATE TABLE CateringPackageItems (
+                package_item_id     INT             NOT NULL IDENTITY(1,1),
+                package_id          INT             NOT NULL,
+                item_id             INT             NOT NULL,
+                quantity_per_plate  DECIMAL(6,2)    NOT NULL DEFAULT 1,
+                created_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_cpi PRIMARY KEY (package_item_id),
+                CONSTRAINT FK_cpi_package FOREIGN KEY (package_id) REFERENCES CateringPackages(package_id),
+                CONSTRAINT FK_cpi_item FOREIGN KEY (item_id) REFERENCES MenuItems(item_id),
+                CONSTRAINT UQ_cpi_package_item UNIQUE (package_id, item_id)
+            );
+            CREATE INDEX IX_cpi_package ON CateringPackageItems(package_id);
+        END
+    `);
+    ok('Master Menu (CateringPackageItems) table ensured.');
+
+    // ── 3q. Structured inventory: extend Resources with category/supplier/cost ─
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'category')
+            ALTER TABLE Resources ADD category NVARCHAR(30) NOT NULL DEFAULT 'custom';
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'supplier')
+            ALTER TABLE Resources ADD supplier NVARCHAR(150) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'cost_price')
+            ALTER TABLE Resources ADD cost_price DECIMAL(12,2) NOT NULL DEFAULT 0;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_resource_category')
+        BEGIN
+            ALTER TABLE Resources ADD CONSTRAINT CHK_resource_category
+                CHECK (category IN ('furniture','decor','lighting','audio','visual','signage','custom'));
+        END
+    `);
+    ok('Structured inventory columns ensured.');
+
+    // ── 3r. Configurable Operational Charges ──────────────────────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'OperationalChargeConfig')
+        BEGIN
+            CREATE TABLE OperationalChargeConfig (
+                config_id       INT             NOT NULL IDENTITY(1,1),
+                company_id      INT             NOT NULL,
+                charge_type     NVARCHAR(30)    NOT NULL,
+                calc_method     NVARCHAR(20)    NOT NULL DEFAULT 'complimentary',
+                rate_value      DECIMAL(12,2)   NOT NULL DEFAULT 0,
+                is_active       BIT             NOT NULL DEFAULT 1,
+                updated_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_opcharge PRIMARY KEY (config_id),
+                CONSTRAINT FK_opcharge_company FOREIGN KEY (company_id) REFERENCES Companies(company_id),
+                CONSTRAINT UQ_opcharge_company_type UNIQUE (company_id, charge_type),
+                CONSTRAINT CHK_opcharge_type CHECK (charge_type IN (
+                    'setup','decoration','cleanup','cleaning','late_exit','extended_usage','cooloff'
+                )),
+                CONSTRAINT CHK_opcharge_method CHECK (calc_method IN ('fixed','hourly','percentage','complimentary'))
+            );
+        END
+    `);
+    ok('Operational charge config table ensured.');
+
+    // ── Missing indexes on Invoices — every list/lookup query filters by
+    // company_id and/or booking_id, but the table only had PK + unique
+    // invoice_number (found during a full application audit). ──
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('Invoices') AND name = 'IX_invoices_company_date')
+            CREATE INDEX IX_invoices_company_date ON Invoices(company_id, invoice_date);
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('Invoices') AND name = 'IX_invoices_booking')
+            CREATE INDEX IX_invoices_booking ON Invoices(booking_id);
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('Invoices') AND name = 'IX_invoices_customer')
+            CREATE INDEX IX_invoices_customer ON Invoices(customer_id);
+    `);
+    ok('Invoices indexes ensured.');
+
+    // ── 3s. Command Center: staff assignment per booking ─────────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'BookingStaffAssignments')
+        BEGIN
+            CREATE TABLE BookingStaffAssignments (
+                assignment_id   INT             NOT NULL IDENTITY(1,1),
+                booking_id      BIGINT          NOT NULL,
+                user_id         INT             NOT NULL,
+                role_note       NVARCHAR(150)   NULL,
+                status          NVARCHAR(20)    NOT NULL DEFAULT 'assigned',
+                created_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_bsa PRIMARY KEY (assignment_id),
+                CONSTRAINT FK_bsa_booking FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id),
+                CONSTRAINT FK_bsa_user FOREIGN KEY (user_id) REFERENCES Users(user_id),
+                CONSTRAINT CHK_bsa_status CHECK (status IN ('assigned','confirmed','completed','no_show')),
+                CONSTRAINT UQ_bsa_booking_user UNIQUE (booking_id, user_id)
+            );
+            CREATE INDEX IX_bsa_booking ON BookingStaffAssignments(booking_id);
+        END
+    `);
+    ok('Booking staff assignments table ensured.');
+
     // ── 4. Seed reference / lookup data ─────────────────────────────────────
     log('Seeding reference data …');
 
@@ -155,20 +1093,6 @@ const runBatches = async (pool, script) => {
             SET IDENTITY_INSERT ${table} OFF;
         `);
     };
-
-    // Countries
-    await pool.request().batch(`
-        IF NOT EXISTS (SELECT 1 FROM Countries WHERE country_id = 1)
-        BEGIN
-            SET IDENTITY_INSERT Countries ON;
-            INSERT INTO Countries (country_id, country_name, country_code, phone_code, currency_code, currency_symbol)
-            VALUES
-                (1, N'India', 'IN', '+91', 'INR', N'₹'),
-                (2, N'United States', 'US', '+1', 'USD', N'$'),
-                (3, N'United Arab Emirates', 'AE', '+971', 'AED', N'د.إ');
-            SET IDENTITY_INSERT Countries OFF;
-        END
-    `);
 
     // States
     await pool.request().batch(`
@@ -206,24 +1130,15 @@ const runBatches = async (pool, script) => {
         END
     `);
 
-    // Roles
-    await pool.request().batch(`
-        IF NOT EXISTS (SELECT 1 FROM Roles WHERE role_id = 1)
-        BEGIN
-            SET IDENTITY_INSERT Roles ON;
-            INSERT INTO Roles (role_id, role_name, role_slug, description, is_system) VALUES
-                (1, N'Super Admin',       'super_admin',       N'Full platform control. Manages all companies and tenants.', 1),
-                (2, N'Company Admin',     'company_admin',     N'Manages a single company: branches, banquets, staff, reports.', 1),
-                (3, N'Branch Manager',    'branch_manager',    N'Manages daily operations of a specific branch.', 1),
-                (4, N'Booking Executive', 'booking_executive', N'Creates and manages bookings, customers, invoices.', 1),
-                (5, N'Customer',          'customer',          N'End-user who searches, books, and manages their bookings.', 1);
-            SET IDENTITY_INSERT Roles OFF;
-        END
-    `);
-
     // Permissions
+    // NOTE: this must be idempotent per-row, NOT gated on "table is empty" —
+    // the catering/leads/marketing permission patches above (3g/3m/3o) insert
+    // into this same table earlier in the script, so an empty-table guard here
+    // would silently skip this entire canonical list on every fresh install
+    // (found during a full application audit: role_id=2 had only 8 permissions
+    // total instead of the ~45 below, because this block never ran).
     await pool.request().batch(`
-        IF NOT EXISTS (SELECT 1 FROM Permissions)
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'dashboard:read')
         BEGIN
             INSERT INTO Permissions (module, action, permission_key, description) VALUES
                 ('dashboard',    'read',   'dashboard:read',    N'View dashboard and KPIs'),
@@ -326,6 +1241,79 @@ const runBatches = async (pool, script) => {
         );
     `);
 
+    // Business Owner (role 6): everything except platform-level admin actions
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM RolePermissions WHERE role_id = 6)
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT 6, permission_id FROM Permissions
+        WHERE permission_key NOT IN ('companies:create','companies:delete','audit_logs:read');
+    `);
+
+    // Operations Manager (role 7): daily ops — bookings, scheduling, occupancy, resources
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM RolePermissions WHERE role_id = 7)
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT 7, permission_id FROM Permissions
+        WHERE permission_key IN (
+            'dashboard:read','banquets:read','halls:read',
+            'bookings:create','bookings:read','bookings:update','bookings:cancel','bookings:confirm',
+            'customers:read','customers:update',
+            'availability:manage','availability:read',
+            'resources:create','resources:read','resources:update',
+            'reports:read'
+        );
+    `);
+
+    // Sales Manager (role 8): inquiries, quotations, follow-ups, campaigns, customers
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM RolePermissions WHERE role_id = 8)
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT 8, permission_id FROM Permissions
+        WHERE permission_key IN (
+            'dashboard:read','banquets:read','halls:read',
+            'bookings:create','bookings:read','bookings:update',
+            'customers:create','customers:read','customers:update',
+            'coupons:create','coupons:read','coupons:update',
+            'availability:read','reports:read'
+        );
+    `);
+
+    // Finance Manager (role 9): invoices, payments, refunds, taxes, deposits
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM RolePermissions WHERE role_id = 9)
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT 9, permission_id FROM Permissions
+        WHERE permission_key IN (
+            'dashboard:read','bookings:read',
+            'payments:create','payments:read','payments:refund',
+            'invoices:create','invoices:read','invoices:send',
+            'reports:read','reports:export'
+        );
+    `);
+
+    // Staff (role 10): read-only operational dashboard
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM RolePermissions WHERE role_id = 10)
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT 10, permission_id FROM Permissions
+        WHERE permission_key IN (
+            'dashboard:read','bookings:read','banquets:read','halls:read','availability:read'
+        );
+    `);
+
+    // Receptionist (role 11): create inquiry/booking, edit customers — no cancel/delete
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM RolePermissions WHERE role_id = 11)
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT 11, permission_id FROM Permissions
+        WHERE permission_key IN (
+            'dashboard:read','banquets:read','halls:read',
+            'bookings:create','bookings:read','bookings:update',
+            'customers:create','customers:read','customers:update',
+            'availability:read'
+        );
+    `);
+
     // Event types
     await pool.request().batch(`
         IF NOT EXISTS (SELECT 1 FROM EventTypes WHERE event_type_id = 1)
@@ -367,38 +1355,6 @@ const runBatches = async (pool, script) => {
     `);
 
     ok('Reference data seeded.');
-
-    // ── 5. Demo company + branch ─────────────────────────────────────────────
-    log('Seeding demo company & branch …');
-
-    await pool.request().batch(`
-        IF NOT EXISTS (SELECT 1 FROM Companies WHERE company_id = 1)
-        BEGIN
-            SET IDENTITY_INSERT Companies ON;
-            INSERT INTO Companies
-                (company_id, company_name, company_slug, email, phone, address_line1,
-                 country_id, currency_code, timezone, is_active, is_verified, subscription_plan)
-            VALUES
-                (1, N'BanquetPro Demo', 'banquetpro-demo',
-                 'admin@banquetpro.com', '+91-9876543210',
-                 N'101, Corporate Tower, Bandra Kurla Complex',
-                 1, 'INR', 'Asia/Kolkata', 1, 1, 'enterprise');
-            SET IDENTITY_INSERT Companies OFF;
-        END
-    `);
-
-    await pool.request().batch(`
-        IF NOT EXISTS (SELECT 1 FROM Branches WHERE branch_id = 1)
-        BEGIN
-            SET IDENTITY_INSERT Branches ON;
-            INSERT INTO Branches
-                (branch_id, company_id, branch_name, branch_code, address_line1, is_main_branch, is_active)
-            VALUES
-                (1, 1, N'Mumbai Head Office', 'MUM-HQ', N'101, Corporate Tower, BKC, Mumbai', 1, 1);
-            SET IDENTITY_INSERT Branches OFF;
-        END
-    `);
-
     ok('Demo company and branch created.');
 
     // ── 6. Super Admin user ──────────────────────────────────────────────────
@@ -542,28 +1498,28 @@ const runBatches = async (pool, script) => {
             VALUES
                 (1,  'BKG-2026-00001', 1, 1, 1, 1, N'Sharma-Mehta Wedding Reception', 'wedding',
                  '2026-08-15', '18:00:00', '23:00:00', 850, 'fully_paid',
-                 175000.00, 87500.00, 175000.00, 2, GETDATE()),
+                 175000.00, 87500.00, 175000.00, 2, GETUTCDATE()),
                 (2,  'BKG-2026-00002', 1, 1, 2, 2, N'Priya Birthday Celebration',    'birthday',
                  '2026-07-20', '19:00:00', '23:00:00', 200, 'confirmed',
-                  95000.00, 47500.00, 47500.00, 2, GETDATE()),
+                  95000.00, 47500.00, 47500.00, 2, GETUTCDATE()),
                 (3,  'BKG-2026-00003', 1, 1, 1, 3, N'Gupta Engagement Ceremony',     'engagement',
                  '2026-08-28', '10:00:00', '15:00:00', 300, 'advance_paid',
-                 158500.00, 79250.00, 79250.00, 2, GETDATE()),
+                 158500.00, 79250.00, 79250.00, 2, GETUTCDATE()),
                 (4,  'BKG-2026-00004', 1, 1, 3, 4, N'TechCorp Annual Meet',          'corporate',
                  '2026-07-25', '09:00:00', '18:00:00', 250, 'confirmed',
-                  52000.00, 26000.00, 26000.00, 2, GETDATE()),
+                  52000.00, 26000.00, 26000.00, 2, GETUTCDATE()),
                 (5,  'BKG-2026-00005', 1, 1, 4, 5, N'Singh-Kapoor Reception',        'reception',
                  '2026-09-05', '18:00:00', '23:00:00', 600, 'confirmed',
-                  86000.00, 43000.00, 43000.00, 2, GETDATE()),
+                  86000.00, 43000.00, 43000.00, 2, GETUTCDATE()),
                 (6,  'BKG-2026-00006', 1, 1, 2, 6, N'Joshi Anniversary Dinner',      'anniversary',
                  '2026-07-10', '20:00:00', '23:00:00', 120, 'completed',
-                  97750.00, 97750.00, 97750.00, 2, GETDATE()),
+                  97750.00, 97750.00, 97750.00, 2, GETUTCDATE()),
                 (7,  'BKG-2026-00007', 1, 1, 5, 7, N'Agarwal Investor Meet',         'conference',
                  '2026-07-18', '10:00:00', '17:00:00',  60, 'completed',
-                  18000.00, 18000.00, 18000.00, 2, GETDATE()),
+                  18000.00, 18000.00, 18000.00, 2, GETUTCDATE()),
                 (8,  'BKG-2026-00008', 1, 1, 1, 8, N'Nair Golden Jubilee',           'anniversary',
                  '2026-10-12', '18:00:00', '23:00:00', 500, 'draft',
-                 165000.00, 0.00, 0.00, 2, GETDATE());
+                 165000.00, 0.00, 0.00, 2, GETUTCDATE());
             SET IDENTITY_INSERT Bookings OFF;
         END
     `);
@@ -581,14 +1537,14 @@ const runBatches = async (pool, script) => {
                 (payment_id, payment_ref, company_id, booking_id, customer_id,
                  payment_type, payment_method, amount, status, payment_date, created_by, created_at)
             VALUES
-                (1,  'PAY-2026-00001', 1, 1, 1, 'advance', 'upi',           87500.00, 'completed', '2026-06-15', 2, GETDATE()),
-                (2,  'PAY-2026-00002', 1, 1, 1, 'full',    'bank_transfer',  87500.00, 'completed', '2026-07-01', 2, GETDATE()),
-                (3,  'PAY-2026-00003', 1, 2, 2, 'advance', 'cash',           47500.00, 'completed', '2026-06-20', 2, GETDATE()),
-                (4,  'PAY-2026-00004', 1, 3, 3, 'advance', 'cheque',         79250.00, 'completed', '2026-06-25', 2, GETDATE()),
-                (5,  'PAY-2026-00005', 1, 4, 4, 'advance', 'upi',            26000.00, 'completed', '2026-06-10', 2, GETDATE()),
-                (6,  'PAY-2026-00006', 1, 5, 5, 'advance', 'bank_transfer',  43000.00, 'completed', '2026-06-30', 2, GETDATE()),
-                (7,  'PAY-2026-00007', 1, 6, 6, 'full',    'upi',            97750.00, 'completed', '2026-07-05', 2, GETDATE()),
-                (8,  'PAY-2026-00008', 1, 7, 7, 'full',    'cash',           18000.00, 'completed', '2026-07-15', 2, GETDATE());
+                (1,  'PAY-2026-00001', 1, 1, 1, 'advance', 'upi',           87500.00, 'completed', '2026-06-15', 2, GETUTCDATE()),
+                (2,  'PAY-2026-00002', 1, 1, 1, 'full',    'bank_transfer',  87500.00, 'completed', '2026-07-01', 2, GETUTCDATE()),
+                (3,  'PAY-2026-00003', 1, 2, 2, 'advance', 'cash',           47500.00, 'completed', '2026-06-20', 2, GETUTCDATE()),
+                (4,  'PAY-2026-00004', 1, 3, 3, 'advance', 'cheque',         79250.00, 'completed', '2026-06-25', 2, GETUTCDATE()),
+                (5,  'PAY-2026-00005', 1, 4, 4, 'advance', 'upi',            26000.00, 'completed', '2026-06-10', 2, GETUTCDATE()),
+                (6,  'PAY-2026-00006', 1, 5, 5, 'advance', 'bank_transfer',  43000.00, 'completed', '2026-06-30', 2, GETUTCDATE()),
+                (7,  'PAY-2026-00007', 1, 6, 6, 'full',    'upi',            97750.00, 'completed', '2026-07-05', 2, GETUTCDATE()),
+                (8,  'PAY-2026-00008', 1, 7, 7, 'full',    'cash',           18000.00, 'completed', '2026-07-15', 2, GETUTCDATE());
             SET IDENTITY_INSERT Payments OFF;
         END
     `);
@@ -619,17 +1575,29 @@ const runBatches = async (pool, script) => {
         BEGIN
             SET IDENTITY_INSERT Resources ON;
             INSERT INTO Resources
-                (resource_id, company_id, resource_name, resource_type, unit_price, quantity_available, is_active)
+                (resource_id, company_id, resource_name, resource_type, category, supplier, unit_price, cost_price, quantity_available, is_active)
             VALUES
-                (1, 1, N'PA Sound System',   'audio',      5000.00, 5, 1),
-                (2, 1, N'LED Video Wall',    'visual',    15000.00, 2, 1),
-                (3, 1, N'Flower Decoration', 'decor',     25000.00, 10, 1),
-                (4, 1, N'Generator 100KVA',  'power',      8000.00, 3, 1),
-                (5, 1, N'Tables (Round)',    'furniture',   200.00, 200, 1),
-                (6, 1, N'Chairs (Banquet)',  'furniture',    50.00, 2000, 1),
-                (7, 1, N'Projector + Screen','visual',     3500.00, 5, 1),
-                (8, 1, N'Photo Booth',       'entertainment',8000.00, 2, 1);
+                (1, 1, N'PA Sound System',   'audio',      'audio',     N'SoundWave Rentals',    5000.00, 2200.00, 5, 1),
+                (2, 1, N'LED Video Wall',    'visual',     'visual',    N'BrightTech Rentals',   15000.00, 7000.00, 2, 1),
+                (3, 1, N'Flower Decoration', 'decor',      'decor',     N'Bloom Decorators',     25000.00, 11000.00, 10, 1),
+                (4, 1, N'Generator 100KVA',  'power',      'custom',    N'PowerGen Solutions',    8000.00, 3500.00, 3, 1),
+                (5, 1, N'Tables (Round)',    'furniture',  'furniture', N'EventFurn Co',           200.00,   80.00, 200, 1),
+                (6, 1, N'Chairs (Banquet)',  'furniture',  'furniture', N'EventFurn Co',            50.00,   20.00, 2000, 1),
+                (7, 1, N'Projector + Screen','visual',     'visual',    N'BrightTech Rentals',    3500.00, 1500.00, 5, 1),
+                (8, 1, N'Photo Booth',       'entertainment','custom',  N'Candid Moments Co',     8000.00, 3200.00, 2, 1);
             SET IDENTITY_INSERT Resources OFF;
+        END
+        ELSE
+        BEGIN
+            -- Backfill category/supplier/cost for pre-existing rows from before these columns existed
+            UPDATE Resources SET category='audio',     supplier=N'SoundWave Rentals',  cost_price=2200.00  WHERE resource_id=1 AND supplier IS NULL;
+            UPDATE Resources SET category='visual',    supplier=N'BrightTech Rentals', cost_price=7000.00  WHERE resource_id=2 AND supplier IS NULL;
+            UPDATE Resources SET category='decor',     supplier=N'Bloom Decorators',   cost_price=11000.00 WHERE resource_id=3 AND supplier IS NULL;
+            UPDATE Resources SET category='custom',    supplier=N'PowerGen Solutions', cost_price=3500.00  WHERE resource_id=4 AND supplier IS NULL;
+            UPDATE Resources SET category='furniture', supplier=N'EventFurn Co',       cost_price=80.00    WHERE resource_id=5 AND supplier IS NULL;
+            UPDATE Resources SET category='furniture', supplier=N'EventFurn Co',       cost_price=20.00    WHERE resource_id=6 AND supplier IS NULL;
+            UPDATE Resources SET category='visual',    supplier=N'BrightTech Rentals', cost_price=1500.00  WHERE resource_id=7 AND supplier IS NULL;
+            UPDATE Resources SET category='custom',    supplier=N'Candid Moments Co',  cost_price=3200.00  WHERE resource_id=8 AND supplier IS NULL;
         END
     `);
 
@@ -649,6 +1617,12 @@ const runBatches = async (pool, script) => {
     `);
 
     ok('Demo data seeded (catering, resources, settings).');
+
+    // ── 13. Extended demo data: employees, more customers/bookings, payments,
+    // invoices, sales pipeline leads, staff assignments — all cross-referencing
+    // each other so Invoices/Command Center/Sales Pipeline/Owner Analytics/Users
+    // tell one consistent story instead of disconnected demo rows.
+    await seedExtendedDemoData(pool);
 
     // ── Done ─────────────────────────────────────────────────────────────────
     await pool.close();

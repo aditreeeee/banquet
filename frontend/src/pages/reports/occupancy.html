@@ -22,9 +22,13 @@
 <aside class="sidebar" id="sidebar">
     <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
     <nav class="sidebar-nav">
-        <div class="nav-section-label">Overview</div>
+        <div class="nav-section-label">Dashboard</div>
         <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
-        <div class="nav-section-label">Reports</div>
+        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
+<div class="nav-section-label">Inventory</div>
+        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
+        <a href="../inventory/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
+                <div class="nav-section-label">Reports</div>
         <a href="revenue.html"   class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path></svg></span><span class="sidebar-text">Revenue</span></a>
         <a href="bookings.html"  class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg></span><span class="sidebar-text">Bookings</span></a>
         <a href="occupancy.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></span><span class="sidebar-text">Occupancy</span></a>
@@ -45,7 +49,14 @@
     <main class="page-content">
         <div class="page-header">
             <div><h1 class="page-title">Occupancy Report</h1><p class="page-subtitle">Hall utilization rates, peak times and availability patterns</p></div>
-            <button class="btn-ghost" onclick="Utils.toast('Exporting…','info')">⬇ Export</button>
+            <div class="dropdown">
+                <button class="btn-ghost" data-bs-toggle="dropdown">⬇ Export</button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('csv');return false">CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('xlsx');return false">Excel</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportReport('pdf');return false">PDF</a></li>
+                </ul>
+            </div>
         </div>
 
         <!-- Filters -->
@@ -150,6 +161,25 @@ function getDemoData(year, month) {
         cal: calData,
         table: HALLS.map((h,i)=>({ hall_name:h, capacity:[500,350,200,400,600][i], booked:[22,18,16,12,8][i], avail:[8,12,14,18,22][i], occ:HALL_OCC[i], revenue:[2140000,1380000,950000,780000,480000][i], avg_rating:[4.7,4.5,4.3,4.1,3.9][i] })),
     };
+}
+
+function monthRange() {
+    const monthVal = document.getElementById('monthPicker').value;
+    const [year, month] = monthVal.split('-').map(Number);
+    const from = `${year}-${String(month).padStart(2, '0')}-01`;
+    const to   = new Date(year, month, 0).toISOString().slice(0, 10);
+    return { from, to };
+}
+
+async function exportReport(format) {
+    const { from, to } = monthRange();
+    const branch = document.getElementById('branchFilter').value;
+    try {
+        Utils.toast(`Generating ${format.toUpperCase()} report…`, 'info');
+        await API.download('/reports/occupancy', { from_date: from, to_date: to, branch_id: branch || undefined, format }, `occupancy-report.${format}`);
+    } catch (err) {
+        Utils.toast(err.message || 'Export failed', 'error');
+    }
 }
 
 async function loadReport() {

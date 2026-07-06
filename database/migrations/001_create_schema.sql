@@ -690,7 +690,7 @@ BEGIN
         CONSTRAINT FK_bookings_branch FOREIGN KEY (branch_id) REFERENCES Branches(branch_id),
         CONSTRAINT FK_bookings_hall FOREIGN KEY (hall_id) REFERENCES Halls(hall_id),
         CONSTRAINT FK_bookings_customer FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
-        CONSTRAINT CHK_booking_status CHECK (status IN ('draft','confirmed','advance_paid','fully_paid','cancelled','completed','no_show'))
+        CONSTRAINT CHK_booking_status CHECK (status IN ('draft','tentative','confirmed','advance_paid','fully_paid','cancelled','completed','archived','no_show'))
     );
 
     CREATE INDEX IX_bookings_date_hall      ON Bookings(event_date, hall_id);

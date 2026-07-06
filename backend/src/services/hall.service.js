@@ -5,8 +5,11 @@
 
 const repo        = require('../repositories/hall.repository');
 const banquetRepo = require('../repositories/banquet.repository');
-const { NotFoundError } = require('../api/v1/middleware/errorHandler');
+const auditLogRepo = require('../repositories/auditLog.repository');
+const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+
+const BLOCK_TYPES = ['maintenance', 'vip_hold', 'emergency_closure', 'blackout'];
 
 const getAll = async (query, actor) => {
     const p = parsePagination(query, ['hall_name', 'capacity', 'base_price', 'created_at']);
@@ -71,27 +74,61 @@ const getAvailability = async (id, query, actor) => {
     const fromDate = query.from_date || new Date().toISOString().slice(0, 10);
     const toDate   = query.to_date   || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    const blockedDates = await repo.getBlockedDates(id, fromDate, toDate);
+    const blockedDates = await repo.getBlockedDates(id, fromDate, toDate, actor.companyId);
     return { hall, blockedDates, fromDate, toDate };
 };
 
+/**
+ * Owner override — block a hall for maintenance/VIP hold/emergency closure/blackout.
+ * Every override is logged to the audit trail.
+ */
 const block = async (id, data, actor) => {
     const hall = await repo.findById(id, actor.companyId);
     if (!hall) throw new NotFoundError('Hall');
-    return repo.blockDate({
-        hallId:      id,
-        blockedDate: data.blockedDate || data.blocked_date,
-        startTime:   data.startTime   || data.start_time   || null,
-        endTime:     data.endTime     || data.end_time     || null,
-        reason:      data.reason      || null,
-        blockedBy:   actor.userId,
+
+    const blockType = data.blockType || data.block_type || 'maintenance';
+    if (!BLOCK_TYPES.includes(blockType)) {
+        throw new ValidationError(`blockType must be one of: ${BLOCK_TYPES.join(', ')}`);
+    }
+
+    const blockedDate = data.blockedDate || data.blocked_date;
+    const startTime    = data.startTime   || data.start_time   || null;
+    const endTime      = data.endTime     || data.end_time     || null;
+    const reason       = data.reason      || null;
+
+    const result = await repo.blockDate({
+        hallId: id,
+        companyId: actor.companyId,
+        blockedDate, startTime, endTime, blockType, reason,
+        blockedBy: actor.userId,
     });
+
+    await auditLogRepo.log({
+        companyId:  actor.companyId,
+        userId:     actor.userId,
+        action:     'hall.blocked',
+        entityType: 'hall',
+        entityId:   id,
+        description: `Hall ${hall.hall_name} blocked (${blockType}) on ${blockedDate}${reason ? `: ${reason}` : ''}`,
+        newValues:  { blockType, blockedDate, startTime, endTime, reason },
+    });
+
+    return result;
 };
 
 const unblock = async (id, blockId, actor) => {
     const hall = await repo.findById(id, actor.companyId);
     if (!hall) throw new NotFoundError('Hall');
-    await repo.unblockDate(blockId, id);
+    await repo.unblockDate(blockId, id, actor.companyId);
+
+    await auditLogRepo.log({
+        companyId:  actor.companyId,
+        userId:     actor.userId,
+        action:     'hall.unblocked',
+        entityType: 'hall',
+        entityId:   id,
+        description: `Hall ${hall.hall_name} block ${blockId} removed`,
+    });
 };
 
 module.exports = { getAll, getById, create, update, setActive, getAvailability, block, unblock };

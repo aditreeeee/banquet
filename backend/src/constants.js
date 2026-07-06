@@ -16,10 +16,12 @@ const PAGINATION = {
 // ─── Booking status values ─────────────────────────────────────────────────────
 const BOOKING_STATUS = {
     DRAFT:        'draft',
+    TENTATIVE:    'tentative',
     CONFIRMED:    'confirmed',
     ADVANCE_PAID: 'advance_paid',
     FULLY_PAID:   'fully_paid',
     COMPLETED:    'completed',
+    ARCHIVED:     'archived',
     CANCELLED:    'cancelled',
     NO_SHOW:      'no_show',
 };
@@ -120,6 +122,15 @@ const PERMISSIONS = {
     // Notifications
     NOTIFICATIONS_READ:   'notifications:read',
     NOTIFICATIONS_MANAGE: 'notifications:manage',
+
+    // Sales pipeline / leads
+    LEADS_READ:           'leads:read',
+    LEADS_CREATE:         'leads:create',
+    LEADS_UPDATE:         'leads:update',
+
+    // Marketing automation
+    MARKETING_READ:       'marketing:read',
+    MARKETING_SEND:       'marketing:send',
 };
 
 // ─── Payment status / types ────────────────────────────────────────────────────
@@ -139,11 +150,17 @@ const PAYMENT_TYPE = {
 
 // ─── Role slugs ────────────────────────────────────────────────────────────────
 const USER_ROLES = {
-    SUPER_ADMIN:       'super_admin',
-    COMPANY_ADMIN:     'company_admin',
-    BRANCH_MANAGER:    'branch_manager',
-    BOOKING_EXECUTIVE: 'booking_executive',
-    CUSTOMER:          'customer',
+    SUPER_ADMIN:         'super_admin',
+    COMPANY_ADMIN:       'company_admin',
+    BRANCH_MANAGER:      'branch_manager',
+    BOOKING_EXECUTIVE:   'booking_executive',
+    CUSTOMER:            'customer',
+    BUSINESS_OWNER:      'business_owner',
+    OPERATIONS_MANAGER:  'operations_manager',
+    SALES_MANAGER:       'sales_manager',
+    FINANCE_MANAGER:     'finance_manager',
+    STAFF:               'staff',
+    RECEPTIONIST:        'receptionist',
 };
 
 // ─── Cache TTL (seconds) ───────────────────────────────────────────────────────

@@ -215,8 +215,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 .cal-day:hover{background:rgba(26,43,74,.07)}
 .cal-day.today{background:linear-gradient(135deg,#1A2B4A 0%,#243756 100%);color:white}
 .cal-day.selected{background:linear-gradient(135deg,#C5A059 0%,#D4B478 100%);color:white;box-shadow:0 4px 12px rgba(197,160,89,.32)}
-.cal-dot{position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:#C5A059;box-shadow:0 0 4px rgba(197,160,89,.5)}
-.cal-day.today .cal-dot,.cal-day.selected .cal-dot{background:white}
 
 /* ── Bars ────────────────────────────────────────────────────── */
 .occ-bar{flex:1;height:6px;border-radius:3px;background:rgba(26,43,74,.08);overflow:hidden}
@@ -480,23 +478,32 @@ const I = {
 
 /* ── Navigation config ───────────────────────────────────────── */
 const NAV = [
-  { s:'Overview', items:[{ id:'dashboard', icon:I.dashboard, label:'Dashboard', href:null }]},
+  { s:'Dashboard', items:[
+    { id:'dashboard',      icon:I.dashboard,   label:'Overview',        href:null },
+    { id:'commandCenter',  icon:I.building,    label:'Command Center',  href:'command_center.html' },
+  ]},
   { s:'Operations', items:[
     { id:'bookings',  icon:I.calendar,      label:'Bookings',  href:'../bookings/index.html'  },
     { id:'banquets',  icon:I.building,      label:'Banquets',  href:'../banquets/index.html'  },
     { id:'halls',     icon:I.home,          label:'Halls',     href:'../halls/index.html'     },
   ]},
+  { s:'Inventory', items:[
+    { id:'masterMenu', icon:I.fileText,      label:'Master Menu', href:'../catering/menu.html'   },
+    { id:'inventory',  icon:I.clipboardList, label:'Inventory',   href:'../inventory/index.html' },
+  ]},
   { s:'CRM', items:[
-    { id:'customers', icon:I.users,         label:'Customers', href:'../customers/index.html' },
+    { id:'customers', icon:I.users,         label:'Customers',      href:'../customers/index.html' },
+    { id:'leads',     icon:I.clipboardList, label:'Sales Pipeline', href:'../leads/index.html'     },
   ]},
   { s:'Finance', items:[
     { id:'payments',  icon:I.creditCard,    label:'Payments',  href:'../payments/index.html'  },
     { id:'invoices',  icon:I.fileText,      label:'Invoices',  href:'../invoices/index.html'  },
   ]},
   { s:'Reports', items:[
-    { id:'r-rev',     icon:I.trendingUp,    label:'Revenue',   href:'../reports/revenue.html'   },
-    { id:'r-bk',      icon:I.clipboardList, label:'Bookings',  href:'../reports/bookings.html'  },
-    { id:'r-occ',     icon:I.calendarDays,  label:'Occupancy', href:'../reports/occupancy.html' },
+    { id:'r-rev',     icon:I.trendingUp,    label:'Revenue',        href:'../reports/revenue.html'         },
+    { id:'r-bk',      icon:I.clipboardList, label:'Bookings',       href:'../reports/bookings.html'        },
+    { id:'r-occ',     icon:I.calendarDays,  label:'Occupancy',      href:'../reports/occupancy.html'       },
+    { id:'r-own',     icon:I.trendingUp,    label:'Owner Analytics',href:'../reports/owner-analytics.html' },
   ]},
   { s:'Admin', items:[
     { id:'users',    icon:I.user,           label:'Users',    href:'../users/index.html'    },
@@ -537,16 +544,16 @@ const STS_D = {
   year:    [{n:'Confirmed',v:152,c:C.green},{n:'Advance Paid',v:387,c:C.purple},{n:'Fully Paid',v:428,c:C.gold},{n:'Cancelled',v:57,c:C.red}],
 };
 const BOOKINGS_D = [
-  {id:'BNQ-2026-1041',customer:'Sharma Family',  event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-03',time:'10:00 AM',status:'confirmed',    amt:385000},
-  {id:'BNQ-2026-1042',customer:'TCS Ltd',         event:'Corporate',  hall:'Emerald Hall',   date:'2026-07-04',time:'09:00 AM',status:'advance_paid',amt:142000},
-  {id:'BNQ-2026-1043',customer:'Mehta Catering',  event:'Reception',  hall:'Royal Suite',    date:'2026-07-05',time:'06:00 PM',status:'fully_paid',  amt:98000 },
-  {id:'BNQ-2026-1044',customer:'Patel Family',    event:'Engagement', hall:'Silver Terrace', date:'2026-07-05',time:'07:00 PM',status:'confirmed',   amt:62000 },
-  {id:'BNQ-2026-1045',customer:'Gupta Weddings',  event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-07',time:'11:00 AM',status:'advance_paid',amt:420000},
-  {id:'BNQ-2026-1046',customer:'HCL India',        event:'Corporate',  hall:'Diamond Hall',   date:'2026-07-08',time:'09:30 AM',status:'confirmed',   amt:210000},
-  {id:'BNQ-2026-1047',customer:'Reddy Family',     event:'Birthday',   hall:'Emerald Hall',   date:'2026-07-10',time:'06:00 PM',status:'confirmed',   amt:75000 },
-  {id:'BNQ-2026-1048',customer:'Singh Caterers',   event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-12',time:'10:00 AM',status:'advance_paid',amt:395000},
-  {id:'BNQ-2026-1049',customer:'Wipro Ltd',         event:'Corporate',  hall:'Emerald Hall',   date:'2026-07-14',time:'09:00 AM',status:'confirmed',   amt:165000},
-  {id:'BNQ-2026-1050',customer:'Desai Family',      event:'Engagement', hall:'Royal Suite',    date:'2026-07-17',time:'06:00 PM',status:'confirmed',   amt:72000 },
+  {id:'BNQ-2026-1041',customer:'Sharma Family',  event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-03',time:'10:00 AM',endTime:'11:00 PM',status:'confirmed',    amt:385000,paid:385000,guests:420,isPriority:true },
+  {id:'BNQ-2026-1042',customer:'TCS Ltd',         event:'Corporate',  hall:'Emerald Hall',   date:'2026-07-04',time:'09:00 AM',endTime:'05:00 PM',status:'advance_paid',amt:142000,paid:40000, guests:120,isPriority:false},
+  {id:'BNQ-2026-1043',customer:'Mehta Catering',  event:'Reception',  hall:'Royal Suite',    date:'2026-07-05',time:'06:00 PM',endTime:'11:00 PM',status:'fully_paid',  amt:98000, paid:98000, guests:150,isPriority:false},
+  {id:'BNQ-2026-1044',customer:'Patel Family',    event:'Engagement', hall:'Silver Terrace', date:'2026-07-05',time:'07:00 PM',endTime:'10:00 PM',status:'confirmed',   amt:62000, paid:15000, guests:90, isPriority:false},
+  {id:'BNQ-2026-1045',customer:'Gupta Weddings',  event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-07',time:'11:00 AM',endTime:'11:00 PM',status:'advance_paid',amt:420000,paid:105000,guests:480,isPriority:true },
+  {id:'BNQ-2026-1046',customer:'HCL India',        event:'Corporate',  hall:'Diamond Hall',   date:'2026-07-08',time:'09:30 AM',endTime:'06:00 PM',status:'confirmed',   amt:210000,paid:210000,guests:200,isPriority:false},
+  {id:'BNQ-2026-1047',customer:'Reddy Family',     event:'Birthday',   hall:'Emerald Hall',   date:'2026-07-10',time:'06:00 PM',endTime:'10:00 PM',status:'confirmed',   amt:75000, paid:20000, guests:80, isPriority:false},
+  {id:'BNQ-2026-1048',customer:'Singh Caterers',   event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-12',time:'10:00 AM',endTime:'11:00 PM',status:'advance_paid',amt:395000,paid:100000,guests:450,isPriority:true },
+  {id:'BNQ-2026-1049',customer:'Wipro Ltd',         event:'Corporate',  hall:'Emerald Hall',   date:'2026-07-14',time:'09:00 AM',endTime:'05:00 PM',status:'confirmed',   amt:165000,paid:165000,guests:130,isPriority:false},
+  {id:'BNQ-2026-1050',customer:'Desai Family',      event:'Engagement', hall:'Royal Suite',    date:'2026-07-17',time:'06:00 PM',endTime:'10:00 PM',status:'confirmed',   amt:72000, paid:18000, guests:95, isPriority:false},
 ];
 const ACTIVITY_D = [
   {t:'2 min ago', a:'New booking created',     d:'BNQ-2026-1047 – Reddy Family Birthday',       icon:'calendar', c:C.green },
@@ -569,16 +576,8 @@ const HALLS_D = [
   {n:'Silver Terrace',occ:58,bk:12,cap:400},
   {n:'Diamond Hall',  occ:43,bk:8, cap:600},
 ];
-const BK_DATES = ['2026-07-03','2026-07-04','2026-07-05','2026-07-07','2026-07-08','2026-07-10','2026-07-12','2026-07-14','2026-07-17','2026-07-19','2026-07-21','2026-07-25','2026-07-28'];
 const todayDate = new Date();
 const TODAY = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
-const getGreeting = () => {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good Morning';
-  if (h < 17) return 'Good Afternoon';
-  return 'Good Evening';
-};
-
 /* ── Helpers ─────────────────────────────────────────────────── */
 const fmtS = n => n>=10000000?'₹'+(n/10000000).toFixed(1)+'Cr':n>=100000?'₹'+(n/100000).toFixed(1)+'L':n>=1000?'₹'+(n/1000).toFixed(0)+'K':'₹'+n;
 const fmtF = n => '₹'+n.toLocaleString('en-IN');
@@ -589,6 +588,29 @@ const ini  = n => n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
 const dL   = d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const iso  = (y,m,d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 const actIcon = k => ({calendar:I.calendar,check:I.checkCircle,receipt:I.receipt,lock:I.lock,userplus:I.userPlus,xcircle:I.xCircle}[k]||I.checkCircle);
+const hallCapacity = h => (HALLS_D.find(x=>x.n===h)||{}).cap || null;
+const paymentStatusOf = b => {
+  if (b.status==='cancelled') return { label:'Cancelled', color:C.slate };
+  if (b.paid>=b.amt && b.amt>0) return { label:'Fully Paid', color:C.green };
+  if (b.paid>0) return { label:'Partially Paid', color:C.amber };
+  return { label:'Unpaid', color:C.red };
+};
+const OCC_FILTERS = [{k:'today',l:'Today'},{k:'next30',l:'Coming 30 Days'},{k:'last30',l:'Last 30 Days'}];
+const inOccRange = (dateStr, filterKey, now) => {
+  const d = new Date(dateStr+'T00:00:00');
+  const today = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if (filterKey==='today') return d.getTime()===today.getTime();
+  if (filterKey==='next30') { const end=new Date(today); end.setDate(end.getDate()+30); return d>=today && d<=end; }
+  const start=new Date(today); start.setDate(start.getDate()-30); return d>=start && d<=today;
+};
+const countdownOf = (dateStr, now) => {
+  const diffMs = new Date(dateStr+'T00:00:00') - new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const days = Math.round(diffMs/86400000);
+  if (days < 0) return 'Past';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `In ${days} days`;
+};
 
 /* ════════════════════════════════════════════════════════════════
    CARD
@@ -659,7 +681,7 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
    TOPBAR
    ════════════════════════════════════════════════════════════════ */
 const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMode, setDarkMode, notifications, unreadCount, notifOpen, setNotifOpen, onMarkNotificationRead, onMarkAllNotificationsRead }) => {
-  const PERIODS = [{k:'week',l:'This Week'},{k:'month',l:'This Month'},{k:'quarter',l:'This Quarter'},{k:'year',l:'This Year'}];
+  const PERIODS = [{k:'week',l:'Last 7 Days'},{k:'month',l:'Last 30 Days'},{k:'quarter',l:'Last 3 Months'},{k:'year',l:'Last 12 Months'}];
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'Suresh',last_name:'Mehta'};
   const userName = `${user.first_name} ${user.last_name}`;
@@ -734,22 +756,33 @@ const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMo
 /* ════════════════════════════════════════════════════════════════
    KPI CARD
    ════════════════════════════════════════════════════════════════ */
-const KPICard = ({ IconEl, label, value, delta, color, anim, href }) => {
+const KPICard = ({ IconEl, label, value, delta, color, anim, href, desc, blurb, trend='auto' }) => {
   const up = delta>=0;
+  const showTrend = trend!=='none' && delta!=null;
   return (
     <Card hover className={`fu ${anim}`} style={{padding:'18px 20px', cursor: href ? 'pointer' : 'default'}} onClick={href ? () => window.location.assign(href) : undefined}>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
         <div className="kpi-icon-wrap" style={{background:`${color}1A`,color}}><IconEl/></div>
-        <span className={`kpi-badge ${up?'badge-up':'badge-dn'}`}>
-          {up
-            ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-            : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          }
-          {Math.abs(delta)}%
-        </span>
+        {showTrend && (
+          <span className={`kpi-badge ${up?'badge-up':'badge-dn'}`}>
+            {up
+              ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+              : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            }
+            {Math.abs(delta)}%
+          </span>
+        )}
       </div>
       <div className="kpi-val">{value}</div>
-      <div className="kpi-label">{label}</div>
+      <div style={{display:'flex',alignItems:'center',gap:5}}>
+        <div className="kpi-label">{label}</div>
+        {desc && (
+          <span title={desc} style={{display:'inline-flex',color:'#9ca3af',cursor:'help'}} onClick={e=>e.stopPropagation()}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          </span>
+        )}
+      </div>
+      {blurb && <div style={{fontSize:11,color:'#9ca3af',marginTop:4,lineHeight:1.4}}>{blurb}</div>}
     </Card>
   );
 };
@@ -846,8 +879,42 @@ const StatusDonut = ({ data }) => {
 /* ════════════════════════════════════════════════════════════════
    MINI CALENDAR
    ════════════════════════════════════════════════════════════════ */
-const MiniCalendar = ({ selected, onSelect, dots }) => {
+const DayPopover = ({ events, style }) => (
+  <div style={{position:'absolute',zIndex:80,width:300,maxHeight:340,overflowY:'auto',
+    background:'var(--surface-strong)',border:'1px solid var(--border-color)',borderRadius:12,
+    boxShadow:'0 16px 40px rgba(0,0,0,.2)',padding:12,pointerEvents:'none',...style}}>
+    <div style={{fontWeight:700,fontSize:12.5,color:C.navy,marginBottom:8}}>
+      {events.length} booking{events.length===1?'':'s'} on {dL(events[0].date)}
+    </div>
+    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+      {events.map((b,i)=>{
+        const pay = paymentStatusOf(b);
+        const cap = hallCapacity(b.hall);
+        const occPct = cap ? Math.min(100,Math.round((b.guests/cap)*100)) : null;
+        return (
+          <div key={i} style={{borderLeft:`3px solid ${sC(b.status)}`,paddingLeft:9}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:6}}>
+              <span style={{fontWeight:700,fontSize:12.5,color:C.navy}}>{b.event}</span>
+              <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:10}}>{sL(b.status)}</span>
+            </div>
+            <div style={{fontSize:11.5,color:'#6b7280',marginTop:2}}>{b.customer} · {b.hall}</div>
+            <div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>{b.time}{b.endTime?` – ${b.endTime}`:''}{b.guests?` · ${b.guests} guests`:''}</div>
+            <div style={{display:'flex',gap:8,marginTop:3,flexWrap:'wrap'}}>
+              {occPct!=null && <span style={{fontSize:10.5,color:occC(occPct)}}>● {occPct}% capacity</span>}
+              <span style={{fontSize:10.5,color:pay.color}}>● {pay.label}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const MiniCalendar = ({ selected, onSelect, eventsByDate }) => {
   const [cur, setCur] = useState(new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
+  const [hoverDate, setHoverDate] = useState(null);
+  const [hoverPos, setHoverPos] = useState({left:0,top:0});
+  const gridWrapRef = React.useRef(null);
   const y=cur.getFullYear(), m=cur.getMonth();
   const dim=new Date(y,m+1,0).getDate(), fdow=new Date(y,m,1).getDay();
   const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -857,8 +924,19 @@ const MiniCalendar = ({ selected, onSelect, dots }) => {
   for(let i=0;i<fdow;i++) cells.push(null);
   for(let d=1;d<=dim;d++) cells.push(d);
   while(cells.length%7!==0) cells.push(null);
+
+  const handleEnter = (e, s) => {
+    if (!eventsByDate[s]?.length) return;
+    const wrapRect = gridWrapRef.current.getBoundingClientRect();
+    const cellRect = e.currentTarget.getBoundingClientRect();
+    let left = cellRect.left - wrapRect.left;
+    left = Math.max(0, Math.min(left, wrapRect.width - 300));
+    setHoverPos({ left, top: cellRect.bottom - wrapRect.top + 6 });
+    setHoverDate(s);
+  };
+
   return (
-    <div>
+    <div style={{position:'relative'}} ref={gridWrapRef}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
         <button onClick={()=>setCur(new Date(y,m-1,1))} className="tb-btn" style={{width:28,height:28,borderRadius:7}}>
           {I.chevronLeft()}
@@ -872,16 +950,30 @@ const MiniCalendar = ({ selected, onSelect, dots }) => {
       <div className="cal-grid">
         {cells.map((d,i)=>{
           if(!d) return <div key={i}/>;
-          const s=ds(d), isT=s===TODAY, isSel=s===selected, hasDot=dots.includes(s);
+          const s=ds(d), isT=s===TODAY, isSel=s===selected;
+          const dayEvents = eventsByDate[s]||[];
+          const statusSet = [...new Set(dayEvents.map(b=>b.status))].slice(0,3);
           return (
             <button key={i} className={`cal-day${isT&&!isSel?' today':''}${isSel?' selected':''}`}
-              onClick={()=>onSelect(isSel?null:s)} title={hasDot?'Has bookings':''}>
+              onClick={()=>onSelect(isSel?null:s)}
+              onMouseEnter={(e)=>handleEnter(e,s)}
+              onMouseLeave={()=>setHoverDate(null)}>
               {d}
-              {hasDot&&<span className="cal-dot"/>}
+              {statusSet.length>0 && (
+                <span style={{position:'absolute',bottom:3,display:'flex',gap:2}}>
+                  {statusSet.map((st,k)=>(
+                    <span key={k} style={{width:5,height:5,borderRadius:'50%',background:isT||isSel?'white':sC(st),boxShadow:`0 0 4px ${sC(st)}80`}}/>
+                  ))}
+                  {dayEvents.length>3 && <span style={{fontSize:8,color:isT||isSel?'white':C.gold,fontWeight:700,marginLeft:1}}>+</span>}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
+      {hoverDate && eventsByDate[hoverDate]?.length>0 && (
+        <DayPopover events={eventsByDate[hoverDate]} style={hoverPos}/>
+      )}
       {selected&&(
         <button onClick={()=>onSelect(null)}
           style={{marginTop:10,width:'100%',padding:'6px',borderRadius:8,
@@ -899,31 +991,44 @@ const MiniCalendar = ({ selected, onSelect, dots }) => {
 /* ════════════════════════════════════════════════════════════════
    UPCOMING BOOKINGS
    ════════════════════════════════════════════════════════════════ */
-const UpcomingList = ({ bookings, selected, onOpenBooking }) => {
+const UpcomingList = ({ bookings, selected, onOpenBooking, now }) => {
   const list = selected ? bookings.filter(b=>b.date===selected) : bookings;
   return (
-    <div className="scroll-y" style={{maxHeight:318}}>
+    <div className="scroll-y" style={{maxHeight:360}}>
       {list.length===0&&(
         <div style={{textAlign:'center',padding:'32px 0',color:'#9ca3af',fontSize:13}}>
           No bookings for {dL(selected)}
         </div>
       )}
-      {list.map(b=>(
+      {list.map(b=>{
+        const pay = paymentStatusOf(b);
+        return (
         <a key={b.id} href={`../bookings/detail.html?id=${b.id}`}
           onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}}
-          style={{display:'flex',gap:12,alignItems:'flex-start',padding:'10px 0',
+          style={{display:'flex',gap:12,alignItems:'flex-start',padding:'11px 2px',
             borderBottom:'1px solid rgba(229,231,235,.5)',textDecoration:'none'}}>
           <span style={{width:8,height:8,borderRadius:'50%',background:sC(b.status),flexShrink:0,marginTop:5}}/>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:600,fontSize:13,color:C.navy,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.customer}</div>
-            <div style={{fontSize:11.5,color:'#6b7280',marginTop:2}}>{b.event} · {b.hall} · {dL(b.date)} {b.time}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+              <span style={{fontWeight:700,fontSize:13,color:C.navy}}>{b.event}</span>
+              {b.isPriority && (
+                <span className="spill" style={{background:`${C.gold}20`,color:C.gold,fontSize:9.5,padding:'1px 7px'}}>★ VIP</span>
+              )}
+            </div>
+            <div style={{fontSize:11.5,color:'#6b7280',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.customer} · {b.hall}</div>
+            <div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>{dL(b.date)} · {b.time}{b.endTime?` – ${b.endTime}`:''}{b.guests?` · ${b.guests} guests`:''}</div>
+            <div style={{display:'flex',gap:6,marginTop:5,flexWrap:'wrap'}}>
+              <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:10}}>{sL(b.status)}</span>
+              <span className="spill" style={{background:`${pay.color}18`,color:pay.color,fontSize:10}}>{pay.label}</span>
+              {now && <span className="spill" style={{background:'rgba(61,84,127,.08)',color:C.navy,fontSize:10}}>{countdownOf(b.date, now)}</span>}
+            </div>
           </div>
           <div style={{textAlign:'right',flexShrink:0}}>
             <div style={{fontWeight:700,fontSize:13,color:C.navy}}>{fmtS(b.amt)}</div>
-            <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:10.5,marginTop:3,display:'inline-flex'}}>{sL(b.status)}</span>
           </div>
         </a>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -938,7 +1043,7 @@ const OccupancyBars = ({ halls }) => (
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:5,alignItems:'center'}}>
           <span style={{fontSize:12.5,fontWeight:500,color:C.navy}}>{h.n}</span>
           <div style={{display:'flex',gap:10,alignItems:'center'}}>
-            <span style={{fontSize:11,color:'#9ca3af'}}>{h.bk} bookings</span>
+            <span style={{fontSize:11,color:'#9ca3af'}}>{h.bk} bookings · {fmtS(h.rev||0)}</span>
             <b style={{fontSize:12.5,color:occC(h.occ)}}>{h.occ}%</b>
           </div>
         </div>
@@ -1011,8 +1116,14 @@ const DashboardView = ({ period, searchQuery }) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [hallFilter, setHallFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
+  const [now, setNow] = useState(() => new Date());
   const kpi=KPI_D[period], rev=REV_D[period], sts=STS_D[period];
   const firstName = (typeof Auth!=='undefined'?Auth.getUser():null)?.first_name || 'there';
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(()=>{
     let dead=false;
@@ -1029,8 +1140,13 @@ const DashboardView = ({ period, searchQuery }) => {
             hall:     b.hall_name||b.hall,
             date:     (b.event_date||b.date||'').substring(0,10),
             time:     b.event_time_start||b.start_time||b.time||'',
+            endTime:  b.event_time_end||b.end_time||b.endTime||'',
             status:   b.booking_status||b.status||'confirmed',
             amt:      parseFloat(b.total_amount||b.amt)||0,
+            paid:     parseFloat(b.amount_paid??b.paid)||0,
+            guests:   parseInt(b.guest_count??b.guests)||0,
+            isPriority: Boolean(b.is_priority??b.isPriority),
+            staffCount: parseInt(b.staff_count??b.staffCount)||0,
           })));
         }
       }catch(_){}
@@ -1074,13 +1190,40 @@ const DashboardView = ({ period, searchQuery }) => {
   const visibleBookings = filteredBookings.slice(0, 6);
   const hallOptions = useMemo(() => ['all', ...new Set(bookings.map(b => b.hall).filter(Boolean))], [bookings]);
 
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    bookings.forEach(b => {
+      if (!b.date) return;
+      (map[b.date] = map[b.date] || []).push(b);
+    });
+    return map;
+  }, [bookings]);
+
+  const [occFilter, setOccFilter] = useState('next30');
+  const hallStats = useMemo(() => {
+    const days = occFilter==='today' ? 1 : 30;
+    const rangeBookings = bookings.filter(b => b.date && b.status!=='cancelled' && inOccRange(b.date, occFilter, now));
+    return HALLS_D.map(h => {
+      const hb = rangeBookings.filter(b=>b.hall===h.n);
+      const bookedDays = new Set(hb.map(b=>b.date)).size;
+      return { n:h.n, cap:h.cap, occ: Math.min(100, Math.round((bookedDays/days)*100)), bk: hb.length, rev: hb.reduce((s,b)=>s+b.amt,0) };
+    });
+  }, [bookings, occFilter, now]);
+  const hallStatsTotals = useMemo(() => ({
+    slots: hallStats.reduce((s,h)=>s+h.bk,0),
+    revenue: hallStats.reduce((s,h)=>s+h.rev,0),
+    avgOcc: hallStats.length ? Math.round(hallStats.reduce((s,h)=>s+h.occ,0)/hallStats.length) : 0,
+  }), [hallStats]);
+
   return (
     <>
       {/* Greeting */}
-      <div className="fu fu-1" style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+      <div className="fu fu-1" style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
         <div>
-          <h1 style={{fontSize:24,fontWeight:700,color:C.navy,lineHeight:1.2,fontFamily:"'Playfair Display', serif"}}>{getGreeting()}, {firstName}</h1>
-          <p style={{fontSize:13,color:'#9ca3af',marginTop:4}}>BanquetPro overview · {todayDate.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+          <h1 style={{fontSize:22,fontWeight:700,color:C.navy,lineHeight:1.15,fontFamily:"'Playfair Display', serif"}}>Hello, {firstName}</h1>
+          <p style={{fontSize:12.5,color:'#9ca3af',marginTop:2}}>
+            {now.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit',hour12:true})}, {now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+          </p>
         </div>
         <div style={{display:'flex',gap:8}}>
           <a href="../bookings/index.html">
@@ -1101,10 +1244,18 @@ const DashboardView = ({ period, searchQuery }) => {
 
       {/* KPI row */}
       <div className="resp-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
-        <KPICard IconEl={()=>I.calendar({width:22,height:22})}   label="Total Bookings"   value={kpi.bookings.toLocaleString()} delta={kpi.bd} color={C.purple} anim="fu-1" href="../bookings/index.html"/>
-        <KPICard IconEl={()=>I.dollarSign()}                       label="Revenue"          value={fmtS(kpi.revenue)}             delta={kpi.rd} color={C.green}  anim="fu-2" href="../reports/revenue.html"/>
-        <KPICard IconEl={()=>I.clock()}                            label="Pending Payments" value={fmtS(kpi.pending)}             delta={kpi.pd} color={C.amber}  anim="fu-3" href="../payments/index.html"/>
-        <KPICard IconEl={()=>I.building({width:22,height:22})}    label="Avg Occupancy"    value={kpi.occ+'%'}                   delta={kpi.od} color={C.blue}   anim="fu-4" href="../reports/occupancy.html"/>
+        <KPICard IconEl={()=>I.calendar({width:22,height:22})}   label="Total Bookings"   value={kpi.bookings.toLocaleString()} delta={kpi.bd} color={C.purple} anim="fu-1" href="../bookings/index.html"
+          blurb="Number of bookings created in the selected period."
+          desc="Count of all bookings created in the selected period, excluding cancelled and draft holds. % change is vs. the previous equivalent period."/>
+        <KPICard IconEl={()=>I.dollarSign()}                       label="Revenue"          value={fmtS(kpi.revenue)}             delta={kpi.rd} color={C.green}  anim="fu-2" href="../reports/revenue.html"
+          blurb="Total amount collected from bookings this period."
+          desc="Sum of amount_paid across all non-cancelled bookings in the selected period. % change is vs. the previous equivalent period."/>
+        <KPICard IconEl={()=>I.clock()}                            label="Pending Payments" value={fmtS(kpi.pending)}             delta={kpi.pd} color={C.amber}  anim="fu-3" href="../payments/index.html"
+          blurb="Outstanding balance still owed across confirmed bookings."
+          desc="Sum of (total_amount − amount_paid) across confirmed bookings with an outstanding balance."/>
+        <KPICard IconEl={()=>I.building({width:22,height:22})}    label="Hall Occupancy"    value={kpi.occ+'%'}                   delta={kpi.od} color={C.blue}   anim="fu-4" href="../reports/occupancy.html"
+          blurb="Percentage of total hall capacity utilized during the selected period."
+          desc="Average of (booked hall-days ÷ available hall-days) across all active halls in the selected period."/>
       </div>
 
       {/* Charts */}
@@ -1136,7 +1287,7 @@ const DashboardView = ({ period, searchQuery }) => {
             Booking Calendar
             {selDate&&<span style={{fontWeight:500,fontSize:12,color:C.gold}}>· {dL(selDate)}</span>}
           </h3>
-          <MiniCalendar selected={selDate} onSelect={setSelDate} dots={BK_DATES}/>
+          <MiniCalendar selected={selDate} onSelect={setSelDate} eventsByDate={eventsByDate}/>
         </Card>
         <Card hover style={{padding:'18px 20px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
@@ -1148,20 +1299,39 @@ const DashboardView = ({ period, searchQuery }) => {
             </h3>
             <ViewAllLink href="../bookings/index.html"/>
           </div>
-          <UpcomingList bookings={filteredBookings} selected={selDate} onOpenBooking={openBookingDetail}/>
+          <UpcomingList bookings={filteredBookings} selected={selDate} onOpenBooking={openBookingDetail} now={now}/>
         </Card>
       </div>
 
       {/* Occupancy + Activity */}
       <div className="resp-2 fu fu-5" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
         <Card hover style={{padding:'18px 20px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
             <h3 style={{fontSize:14,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
               {I.building({width:16,height:16})} Hall Occupancy
             </h3>
             <ViewAllLink href="../reports/occupancy.html"/>
           </div>
-          <OccupancyBars halls={HALLS_D}/>
+          <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+            {OCC_FILTERS.map(f=>(
+              <button key={f.k} className={`fpill${occFilter===f.k?' on':''}`} style={{padding:'4px 12px',fontSize:11.5}} onClick={()=>setOccFilter(f.k)}>{f.l}</button>
+            ))}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
+            <div style={{textAlign:'center',padding:'8px 4px',background:'rgba(37,99,235,.06)',borderRadius:10}}>
+              <div style={{fontSize:16,fontWeight:700,color:C.blue}}>{hallStatsTotals.avgOcc}%</div>
+              <div style={{fontSize:10,color:'#9ca3af'}}>Avg Occupancy</div>
+            </div>
+            <div style={{textAlign:'center',padding:'8px 4px',background:'rgba(197,160,89,.08)',borderRadius:10}}>
+              <div style={{fontSize:16,fontWeight:700,color:C.gold}}>{hallStatsTotals.slots}</div>
+              <div style={{fontSize:10,color:'#9ca3af'}}>Occupied Slots</div>
+            </div>
+            <div style={{textAlign:'center',padding:'8px 4px',background:'rgba(16,185,129,.08)',borderRadius:10}}>
+              <div style={{fontSize:16,fontWeight:700,color:C.green}}>{fmtS(hallStatsTotals.revenue)}</div>
+              <div style={{fontSize:10,color:'#9ca3af'}}>Revenue</div>
+            </div>
+          </div>
+          <OccupancyBars halls={hallStats}/>
           <div style={{marginTop:14,display:'flex',gap:14,flexWrap:'wrap'}}>
             {[{c:C.green,l:'High ≥80%'},{c:C.amber,l:'Mid ≥55%'},{c:C.red,l:'Low <55%'}].map(x=>(
               <span key={x.l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11.5,color:'#6b7280'}}>

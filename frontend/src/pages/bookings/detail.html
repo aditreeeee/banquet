@@ -35,11 +35,15 @@
 <aside class="sidebar" id="sidebar">
     <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
     <nav class="sidebar-nav">
-        <div class="nav-section-label">Overview</div>
+        <div class="nav-section-label">Dashboard</div>
         <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
         <div class="nav-section-label">Bookings</div>
         <a href="index.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
         <a href="create.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">Inventory</div>
+        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
+        <a href="../inventory/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
         <div class="nav-section-label">CRM</div>
         <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
         <div class="nav-section-label">Finance</div>
@@ -80,6 +84,7 @@
                         <button class="btn-ghost" data-bs-toggle="dropdown" aria-label="More actions"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg></button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#" onclick="sendConfirmation()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 6h16v12H4z"></path><path d="m4 7 8 6 8-6"></path></svg> Send Confirmation</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="openCloneModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Clone Booking</a></li>
                             <li><a class="dropdown-item danger" href="#" onclick="cancelBooking()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"></circle><path d="m8 8 8 8"></path><path d="m16 8-8 8"></path></svg> Cancel Booking</a></li>
                         </ul>
                     </div>
@@ -119,7 +124,27 @@
                             <a href="#" id="custLink" style="margin-left:auto;font-size:12px;color:var(--brand-primary)">View Profile →</a>
                         </div>
                         <div class="detail-row"><span class="detail-label">Phone</span><span class="detail-value" id="custPhone">—</span></div>
-                        <div class="detail-row"><span class="detail-label">Previous Bookings</span><span class="detail-value" id="custBookings">—</span></div>
+                    </div>
+
+                    <!-- Previous Bookings (this customer's other bookings) -->
+                    <div class="detail-section">
+                        <h6>Previous Bookings <span id="prevBookingsCount" style="font-weight:400;color:var(--text-muted)"></span></h6>
+                        <div id="prevBookingsList" style="font-size:12.5px;color:var(--text-muted)">Loading…</div>
+                    </div>
+
+                    <!-- Alternative Contacts -->
+                    <div class="detail-section">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border-color)">
+                            <h6 style="margin:0;padding:0;border:none">Alternative Contacts</h6>
+                            <button class="btn-ghost" style="padding:2px 10px;font-size:12px" onclick="openContactModal()">+ Add</button>
+                        </div>
+                        <div id="contactsList" style="font-size:12.5px;color:var(--text-muted)">Loading…</div>
+                    </div>
+
+                    <!-- Resources & Inventory -->
+                    <div class="detail-section">
+                        <h6>Resources & Inventory</h6>
+                        <div id="resourcesList" style="font-size:12.5px;color:var(--text-muted)">Loading…</div>
                     </div>
                 </div>
 
@@ -192,6 +217,49 @@
     </div>
 </div>
 
+<!-- Clone Booking Modal -->
+<div class="modal fade" id="cloneModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Clone Booking</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <p style="font-size:13px;color:var(--text-muted)">Creates a new tentative booking with the same hall, event details, resources and contacts — useful for repeat clients.</p>
+                <div class="row g-3">
+                    <div class="col-6"><label class="form-label">New Event Date *</label><input type="date" class="form-control" id="cloneDate"></div>
+                    <div class="col-3"><label class="form-label">Start</label><input type="time" class="form-control" id="cloneStart" value="18:00"></div>
+                    <div class="col-3"><label class="form-label">End</label><input type="time" class="form-control" id="cloneEnd" value="23:00"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" onclick="submitClone()">Clone Booking</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Contact Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Add Alternative Contact</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12"><label class="form-label">Name</label><input type="text" class="form-control" id="cName" placeholder="Contact person name"></div>
+                    <div class="col-6"><label class="form-label">Mobile</label><input type="text" class="form-control" id="cMobile"></div>
+                    <div class="col-6"><label class="form-label">Email</label><input type="email" class="form-control" id="cEmail"></div>
+                    <div class="col-6"><label class="form-label">Relationship</label><input type="text" class="form-control" id="cRelationship" placeholder="e.g. Brother, Wedding Planner"></div>
+                    <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" id="cNotes" rows="2"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" onclick="submitContact()">Add Contact</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 <button id="scrollTop">↑</button>
 
@@ -228,17 +296,33 @@ const DEMO_BOOKING = {
     payments: [
         { payment_ref:'PAY-2026-000001', payment_date:'2026-06-10', payment_type:'Advance', payment_method:'UPI', amount:132750, payment_status:'completed', transaction_id:'UPI123456789' },
     ],
-    timeline: [
-        { type:'done',     title:'Booking Created',       time:'10 Jun 2026, 2:34 PM', desc:'Created by Booking Executive – Ravi Kumar' },
-        { type:'done',     title:'Advance Paid',          time:'10 Jun 2026, 2:51 PM', desc:'₹1,32,750 via UPI (UPI123456789)' },
-        { type:'done',     title:'Confirmation Sent',     time:'10 Jun 2026, 3:00 PM', desc:'Email & SMS sent to Arjun Sharma' },
-        { type:'pending',  title:'Balance Collection Due', time:'10 Aug 2026',           desc:'₹3,98,250 outstanding' },
-        { type:'pending',  title:'Event Day',             time:'15 Aug 2026',           desc:'Full Day – 8 AM to 11 PM' },
-    ],
 };
 
 let booking = null;
-let payModal;
+let payModal, contactModal, cloneModal;
+
+function openCloneModal() {
+    document.getElementById('cloneDate').value = '';
+    cloneModal = new bootstrap.Modal(document.getElementById('cloneModal'));
+    cloneModal.show();
+}
+
+async function submitClone() {
+    const eventDate = document.getElementById('cloneDate').value;
+    if (!eventDate) { Utils.toast('Please select a new event date', 'error'); return; }
+    try {
+        const res = await API.post(`/bookings/${booking.booking_id}/clone`, {
+            eventDate,
+            eventTimeStart: document.getElementById('cloneStart').value,
+            eventTimeEnd:   document.getElementById('cloneEnd').value,
+        });
+        cloneModal.hide();
+        Utils.toast('Booking cloned successfully', 'success');
+        setTimeout(() => { location.href = `detail.html?id=${res.data.booking_id}`; }, 800);
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to clone booking', 'error');
+    }
+}
 
 async function loadBooking() {
     const params = new URLSearchParams(location.search);
@@ -251,6 +335,10 @@ async function loadBooking() {
         booking = DEMO_BOOKING;
     }
     render(booking);
+    loadActivities();
+    loadResources();
+    loadContacts();
+    loadPreviousBookings();
 
     // Support deep-linked actions triggered from the bookings list (Print / Invoice buttons)
     const action = params.get('action');
@@ -316,15 +404,6 @@ function render(b) {
         <div style="font-weight:700;color:var(--color-success)">${Utils.formatCurrency(p.amount)}</div>
     </div>`).join('');
 
-    // Timeline
-    document.getElementById('timeline').innerHTML = (b.timeline || []).map(t => `
-    <div class="tl-item">
-        <div class="tl-dot ${t.type}"></div>
-        <div class="tl-title">${t.title}</div>
-        <div class="tl-time">${t.time}</div>
-        <div class="tl-desc">${t.desc}</div>
-    </div>`).join('');
-
     // Button visibility
     if (['cancelled','fully_paid'].includes(b.status)) {
         document.getElementById('collectBtn').style.display = 'none';
@@ -336,6 +415,144 @@ function render(b) {
 }
 
 function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; }
+
+function dotTypeForAction(action) {
+    if (action.includes('cancel') || action.includes('expired')) return 'cancelled';
+    if (action.includes('status_changed') && !action.includes('confirmed')) return 'pending';
+    return 'done';
+}
+
+async function loadActivities() {
+    const el = document.getElementById('timeline');
+    try {
+        const res = await API.bookings.activities(booking.booking_id);
+        const activities = res.data || [];
+        el.innerHTML = activities.length
+            ? activities.map(a => `
+                <div class="tl-item">
+                    <div class="tl-dot ${dotTypeForAction(a.action)}"></div>
+                    <div class="tl-title">${a.description || a.action}</div>
+                    <div class="tl-time">${Utils.formatDateTime ? Utils.formatDateTime(a.created_at) : new Date(a.created_at).toLocaleString()} · ${a.user_name || 'System'}</div>
+                </div>`).join('')
+            : `<div style="color:var(--text-muted);font-size:12.5px">No activity recorded yet.</div>`;
+    } catch {
+        el.innerHTML = `<div style="color:var(--text-muted);font-size:12.5px">Unable to load activity timeline.</div>`;
+    }
+}
+
+async function loadResources() {
+    const el = document.getElementById('resourcesList');
+    try {
+        const res = await API.bookings.resources(booking.booking_id);
+        const items = res.data || [];
+        el.innerHTML = items.length
+            ? items.map(r => `
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-color)">
+                    <span>${r.resource_name} <span style="color:var(--text-muted)">× ${r.quantity_allocated}</span></span>
+                    <span style="font-weight:600;color:var(--text-primary)">${Utils.formatCurrency(r.unit_price * r.quantity_allocated)}</span>
+                </div>`).join('')
+            : `<div>No additional resources allocated.</div>`;
+    } catch {
+        el.innerHTML = `<div>Unable to load resource allocations.</div>`;
+    }
+}
+
+function bookingPaymentStatus(b) {
+    const paid = b.amount_paid || 0, total = b.total_amount || 0;
+    if (b.status === 'cancelled') return 'Cancelled';
+    if (paid >= total && total > 0) return 'Fully Paid';
+    if (paid > 0) return 'Partially Paid';
+    return 'Unpaid';
+}
+
+async function loadPreviousBookings() {
+    const el = document.getElementById('prevBookingsList');
+    const countEl = document.getElementById('prevBookingsCount');
+    if (!booking.customer_id) { el.innerHTML = '<div>No customer linked.</div>'; return; }
+    try {
+        const res = await API.customers.bookingHistory(booking.customer_id, { limit: 20 });
+        const items = (res.data?.bookings || []).filter(b => b.booking_id !== booking.booking_id);
+        countEl.textContent = items.length ? `(${items.length})` : '';
+        el.innerHTML = items.length ? items.map(b => {
+            const start = b.event_time_start ? Utils.formatTime(b.event_time_start) : '';
+            const end   = b.event_time_end   ? Utils.formatTime(b.event_time_end)   : '';
+            const completedOn = b.status === 'completed' ? Utils.formatDate(b.updated_at) : Utils.formatDate(b.event_date);
+            return `
+            <a href="detail.html?id=${b.booking_id}" style="display:block;padding:8px 0;border-bottom:1px solid var(--border-color);text-decoration:none;color:inherit">
+                <div style="display:flex;justify-content:space-between;gap:8px">
+                    <span style="font-weight:600;color:var(--text-primary)">${b.event_name || b.booking_ref}</span>
+                    <span style="font-weight:700;color:var(--text-primary)">${Utils.formatCurrency(b.total_amount)}</span>
+                </div>
+                <div>${b.hall_name} · ${start}${end ? ' – ' + end : ''}</div>
+                <div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">
+                    ${Utils.statusBadge ? Utils.statusBadge(b.status) : b.status}
+                    <span>${bookingPaymentStatus(b)}</span>
+                    <span>· ${completedOn}</span>
+                </div>
+            </a>`;
+        }).join('') : '<div>No other bookings for this customer.</div>';
+    } catch {
+        el.innerHTML = '<div>Unable to load booking history.</div>';
+    }
+}
+
+async function loadContacts() {
+    const el = document.getElementById('contactsList');
+    try {
+        const res = await API.bookings.contacts(booking.booking_id);
+        const contacts = res.data || [];
+        el.innerHTML = contacts.length
+            ? contacts.map(c => `
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border-color)">
+                    <div>
+                        <div style="font-weight:600;color:var(--text-primary)">${c.contact_name}${c.relationship ? ` <span style="font-weight:400;color:var(--text-muted)">(${c.relationship})</span>` : ''}</div>
+                        <div>${[c.mobile, c.email].filter(Boolean).join(' · ') || '—'}</div>
+                        ${c.notes ? `<div style="margin-top:2px">${c.notes}</div>` : ''}
+                    </div>
+                    <button class="btn-ghost" style="padding:2px 8px;font-size:11px;color:var(--color-danger)" onclick="deleteContact(${c.contact_id})">Remove</button>
+                </div>`).join('')
+            : `<div>No alternative contacts added.</div>`;
+    } catch {
+        el.innerHTML = `<div>Unable to load contacts.</div>`;
+    }
+}
+
+function openContactModal() {
+    ['cName','cMobile','cEmail','cRelationship','cNotes'].forEach(id => document.getElementById(id).value = '');
+    contactModal = new bootstrap.Modal(document.getElementById('contactModal'));
+    contactModal.show();
+}
+
+async function submitContact() {
+    const contactName = document.getElementById('cName').value.trim();
+    if (!contactName) { Utils.toast('Contact name is required', 'error'); return; }
+    try {
+        await API.bookings.addContact(booking.booking_id, {
+            contactName,
+            mobile:       document.getElementById('cMobile').value.trim() || undefined,
+            email:        document.getElementById('cEmail').value.trim() || undefined,
+            relationship: document.getElementById('cRelationship').value.trim() || undefined,
+            notes:        document.getElementById('cNotes').value.trim() || undefined,
+        });
+        contactModal.hide();
+        Utils.toast('Contact added', 'success');
+        loadContacts();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to add contact', 'error');
+    }
+}
+
+async function deleteContact(contactId) {
+    const ok = await Utils.confirm('Remove this contact?', { title: 'Remove Contact', danger: true });
+    if (!ok) return;
+    try {
+        await API.bookings.removeContact(booking.booking_id, contactId);
+        Utils.toast('Contact removed', 'success');
+        loadContacts();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to remove contact', 'error');
+    }
+}
 
 function openPayModal() {
     payModal = new bootstrap.Modal(document.getElementById('payModal'));

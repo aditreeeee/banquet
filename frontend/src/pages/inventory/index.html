@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.filter-bar { display:flex; gap:10px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--border-color); background:var(--bg-surface-2); border-radius:var(--radius-lg) var(--radius-lg) 0 0; }
+.filter-bar select, .filter-bar input[type="date"] { font-size:12.5px; padding:7px 10px; border-radius:var(--radius-md); border:1px solid var(--border-color-dark); background:var(--bg-surface); color:var(--text-primary); }
+.stat-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.stat-mini { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:14px 16px; text-align:center; }
+.stat-mini .num { font-size:22px; font-weight:700; color:var(--text-primary); }
+.stat-mini .lbl { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.cat-badge { display:inline-block;padding:2px 9px;border-radius:9999px;font-size:11px;font-weight:600;text-transform:capitalize; }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Dashboard</div>
+        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
+        <div class="nav-section-label">Bookings</div>
+        <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
+        <div class="nav-section-label">Inventory</div>
+        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
+        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
+        <div class="nav-section-label">Finance</div>
+        <a href="../payments/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span><span class="sidebar-text">Payments</span></a>
+        <div class="nav-section-label">Admin</div>
+        <a href="../settings/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2.1-1.6-2-3.5-2.5 1A7 7 0 0 0 15 4.4L14 2h-4l-1 2.4a7 7 0 0 0-1.5 1.5L5 5.9l-2 3.5 2.1 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1L3 14.6l2 3.5 2.5-1a7 7 0 0 0 1.5 1.5l1 2.4h4l1-2.4a7 7 0 0 0 1.5-1.5l2.5 1 2-3.5-2.1-1.6c.1-.3.1-.7.1-1z"></path></svg></span><span class="sidebar-text">Settings</span></a>
+    </nav>
+    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Inventory</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Inventory</h1><p class="page-subtitle">Structured decoration &amp; operational inventory — Furniture, Decor, Lighting, Audio, Visual, Signage</p></div>
+            <button class="btn-primary-brand" onclick="openResourceModal()">+ Add Inventory Item</button>
+        </div>
+
+        <div class="stat-strip">
+            <div class="stat-mini"><div class="num" id="statTotal">—</div><div class="lbl">Total Items</div></div>
+            <div class="stat-mini"><div class="num" id="statUnits">—</div><div class="lbl">Total Units</div></div>
+            <div class="stat-mini"><div class="num" id="statReserved" style="color:var(--color-warning)">—</div><div class="lbl">Reserved Today</div></div>
+            <div class="stat-mini"><div class="num" id="statShortage" style="color:var(--color-danger)">—</div><div class="lbl">Shortages Today</div></div>
+        </div>
+
+        <div class="table-card">
+            <div class="filter-bar">
+                <select id="categoryFilter" onchange="renderResources()">
+                    <option value="">All Categories</option>
+                    <option value="furniture">Furniture</option>
+                    <option value="decor">Decor</option>
+                    <option value="lighting">Lighting</option>
+                    <option value="audio">Audio</option>
+                    <option value="visual">Visual Equipment</option>
+                    <option value="signage">Signage</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <input type="date" id="snapshotDate" onchange="loadSnapshot()" title="Check reserved/available for date">
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr>
+                        <th>Item</th><th>Category</th><th>Supplier</th><th>Available</th>
+                        <th>Reserved (selected date)</th><th>Customer Price</th><th>Cost Price</th><th></th>
+                    </tr></thead>
+                    <tbody id="resourcesBody"><tr><td colspan="8" class="text-center py-4">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<!-- Add/Edit Resource Modal -->
+<div class="modal fade" id="resourceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="resourceModalTitle">Add Inventory Item</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Item Name</label><input type="text" class="form-control" id="resName"></div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label">Category</label>
+                        <select class="form-select" id="resCategory">
+                            <option value="furniture">Furniture</option>
+                            <option value="decor">Decor</option>
+                            <option value="lighting">Lighting</option>
+                            <option value="audio">Audio</option>
+                            <option value="visual">Visual Equipment</option>
+                            <option value="signage">Signage</option>
+                            <option value="custom" selected>Custom</option>
+                        </select>
+                    </div>
+                    <div class="col-6"><label class="form-label">Supplier</label><input type="text" class="form-control" id="resSupplier" placeholder="Optional"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-4"><label class="form-label">Quantity Available</label><input type="number" class="form-control" id="resQty" min="0"></div>
+                    <div class="col-4"><label class="form-label">Customer Price</label><input type="number" class="form-control" id="resPrice" min="0" step="0.5"></div>
+                    <div class="col-4"><label class="form-label">Cost Price</label><input type="number" class="form-control" id="resCost" min="0" step="0.5"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" onclick="saveResource()">Save Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+const CATEGORY_COLOR = {
+    furniture:'var(--color-info)', decor:'var(--color-warning)', lighting:'#8b5cf6',
+    audio:'#0ea5e9', visual:'#ec4899', signage:'#14b8a6', custom:'var(--text-muted)',
+};
+
+let resources = [];
+let snapshot = {};
+
+function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+async function loadResources() {
+    const tbody = document.getElementById('resourcesBody');
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">Loading…</td></tr>';
+    try {
+        const res = await API.resources.list();
+        resources = res.data || [];
+        document.getElementById('snapshotDate').value = todayISO();
+        await loadSnapshot();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4" style="color:var(--color-danger)">${e.message || 'Failed to load inventory'}</td></tr>`;
+    }
+}
+
+async function loadSnapshot() {
+    const date = document.getElementById('snapshotDate').value || todayISO();
+    try {
+        const res = await API.resources.snapshot({ event_date: date });
+        snapshot = {};
+        (res.data || []).forEach(s => { snapshot[s.resource_id] = s; });
+    } catch { snapshot = {}; }
+    renderResources();
+}
+
+function renderResources() {
+    const tbody = document.getElementById('resourcesBody');
+    const catFilter = document.getElementById('categoryFilter').value;
+    const filtered = resources.filter(r => !catFilter || r.category === catFilter);
+
+    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">No inventory items found.</td></tr>'; }
+    else {
+        tbody.innerHTML = filtered.map(r => {
+            const snap = snapshot[r.resource_id];
+            const reserved = snap ? snap.reserved : 0;
+            const shortage = snap ? snap.is_shortage : false;
+            return `
+            <tr>
+                <td style="font-weight:600">${r.resource_name}</td>
+                <td><span class="cat-badge" style="background:${CATEGORY_COLOR[r.category]}22;color:${CATEGORY_COLOR[r.category]}">${r.category}</span></td>
+                <td>${r.supplier || '—'}</td>
+                <td>${Utils.formatNumber(r.quantity_available)}</td>
+                <td style="color:${shortage?'var(--color-danger)':'inherit'};font-weight:${shortage?700:400}">${reserved}${shortage ? ' ⚠ full' : ''}</td>
+                <td>${Utils.formatCurrency(r.unit_price)}</td>
+                <td>${Utils.formatCurrency(r.cost_price)}</td>
+                <td><button class="btn-icon" title="Edit" onclick="editResource(${r.resource_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button></td>
+            </tr>`;
+        }).join('');
+    }
+    updateStats(filtered);
+}
+
+function updateStats(filtered) {
+    document.getElementById('statTotal').textContent = Utils.formatNumber(filtered.length);
+    document.getElementById('statUnits').textContent = Utils.formatNumber(filtered.reduce((s,r)=>s+(r.quantity_available||0),0));
+    const reservedTotal = filtered.reduce((s,r)=>s+((snapshot[r.resource_id]||{}).reserved||0),0);
+    document.getElementById('statReserved').textContent = Utils.formatNumber(reservedTotal);
+    const shortageCount = filtered.filter(r => (snapshot[r.resource_id]||{}).is_shortage).length;
+    document.getElementById('statShortage').textContent = Utils.formatNumber(shortageCount);
+}
+
+let editingResourceId = null;
+function openResourceModal() {
+    editingResourceId = null;
+    document.getElementById('resourceModalTitle').textContent = 'Add Inventory Item';
+    document.getElementById('resName').value = '';
+    document.getElementById('resCategory').value = 'custom';
+    document.getElementById('resSupplier').value = '';
+    document.getElementById('resQty').value = '';
+    document.getElementById('resPrice').value = '';
+    document.getElementById('resCost').value = '';
+    new bootstrap.Modal(document.getElementById('resourceModal')).show();
+}
+
+function editResource(id) {
+    const r = resources.find(x => x.resource_id === id);
+    if (!r) return;
+    editingResourceId = id;
+    document.getElementById('resourceModalTitle').textContent = 'Edit Inventory Item';
+    document.getElementById('resName').value = r.resource_name;
+    document.getElementById('resCategory').value = r.category;
+    document.getElementById('resSupplier').value = r.supplier || '';
+    document.getElementById('resQty').value = r.quantity_available;
+    document.getElementById('resPrice').value = r.unit_price;
+    document.getElementById('resCost').value = r.cost_price;
+    new bootstrap.Modal(document.getElementById('resourceModal')).show();
+}
+
+async function saveResource() {
+    const payload = {
+        resourceName: document.getElementById('resName').value.trim(),
+        category: document.getElementById('resCategory').value,
+        supplier: document.getElementById('resSupplier').value.trim() || undefined,
+        quantityAvailable: parseInt(document.getElementById('resQty').value, 10) || 0,
+        unitPrice: parseFloat(document.getElementById('resPrice').value) || 0,
+        costPrice: parseFloat(document.getElementById('resCost').value) || 0,
+    };
+    if (!payload.resourceName) { Utils.toast('Item name is required', 'error'); return; }
+    try {
+        if (editingResourceId) await API.resources.update(editingResourceId, payload);
+        else await API.resources.create(payload);
+        bootstrap.Modal.getInstance(document.getElementById('resourceModal'))?.hide();
+        Utils.toast('Inventory item saved', 'success');
+        loadResources();
+    } catch (e) { Utils.toast(e.message || 'Failed to save item', 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', loadResources);
+</script>
+</body>
+</html>

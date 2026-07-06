@@ -132,27 +132,36 @@ const toggleActive = async (hallId, companyId, isActive) => {
     );
 };
 
-const getBlockedDates = async (hallId, fromDate, toDate) => {
+const getBlockedDates = async (hallId, fromDate, toDate, companyId = null) => {
     return executeQuery(
-        `SELECT block_id, blocked_date, start_time, end_time, reason, blocked_by, created_at
+        `SELECT block_id, blocked_date, start_time, end_time, block_type, reason, blocked_by, created_at
          FROM HallBlockedDates
          WHERE hall_id = @hallId
+           AND (@companyId IS NULL OR company_id = @companyId)
            AND blocked_date BETWEEN @fromDate AND @toDate
          ORDER BY blocked_date`,
-        { hallId, fromDate, toDate }
+        { hallId, fromDate, toDate, companyId: companyId || null }
     );
 };
 
-const blockDate = async ({ hallId, blockedDate, startTime, endTime, reason, blockedBy }) => {
+/**
+ * Owner override — block a hall for maintenance, VIP holds, emergency
+ * closures, or blackout dates. block_type='vip_hold' is informational only
+ * (does not prevent normal bookings); all other types are hard blocks
+ * enforced by the booking constraint engine (see booking.repository.js create()).
+ */
+const blockDate = async ({ hallId, companyId, blockedDate, startTime, endTime, blockType, reason, blockedBy }) => {
     const result = await executeQuery(
-        `INSERT INTO HallBlockedDates (hall_id, blocked_date, start_time, end_time, reason, blocked_by, created_at)
+        `INSERT INTO HallBlockedDates (hall_id, company_id, blocked_date, start_time, end_time, block_type, reason, blocked_by, created_at)
          OUTPUT INSERTED.block_id AS id
-         VALUES (@hallId, @blockedDate, @startTime, @endTime, @reason, @blockedBy, GETUTCDATE())`,
+         VALUES (@hallId, @companyId, @blockedDate, @startTime, @endTime, @blockType, @reason, @blockedBy, GETUTCDATE())`,
         {
             hallId,
+            companyId,
             blockedDate,
             startTime:  startTime  || '00:00:00',
             endTime:    endTime    || '23:59:59',
+            blockType:  blockType  || 'maintenance',
             reason:     reason     || null,
             blockedBy:  blockedBy  || null,
         }
@@ -160,10 +169,12 @@ const blockDate = async ({ hallId, blockedDate, startTime, endTime, reason, bloc
     return { block_id: result[0].id };
 };
 
-const unblockDate = async (blockId, hallId) => {
+const unblockDate = async (blockId, hallId, companyId = null) => {
     await executeQuery(
-        `DELETE FROM HallBlockedDates WHERE block_id = @blockId AND hall_id = @hallId`,
-        { blockId, hallId }
+        `DELETE FROM HallBlockedDates
+         WHERE block_id = @blockId AND hall_id = @hallId
+           AND (@companyId IS NULL OR company_id = @companyId)`,
+        { blockId, hallId, companyId: companyId || null }
     );
 };
 

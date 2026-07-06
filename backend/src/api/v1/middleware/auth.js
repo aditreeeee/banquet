@@ -16,6 +16,26 @@ const permissionCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 
 // ─── Verify JWT Access Token ──────────────────────────────────────────────────
 const authenticate = async (req, res, next) => {
+    // TEMPORARY: auth bypass for local development only. Requires DISABLE_AUTH=true
+    // AND non-production NODE_ENV, so it can never silently activate in prod.
+    if (process.env.DISABLE_AUTH === 'true' && process.env.NODE_ENV !== 'production') {
+        logger.warn('AUTH BYPASS ACTIVE — DISABLE_AUTH=true. Do not use in production.');
+        req.user = {
+            user_id: 0,
+            email: 'dev-bypass@local',
+            first_name: 'Dev',
+            last_name: 'Bypass',
+            company_id: 1,
+            branch_id: null,
+            is_active: 1,
+            role_id: 0,
+            role_slug: 'super_admin',
+            permissions: [],
+            isSuperAdmin: true,
+        };
+        return next();
+    }
+
     try {
         const authHeader = req.headers.authorization;
 

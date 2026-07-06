@@ -48,7 +48,13 @@ VALUES
     ('Company Admin',     'company_admin',    'Manages a single company: branches, banquets, staff, reports.', 1),
     ('Branch Manager',    'branch_manager',   'Manages daily operations of a specific branch.', 1),
     ('Booking Executive', 'booking_executive','Creates and manages bookings, customers, invoices.', 1),
-    ('Customer',          'customer',         'End-user who searches, books, and manages their bookings.', 1);
+    ('Customer',          'customer',         'End-user who searches, books, and manages their bookings.', 1),
+    ('Business Owner',      'business_owner',      'Owns the company: bookings, halls, customers, inventory, staff, analytics, reports.', 1),
+    ('Operations Manager',  'operations_manager',  'Manages daily operations: bookings, scheduling, occupancy, event planning.', 1),
+    ('Sales Manager',       'sales_manager',       'Manages inquiries, quotations, follow-ups, promotional campaigns, customers.', 1),
+    ('Finance Manager',     'finance_manager',     'Manages invoices, payments, refunds, taxes, deposits.', 1),
+    ('Staff',               'staff',               'Read-only operational dashboard, assigned events only.', 1),
+    ('Receptionist',        'receptionist',        'Creates inquiries/bookings, edits customer details. Cannot delete bookings.', 1);
 GO
 
 -- =============================================================================
@@ -185,6 +191,67 @@ WHERE permission_key IN (
     'bookings:create', 'bookings:read', 'bookings:cancel',
     'invoices:read',
     'payments:read',
+    'availability:read'
+);
+GO
+
+-- Business Owner: everything except platform-level admin actions
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 6, permission_id FROM permissions
+WHERE permission_key NOT IN ('companies:create', 'companies:delete', 'audit_logs:read');
+GO
+
+-- Operations Manager: daily ops — bookings, scheduling, occupancy, resources
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 7, permission_id FROM permissions
+WHERE permission_key IN (
+    'dashboard:read', 'banquets:read', 'halls:read',
+    'bookings:create', 'bookings:read', 'bookings:update', 'bookings:cancel', 'bookings:confirm',
+    'customers:read', 'customers:update',
+    'availability:manage', 'availability:read',
+    'resources:create', 'resources:read', 'resources:update',
+    'reports:read'
+);
+GO
+
+-- Sales Manager: inquiries, quotations, follow-ups, campaigns, customers
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 8, permission_id FROM permissions
+WHERE permission_key IN (
+    'dashboard:read', 'banquets:read', 'halls:read',
+    'bookings:create', 'bookings:read', 'bookings:update',
+    'customers:create', 'customers:read', 'customers:update',
+    'coupons:create', 'coupons:read', 'coupons:update',
+    'availability:read', 'reports:read'
+);
+GO
+
+-- Finance Manager: invoices, payments, refunds, taxes, deposits
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 9, permission_id FROM permissions
+WHERE permission_key IN (
+    'dashboard:read', 'bookings:read',
+    'payments:create', 'payments:read', 'payments:refund',
+    'invoices:create', 'invoices:read', 'invoices:send',
+    'reports:read', 'reports:export'
+);
+GO
+
+-- Staff: read-only operational dashboard
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 10, permission_id FROM permissions
+WHERE permission_key IN (
+    'dashboard:read', 'bookings:read', 'banquets:read', 'halls:read', 'availability:read'
+);
+GO
+
+-- Receptionist: create inquiry/booking, edit customers — no cancel/delete
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 11, permission_id FROM permissions
+WHERE permission_key IN (
+    'dashboard:read', 'banquets:read', 'halls:read',
+    'bookings:create', 'bookings:read', 'bookings:update',
+    'customers:create', 'customers:read', 'customers:update',
     'availability:read'
 );
 GO

@@ -27,9 +27,13 @@ router.use('/invoices',     require('./invoice.routes'));
 router.use('/reports',      require('./report.routes'));
 router.use('/resources',    require('./resource.routes'));
 router.use('/catering',     require('./catering.routes'));
+router.use('/menu-items',   require('./menuItem.routes'));
+router.use('/leads',       require('./lead.routes'));
+router.use('/marketing',   require('./marketing.routes'));
 router.use('/users',        require('./user.routes'));
 router.use('/notifications', require('./notification.routes'));
 router.use('/settings',     require('./settings.routes'));
+router.use('/operational-charges', require('./operationalCharge.routes'));
 router.use('/audit-logs',   require('./auditLog.routes'));
 
 module.exports = router;

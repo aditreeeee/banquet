@@ -22,10 +22,21 @@ router.get('/',              requirePermission(PERMISSIONS.BOOKINGS_READ),   ctr
 router.post('/',             requirePermission(PERMISSIONS.BOOKINGS_CREATE), v.validateCreate, ctrl.create);
 router.get('/ref/:ref',      requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getByRef);
 router.get('/:id',           requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getById);
+router.get('/:id/activities', requirePermission(PERMISSIONS.BOOKINGS_READ),  ctrl.getActivities);
+router.get('/:id/resources',  requirePermission(PERMISSIONS.BOOKINGS_READ),  ctrl.getResources);
+router.get('/:id/contacts',   requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getContacts);
+router.post('/:id/contacts',  requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateContact, ctrl.addContact);
+router.delete('/:id/contacts/:contactId', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), ctrl.removeContact);
+router.get('/:id/staff',      requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getStaff);
+router.post('/:id/staff',     requirePermission(PERMISSIONS.BOOKINGS_UPDATE), ctrl.assignStaff);
+router.delete('/:id/staff/:assignmentId', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), ctrl.removeStaff);
 router.patch('/:id',         requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateUpdate, ctrl.update);
 router.put('/:id',           requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateUpdate, ctrl.update);
 router.patch('/:id/reschedule', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateReschedule, ctrl.reschedule);
 router.patch('/:id/status',  requirePermission(PERMISSIONS.BOOKINGS_CONFIRM), v.validateStatus, ctrl.updateStatus);
 router.post('/:id/cancel',   requirePermission(PERMISSIONS.BOOKINGS_CANCEL), v.validateCancel, ctrl.cancel);
+router.post('/:id/clone',    requirePermission(PERMISSIONS.BOOKINGS_CREATE), v.validateClone, ctrl.clone);
+router.post('/:id/slots',    requirePermission(PERMISSIONS.BOOKINGS_CREATE), v.validateSlot,  ctrl.addSlot);
+router.get('/:id/slots',     requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getSlots);
 
 module.exports = router;

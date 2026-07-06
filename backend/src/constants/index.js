@@ -7,11 +7,13 @@
 // ─── Booking Statuses ─────────────────────────────────────────────────────────
 const BOOKING_STATUS = Object.freeze({
     DRAFT:          'draft',
+    TENTATIVE:      'tentative',
     CONFIRMED:      'confirmed',
     ADVANCE_PAID:   'advance_paid',
     FULLY_PAID:     'fully_paid',
     CANCELLED:      'cancelled',
     COMPLETED:      'completed',
+    ARCHIVED:       'archived',
     NO_SHOW:        'no_show',
 });
 
@@ -44,11 +46,17 @@ const PAYMENT_TYPE = Object.freeze({
 
 // ─── User Roles ───────────────────────────────────────────────────────────────
 const USER_ROLES = Object.freeze({
-    SUPER_ADMIN:        'super_admin',
-    COMPANY_ADMIN:      'company_admin',
-    BRANCH_MANAGER:     'branch_manager',
-    BOOKING_EXECUTIVE:  'booking_executive',
-    CUSTOMER:           'customer',
+    SUPER_ADMIN:         'super_admin',
+    COMPANY_ADMIN:       'company_admin',
+    BRANCH_MANAGER:      'branch_manager',
+    BOOKING_EXECUTIVE:   'booking_executive',
+    CUSTOMER:            'customer',
+    BUSINESS_OWNER:      'business_owner',
+    OPERATIONS_MANAGER:  'operations_manager',
+    SALES_MANAGER:       'sales_manager',
+    FINANCE_MANAGER:     'finance_manager',
+    STAFF:               'staff',
+    RECEPTIONIST:        'receptionist',
 });
 
 // ─── OTP Purposes ────────────────────────────────────────────────────────────

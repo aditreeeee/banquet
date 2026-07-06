@@ -30,11 +30,15 @@
 <aside class="sidebar" id="sidebar">
     <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
     <nav class="sidebar-nav">
-        <div class="nav-section-label">Overview</div>
+        <div class="nav-section-label">Dashboard</div>
         <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
+        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
         <div class="nav-section-label">Bookings</div>
         <a href="../bookings/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
         <a href="../bookings/create.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
+        <div class="nav-section-label">Inventory</div>
+        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
+        <a href="../inventory/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
         <div class="nav-section-label">CRM</div>
         <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
         <div class="nav-section-label">Finance</div>
@@ -86,9 +90,8 @@
                 <option value="">All Status</option>
                 <option value="paid">Paid</option>
                 <option value="partial">Partial</option>
-                <option value="unpaid">Unpaid</option>
+                <option value="pending">Unpaid</option>
                 <option value="overdue">Overdue</option>
-                <option value="draft">Draft</option>
             </select>
             <input type="month" id="monthFilter" onchange="loadInvoices(1)">
         </div>
@@ -199,24 +202,30 @@ async function loadInvoices(page = 1) {
         renderInvoices(invs);
         updateStats(res.data?.stats || {});
         Utils.renderPagination('invPagination', { page, limit:20, total: res.data?.meta?.total || invs.length }, loadInvoices);
-    } catch {
+    } catch (err) {
+        Utils.toast(err.message || 'Unable to load invoices from the server — showing demo data', 'error');
         allLoadedInvoices = DEMO_INVOICES;
         renderInvoices(DEMO_INVOICES);
-        updateStats({ total:7, paid:1, partial:3, unpaid:2, overdue:1 });
-        Utils.renderPagination('invPagination', { page:1, limit:20, total:7 }, loadInvoices);
+        updateStats({});
+        Utils.renderPagination('invPagination', { page:1, limit:20, total:DEMO_INVOICES.length }, loadInvoices);
     }
 }
 
 function renderInvoices(invs) {
     const wrap = document.getElementById('invoiceList');
     if (!invs.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No invoices found</div>'; return; }
-    wrap.innerHTML = invs.map(inv => `
+    wrap.innerHTML = invs.map(inv => {
+        // API returns payment_status as paid/partial/pending/cancelled — "pending"
+        // displays as "Unpaid", and "overdue" is a pending invoice past its due date.
+        const isOverdue = inv.status === 'pending' && inv.due_date && new Date(inv.due_date) < new Date();
+        const displayStatus = isOverdue ? 'overdue' : inv.status === 'pending' ? 'unpaid' : inv.status;
+        return `
     <div class="invoice-card" style="margin-bottom:10px">
-        <div class="inv-icon ${inv.status}">${STATUS_ICON[inv.status] || '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>'}</div>
+        <div class="inv-icon ${displayStatus}">${STATUS_ICON[displayStatus] || '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>'}</div>
         <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
                 <span style="font-weight:700;font-size:13px;font-family:var(--font-mono);color:var(--brand-primary)">${inv.invoice_ref}</span>
-                ${Utils.statusBadge(inv.status)}
+                ${Utils.statusBadge(displayStatus)}
             </div>
             <div style="font-size:12.5px;color:var(--text-muted)">${inv.customer_name} · ${Utils.truncate(inv.event_name,28)} · ${Utils.formatDate(inv.invoice_date)}</div>
         </div>
@@ -229,15 +238,16 @@ function renderInvoices(invs) {
             <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick="downloadPDF(${inv.invoice_id})">⬇</button>
             <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick="emailInvoice(${inv.invoice_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 6h16v12H4z"></path><path d="m4 7 8 6 8-6"></path></svg></button>
         </div>
-    </div>`).join('');
+    </div>`;
+    }).join('');
 }
 
 function updateStats(s) {
-    document.getElementById('kpiTotal').textContent   = s.total   ?? 7;
-    document.getElementById('kpiPaid').textContent    = s.paid    ?? 1;
-    document.getElementById('kpiPartial').textContent = s.partial ?? 3;
-    document.getElementById('kpiUnpaid').textContent  = s.unpaid  ?? 2;
-    document.getElementById('kpiOverdue').textContent = s.overdue ?? 1;
+    document.getElementById('kpiTotal').textContent   = s.total   ?? 0;
+    document.getElementById('kpiPaid').textContent    = s.paid    ?? 0;
+    document.getElementById('kpiPartial').textContent = s.partial ?? 0;
+    document.getElementById('kpiUnpaid').textContent  = s.unpaid  ?? 0;
+    document.getElementById('kpiOverdue').textContent = s.overdue ?? 0;
 }
 
 let generateModalInst;

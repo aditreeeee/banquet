@@ -11,6 +11,7 @@ require('express-async-errors'); // Patch async errors globally
 const app    = require('./src/app');
 const logger = require('./src/utils/logger');
 const { getPool, closePool } = require('./src/config/database');
+const expireTentativeHoldsJob = require('./src/jobs/expireTentativeHolds.job');
 
 const PORT = process.env.PORT || 3000;
 const ENV  = process.env.NODE_ENV || 'development';
@@ -24,6 +25,8 @@ const ENV  = process.env.NODE_ENV || 'development';
         const server = app.listen(PORT, () => {
             logger.info('BanquetPro API server started', { port: PORT, env: ENV });
         });
+
+        expireTentativeHoldsJob.start();
 
         // ─── Graceful Shutdown ──────────────────────────────────────────────
         const shutdown = async (signal) => {

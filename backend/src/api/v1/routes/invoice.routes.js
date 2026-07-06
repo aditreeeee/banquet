@@ -21,10 +21,16 @@ router.get('/', requirePermission(PERMISSIONS.INVOICES_READ), async (req, res) =
     const status    = req.query.status  || null;
     const month     = req.query.month   || null; // "YYYY-MM"
 
+    // "overdue" isn't a stored payment_status — it's a pending invoice past its
+    // due date — so it needs its own condition rather than an exact-match.
+    const statusCondition = status === 'overdue'
+        ? `i.payment_status = 'pending' AND i.due_date < CAST(GETUTCDATE() AS DATE)`
+        : '(@status IS NULL OR i.payment_status = @status)';
+
     const conditions = [
         'i.company_id = @companyId',
         'i.is_cancelled = 0',
-        '(@status IS NULL OR i.payment_status = @status)',
+        statusCondition,
         '(@month  IS NULL OR FORMAT(i.invoice_date, \'yyyy-MM\') = @month)',
         `(@search IS NULL
           OR i.invoice_number LIKE CONCAT('%', @search, '%')
@@ -67,8 +73,8 @@ router.get('/', requirePermission(PERMISSIONS.INVOICES_READ), async (req, res) =
                 COUNT(*) AS total,
                 SUM(CASE WHEN i.payment_status = 'paid'    THEN 1 ELSE 0 END) AS paid,
                 SUM(CASE WHEN i.payment_status = 'partial' THEN 1 ELSE 0 END) AS partial,
-                SUM(CASE WHEN i.payment_status = 'unpaid'  THEN 1 ELSE 0 END) AS unpaid,
-                SUM(CASE WHEN i.payment_status = 'unpaid' AND i.due_date < CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END) AS overdue
+                SUM(CASE WHEN i.payment_status = 'pending'  THEN 1 ELSE 0 END) AS unpaid,
+                SUM(CASE WHEN i.payment_status = 'pending' AND i.due_date < CAST(GETUTCDATE() AS DATE) THEN 1 ELSE 0 END) AS overdue
              FROM Invoices i
              WHERE i.company_id = @companyId AND i.is_cancelled = 0`,
             { companyId }

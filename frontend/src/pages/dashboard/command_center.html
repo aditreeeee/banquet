@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Command Center | BanquetPro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        navy:  { DEFAULT:'#1A2B4A', light:'#243756', dark:'#0D1929' },
+        gold:  { DEFAULT:'#C5A059', light:'#D4B478', dark:'#A8844A' },
+        cream: { DEFAULT:'#F5F0E8' },
+      },
+      fontFamily: {
+        sans:  ['Inter','sans-serif'],
+        serif: ['Playfair Display','serif'],
+      },
+    }
+  }
+}
+</script>
+<style>
+:root{
+  --deep-navy:#1A2B4A;
+  --gold:#C5A059;
+  --bg-start:
+    radial-gradient(ellipse 80% 55% at 15% 0%, rgba(197,160,89,.055) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 70% at 95% 100%, rgba(26,43,74,.045) 0%, transparent 65%),
+    linear-gradient(145deg, #F5F0E8 0%, #EDE7DA 50%, #E8E2D4 100%);
+  --surface:linear-gradient(148deg,rgba(255,255,255,0.72) 0%,rgba(245,240,232,0.65) 100%);
+  --surface-strong:rgba(255,255,255,0.90);
+  --topbar-bg:linear-gradient(90deg,rgba(255,255,255,0.82) 0%,rgba(245,240,232,0.78) 100%);
+  --text-primary:#1A2B4A;
+  --text-secondary:#4B5A72;
+  --text-muted:#8A9BB0;
+  --border-color:rgba(26,43,74,.09);
+  --input-bg:rgba(255,255,255,.88);
+  --shadow-color:rgba(26,43,74,0.08);
+  --shadow-gold:rgba(197,160,89,0.14);
+}
+body.dark-mode{
+  --bg-start:
+    radial-gradient(ellipse 70% 50% at 10% 0%, rgba(197,160,89,.05) 0%, transparent 55%),
+    linear-gradient(145deg, #060D18 0%, #0D1929 35%, #111827 100%);
+  --surface:linear-gradient(148deg,rgba(13,25,41,0.95) 0%,rgba(8,15,29,0.92) 100%);
+  --surface-strong:rgba(13,25,41,0.96);
+  --topbar-bg:linear-gradient(90deg,rgba(6,13,24,0.97) 0%,rgba(13,25,41,0.97) 100%);
+  --text-primary:#F0EDD8;
+  --text-secondary:#B0BEC8;
+  --text-muted:#6A7E94;
+  --border-color:rgba(197,160,89,.11);
+  --input-bg:rgba(13,25,41,.92);
+  --shadow-color:rgba(0,0,0,0.38);
+  --shadow-gold:rgba(197,160,89,0.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attachment:fixed;color:var(--text-primary)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(197,160,89,.28);border-radius:9999px}
+::-webkit-scrollbar-thumb:hover{background:rgba(197,160,89,.5)}
+#content h1,#content h2,#content h3,.kpi-val { font-family:'Playfair Display',serif; }
+.g-card{
+  background:var(--surface);
+  backdrop-filter:blur(20px) saturate(200%);
+  -webkit-backdrop-filter:blur(20px) saturate(200%);
+  border:1px solid rgba(255,255,255,0.62);
+  border-radius:18px;
+  box-shadow:0 8px 32px var(--shadow-color),0 2px 8px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.72);
+  transition:box-shadow .25s ease,transform .25s ease,border-color .25s ease;
+}
+.g-card.hoverable:hover{
+  box-shadow:0 18px 52px var(--shadow-color),0 4px 14px rgba(0,0,0,0.06),0 0 0 1px rgba(197,160,89,.14),inset 0 1px 0 rgba(255,255,255,0.72);
+  transform:translateY(-3px);
+  border-color:rgba(197,160,89,.22);
+}
+#sidebar{
+  position:fixed;left:0;top:0;height:100vh;z-index:50;
+  background:linear-gradient(160deg,#1A2B4A 0%,#0D1929 55%,#060D18 100%);
+  box-shadow:4px 0 36px rgba(6,13,24,0.4);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);
+  width:260px;isolation:isolate;
+}
+#sidebar::before{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+#sidebar>*{position:relative;z-index:1}
+#sidebar.collapsed{width:72px}
+#sidebar.mobile-hidden{transform:translateX(-100%);width:260px}
+.sb-label{transition:opacity .2s ease,max-width .32s ease;overflow:hidden;white-space:nowrap;max-width:200px}
+#sidebar.collapsed .sb-label{opacity:0;max-width:0}
+.sb-section{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:rgba(197,160,89,.38);padding:14px 24px 4px;white-space:nowrap;overflow:hidden;transition:opacity .2s ease}
+#sidebar.collapsed .sb-section{opacity:0}
+.sb-item{display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
+  margin:1px 8px;cursor:pointer;color:rgba(255,255,255,.52);font-size:13.5px;font-weight:500;
+  transition:background .18s ease,color .18s ease;text-decoration:none;white-space:nowrap;position:relative}
+.sb-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88)}
+.sb-item.active{background:rgba(197,160,89,.14);color:#C5A059}
+.sb-item.active::before{
+  content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:58%;border-radius:0 3px 3px 0;
+  background:linear-gradient(180deg,#D4B478,#C5A059);box-shadow:0 0 9px rgba(197,160,89,.65);
+}
+.sb-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.sb-footer{margin-top:auto;border-top:1px solid rgba(197,160,89,.1);padding:14px 12px}
+.sb-avatar{width:34px;height:34px;border-radius:50%;background:rgba(197,160,89,.18);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  color:#C5A059;flex-shrink:0;border:1.5px solid rgba(197,160,89,.32)}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:45;backdrop-filter:blur(3px);display:none}
+#overlay.show{display:block}
+#main{height:100vh;display:flex;flex-direction:column;overflow:hidden;
+  transition:margin-left .32s cubic-bezier(.4,0,.2,1);margin-left:260px}
+#main.collapsed{margin-left:72px}
+#main.mobile{margin-left:0}
+#topbar{
+  flex-shrink:0;height:62px;background:var(--topbar-bg);
+  backdrop-filter:blur(24px) saturate(200%);-webkit-backdrop-filter:blur(24px) saturate(200%);
+  border-bottom:1px solid rgba(197,160,89,.11);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.65),0 8px 28px var(--shadow-color);
+  display:flex;align-items:center;gap:14px;padding:0 24px;position:relative;z-index:30;
+}
+.tb-btn{width:36px;height:36px;border-radius:10px;border:none;background:rgba(26,43,74,.06);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .18s ease,box-shadow .18s ease;color:var(--text-primary)}
+.tb-btn:hover{background:rgba(26,43,74,.11);box-shadow:0 2px 8px rgba(26,43,74,.07)}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1A2B4A,#0D1929);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  color:white;cursor:pointer;border:2px solid rgba(197,160,89,.32);box-shadow:0 2px 10px rgba(197,160,89,.14);
+  transition:border-color .18s ease,box-shadow .18s ease;flex-shrink:0}
+.user-avatar:hover{border-color:#C5A059;box-shadow:0 4px 16px rgba(197,160,89,.28)}
+.fpill{padding:5px 14px;border-radius:9999px;font-size:12.5px;font-weight:500;
+  border:1.5px solid var(--border-color);background:var(--surface-strong);color:var(--text-secondary);
+  cursor:pointer;transition:all .18s ease;white-space:nowrap}
+.fpill:hover{border-color:var(--deep-navy);color:var(--text-primary)}
+.fpill.on{background:linear-gradient(135deg,#1A2B4A 0%,#243756 100%);border-color:#1A2B4A;color:white;
+  box-shadow:0 2px 10px rgba(26,43,74,.22)}
+.kpi-icon-wrap{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:linear-gradient(148deg,rgba(197,160,89,.18) 0%,rgba(197,160,89,.06) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.kpi-val{font-size:23px;font-weight:700;color:var(--text-primary);line-height:1}
+.kpi-label{font-size:11.5px;color:var(--text-secondary);font-weight:500;margin-top:3px}
+.scroll-y{overflow-y:auto}
+.scroll-y::-webkit-scrollbar{width:4px}
+.scroll-y::-webkit-scrollbar-thumb{background:rgba(197,160,89,.2);border-radius:9999px}
+#content{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .4s cubic-bezier(.25,.46,.45,.94) forwards}
+.fu-1{animation-delay:.04s;opacity:0}.fu-2{animation-delay:.08s;opacity:0}
+.fu-3{animation-delay:.12s;opacity:0}.fu-4{animation-delay:.16s;opacity:0}
+
+/* Resource Matrix */
+.matrix-row{display:grid;grid-template-columns:140px 1fr;gap:0;align-items:stretch;border-bottom:1px solid var(--border-color)}
+.matrix-row:last-child{border-bottom:none}
+.matrix-hall-label{padding:10px 12px;font-size:12.5px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:6px;border-right:1px solid var(--border-color)}
+.matrix-track{position:relative;min-height:44px;display:grid}
+.matrix-bar{position:relative;border-radius:7px;font-size:10.5px;font-weight:600;color:white;padding:4px 8px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;display:flex;align-items:center;
+  transition:transform .12s ease,box-shadow .12s ease;margin:4px 2px;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.matrix-bar:hover{transform:translateY(-2px) scale(1.01);box-shadow:0 6px 16px rgba(0,0,0,.28);z-index:5}
+.matrix-bar.vip{outline:2px solid #C5A059;outline-offset:-2px}
+.matrix-grid-lines{position:absolute;inset:0;display:grid;pointer-events:none}
+.matrix-grid-lines > div{border-right:1px solid var(--border-color)}
+.legend-dot{width:9px;height:9px;border-radius:3px;display:inline-block;flex-shrink:0}
+
+/* Drawer */
+.drawer-backdrop{position:fixed;inset:0;background:rgba(6,13,24,.45);backdrop-filter:blur(2px);z-index:90}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(440px,94vw);z-index:91;
+  background:var(--surface-strong);box-shadow:-16px 0 48px rgba(0,0,0,.28);
+  display:flex;flex-direction:column;transform:translateX(0);animation:slideIn .28s cubic-bezier(.25,.46,.45,.94)}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.drawer-section{padding:14px 20px;border-bottom:1px solid var(--border-color)}
+.drawer-section h4{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px;font-weight:700}
+.drawer-row{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:13px;color:var(--text-primary)}
+.drawer-row .k{color:var(--text-secondary)}
+.qa-btn{padding:7px 12px;border-radius:9px;border:1.5px solid var(--border-color);background:var(--surface);
+  font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;transition:all .15s ease}
+.qa-btn:hover{border-color:var(--gold);color:var(--gold)}
+.qa-btn.danger:hover{border-color:#dc2626;color:#dc2626}
+
+@media(max-width:900px){
+  .matrix-row{grid-template-columns:96px 1fr}
+  .split-view{grid-template-columns:1fr!important}
+}
+@media(max-width:768px){
+  #main{margin-left:0!important}
+  .hide-mobile{display:none!important}
+  #content{padding:14px;gap:14px}
+}
+</style>
+</head>
+<body>
+<div id="overlay" onclick="window.__closeSidebar&&window.__closeSidebar()"></div>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+/* ════════════════════════════════════════════════════════════════
+   BanquetPro — Command Center
+   Real-time operational workspace: Resource Matrix + Context Panel + Quick Drawer.
+   Shares the exact shell (sidebar/topbar/palette/icons) with the Dashboard
+   so it reads as an extension of it, not a separate module.
+   ════════════════════════════════════════════════════════════════ */
+const { useState, useEffect, useMemo, useCallback } = React;
+
+const C = {
+  navy: '#1A2B4A', gold: '#C5A059',
+  green:'#10B981', red:'#EF4444', purple:'#6366F1',
+  blue:'#2563EB', amber:'#F59E0B', teal:'#14B8A6', slate:'#64748B',
+};
+
+const STATUS_COLOR = {
+  confirmed: C.blue, tentative: C.amber, completed: C.green,
+  advance_paid: C.blue, fully_paid: C.green, draft: C.slate,
+  archived: C.slate, cancelled: '#94a3b8',
+};
+const STATUS_LEGEND = [
+  { label:'Confirmed', color:C.blue }, { label:'Tentative', color:C.amber },
+  { label:'Completed', color:C.green }, { label:'Cool-off / Buffer', color:C.slate },
+  { label:'Priority / VIP (outline)', color:C.gold },
+];
+
+const I = {
+  dashboard: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>),
+  calendar: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>),
+  building: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 9h1m5 0h1M9 13h1m5 0h1"/></svg>),
+  home: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 12L12 3l9 9"/><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg>),
+  users: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>),
+  creditCard: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>),
+  fileText: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>),
+  trendingUp: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>),
+  clipboardList: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>),
+  calendarDays: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r=".5" fill="currentColor"/><circle cx="12" cy="15" r=".5" fill="currentColor"/><circle cx="16" cy="15" r=".5" fill="currentColor"/></svg>),
+  user: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>),
+  settings: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>),
+  menu: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>),
+  chevronLeft: (p={}) => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="15 18 9 12 15 6"/></svg>),
+  chevronRight: (p={}) => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="9 18 15 12 9 6"/></svg>),
+  x: (p={}) => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>),
+  dollarSign: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>),
+  alertTriangle: (p={}) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>),
+  brand: (p={}) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 21h18M5 21V9l7-6 7 6v12"/><path d="M9 21v-5a1 1 0 011-1h4a1 1 0 011 1v5"/><path d="M10 6h4M12 4v4"/></svg>),
+};
+
+const NAV = [
+  { s:'Dashboard', items:[
+    { id:'dashboard',     icon:I.dashboard,     label:'Overview',       href:'index.html' },
+    { id:'commandCenter', icon:I.building,      label:'Command Center', href:null },
+  ]},
+  { s:'Operations', items:[
+    { id:'bookings', icon:I.calendar, label:'Bookings', href:'../bookings/index.html' },
+    { id:'banquets', icon:I.building, label:'Banquets', href:'../banquets/index.html' },
+    { id:'halls',    icon:I.home,     label:'Halls',    href:'../halls/index.html'    },
+  ]},
+  { s:'Inventory', items:[
+    { id:'masterMenu', icon:I.fileText,      label:'Master Menu', href:'../catering/menu.html'   },
+    { id:'inventory',  icon:I.clipboardList, label:'Inventory',   href:'../inventory/index.html' },
+  ]},
+  { s:'CRM', items:[
+    { id:'customers', icon:I.users,         label:'Customers',      href:'../customers/index.html' },
+    { id:'leads',     icon:I.clipboardList, label:'Sales Pipeline', href:'../leads/index.html'     },
+  ]},
+  { s:'Finance', items:[
+    { id:'payments', icon:I.creditCard, label:'Payments', href:'../payments/index.html' },
+    { id:'invoices', icon:I.fileText,   label:'Invoices', href:'../invoices/index.html' },
+  ]},
+  { s:'Reports', items:[
+    { id:'r-rev', icon:I.trendingUp,    label:'Revenue',   href:'../reports/revenue.html'   },
+    { id:'r-occ', icon:I.calendarDays,  label:'Occupancy', href:'../reports/occupancy.html' },
+  ]},
+  { s:'Admin', items:[
+    { id:'users',    icon:I.user,     label:'Users',    href:'../users/index.html'    },
+    { id:'settings', icon:I.settings, label:'Settings', href:'../settings/index.html' },
+  ]},
+];
+
+const fmtS = n => n>=10000000?'₹'+(n/10000000).toFixed(1)+'Cr':n>=100000?'₹'+(n/100000).toFixed(1)+'L':n>=1000?'₹'+(n/1000).toFixed(0)+'K':'₹'+(n||0);
+const ini  = n => (n||'').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+const toISO = d => { const x=new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
+/* event_date from the API is a UTC-midnight ISO string — slicing avoids the
+   local-timezone rollback that new Date(...).getDate() would introduce. */
+const dateOnly = d => typeof d==='string' ? d.slice(0,10) : toISO(d);
+const addDays = (iso,n) => { const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return toISO(d); };
+/* TIME columns come back as full ISO datetime strings (epoch-dated, UTC) or
+   Date objects depending on the call path — normalize both to "HH:MM". */
+const timeHM = t => {
+  if (!t) return '';
+  if (typeof t === 'string') {
+    const isoMatch = t.match(/T(\d{2}):(\d{2})/);
+    if (isoMatch) return `${isoMatch[1]}:${isoMatch[2]}`;
+    return t.slice(0,5);
+  }
+  const d = new Date(t);
+  return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+};
+const hourOf = t => { const [h]=timeHM(t).split(':'); return parseInt(h,10)||0; };
+
+const Card = ({ children, className='', hover=false, style={}, onClick }) => (
+  <div className={`g-card${hover?' hoverable':''} ${className}`} style={style} onClick={onClick}>{children}</div>
+);
+
+/* ── Sidebar (identical shell to Dashboard) ── */
+const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
+  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'Suresh',last_name:'Mehta',role_slug:'super_admin'};
+  const name = `${user.first_name} ${user.last_name}`;
+  return (
+    <aside id="sidebar" className={[collapsed&&!isMobile?'collapsed':'',isMobile&&!mobileOpen?'mobile-hidden':''].filter(Boolean).join(' ')}>
+      <div style={{padding:'18px 14px 10px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div style={{width:40,height:40,borderRadius:12,background:'rgba(197,160,89,.15)',display:'flex',alignItems:'center',justifyContent:'center',color:'#C5A059',flexShrink:0,border:'1px solid rgba(197,160,89,.3)',boxShadow:'0 4px 14px rgba(197,160,89,.18), inset 0 1px 0 rgba(255,255,255,.1)'}}>{I.brand()}</div>
+        <span className="sb-label" style={{fontWeight:700,fontSize:17,color:'white',letterSpacing:'-.01em',fontFamily:"'Playfair Display', serif"}}>BanquetPro</span>
+        {!isMobile&&(
+          <button onClick={onCollapse} title={collapsed?'Expand':'Collapse'} style={{marginLeft:'auto',background:'rgba(255,255,255,.1)',border:'none',width:26,height:26,borderRadius:6,cursor:'pointer',color:'rgba(255,255,255,.6)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            {collapsed ? I.chevronRight() : I.chevronLeft()}
+          </button>
+        )}
+      </div>
+      <nav style={{flex:1,overflowY:'auto',overflowX:'hidden',paddingBottom:8}}>
+        {NAV.map(sec=>(
+          <div key={sec.s}>
+            <div className="sb-section">{sec.s}</div>
+            {sec.items.map(item=>(
+              item.href
+                ? <a key={item.id} href={item.href} className="sb-item" title={collapsed?item.label:undefined}><span className="sb-icon">{item.icon()}</span><span className="sb-label">{item.label}</span></a>
+                : <div key={item.id} className="sb-item active" title={collapsed?item.label:undefined}><span className="sb-icon">{item.icon()}</span><span className="sb-label">{item.label}</span></div>
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div className="sb-footer">
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div className="sb-avatar">{ini(name)}</div>
+          <div className="sb-label" style={{minWidth:0,flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</div>
+            <div style={{fontSize:11,color:C.gold,marginTop:1,textTransform:'capitalize'}}>{(user.role_slug||'').replace(/_/g,' ')}</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+/* ── Topbar (simplified: no period filter — Command Center is always "now") ── */
+const Topbar = ({ onMenu, darkMode, setDarkMode }) => {
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'Suresh',last_name:'Mehta'};
+  const userName = `${user.first_name} ${user.last_name}`;
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    if (typeof Auth==='undefined') return;
+    if (await (typeof Utils!=='undefined' && Utils.confirm ? Utils.confirm('Are you sure you want to log out?', { title:'Log Out' }) : Promise.resolve(true))) await Auth.logout();
+  };
+  return (
+    <header id="topbar">
+      <button className="tb-btn" onClick={onMenu} title="Toggle sidebar">{I.menu()}</button>
+      <div>
+        <div style={{fontSize:15,fontWeight:700,color:'var(--text-primary)',fontFamily:"'Playfair Display', serif"}}>Command Center</div>
+        <div style={{fontSize:11,color:'var(--text-muted)'}}>Live operational workspace</div>
+      </div>
+      <div style={{marginLeft:'auto',display:'flex',gap:10,alignItems:'center'}}>
+        <button className="tb-btn" title={darkMode?'Switch to light mode':'Switch to dark mode'} onClick={()=>setDarkMode(v=>!v)}>{darkMode?'☀':'☾'}</button>
+        <div style={{position:'relative',flexShrink:0,zIndex:70}}>
+          <div className="user-avatar" onClick={()=>setUserMenuOpen(v=>!v)} title={userName}>{ini(userName)}</div>
+          {userMenuOpen&&(
+            <div style={{position:'absolute',right:0,top:'calc(100% + 8px)',minWidth:180,background:'var(--surface-strong)',border:'1px solid var(--border-color)',borderRadius:12,boxShadow:'0 16px 40px rgba(0,0,0,.16)',padding:8,zIndex:70}}>
+              <div style={{padding:'6px 10px',fontSize:12.5,fontWeight:700,color:'var(--text-primary)',borderBottom:'1px solid var(--border-color)',marginBottom:6}}>{userName}</div>
+              <button type="button" onClick={handleLogout} style={{display:'flex',alignItems:'center',gap:8,width:'100%',padding:'8px 10px',border:'none',background:'transparent',color:'#dc2626',fontWeight:600,fontSize:13,borderRadius:8,cursor:'pointer',textAlign:'left'}}>Log Out</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+/* ── Clickable KPI card — every card is a shortcut to its module ── */
+const KPICard = ({ IconEl, label, value, color, sub, onClick }) => (
+  <Card hover style={{padding:'16px 18px',cursor:'pointer'}} onClick={onClick}>
+    <div className="kpi-icon-wrap" style={{background:`${color}1A`,color,marginBottom:10}}><IconEl/></div>
+    <div className="kpi-val">{value}</div>
+    <div className="kpi-label">{label}</div>
+    {sub && <div style={{fontSize:10.5,color:'var(--text-muted)',marginTop:5}}>{sub}</div>}
+  </Card>
+);
+
+/* ── Quick Drawer ── */
+const QuickDrawer = ({ bookingId, onClose, onChanged }) => {
+  const [booking, setBooking] = useState(null);
+  const [resources, setResources] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [b, r, s, a] = await Promise.all([
+        API.bookings.get(bookingId),
+        API.bookings.resources(bookingId).catch(()=>({data:[]})),
+        API.bookings.staff(bookingId).catch(()=>({data:[]})),
+        API.bookings.activities(bookingId).catch(()=>({data:[]})),
+      ]);
+      setBooking(b.data);
+      setResources(Array.isArray(r.data)?r.data:[]);
+      setStaff(Array.isArray(s.data)?s.data:[]);
+      setActivities(Array.isArray(a.data)?a.data:(a.data?.activities||[]));
+    } catch (e) {
+      Utils.toast(e.message||'Failed to load booking', 'error');
+      onClose();
+    } finally { setLoading(false); }
+  }, [bookingId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const doAction = async (fn, successMsg) => {
+    setBusy(true);
+    try { await fn(); Utils.toast(successMsg, 'success'); await load(); onChanged&&onChanged(); }
+    catch (e) { Utils.toast(e.message||'Action failed', 'error'); }
+    finally { setBusy(false); }
+  };
+
+  const confirmBooking  = () => doAction(()=>API.bookings.status(bookingId,'confirmed'), 'Booking confirmed');
+  const markDeposit     = () => doAction(()=>API.bookings.status(bookingId,'advance_paid'), 'Marked deposit received');
+  const markFullyPaid   = () => doAction(()=>API.bookings.status(bookingId,'fully_paid'), 'Marked fully paid');
+  const completeEvent   = () => doAction(()=>API.bookings.status(bookingId,'completed'), 'Event marked complete');
+  const cancelBooking   = async () => {
+    if (!(await (Utils.confirm ? Utils.confirm('Cancel this booking?', {title:'Cancel Booking'}) : Promise.resolve(true)))) return;
+    doAction(()=>API.bookings.cancel(bookingId,'Cancelled from Command Center'), 'Booking cancelled');
+  };
+  const assignMyself = () => {
+    const user = Auth.getUser();
+    doAction(()=>API.bookings.assignStaff(bookingId, { userId:user.user_id, roleNote:'Assigned from Command Center' }), 'Staff assigned');
+  };
+
+  return (
+    <>
+      <div className="drawer-backdrop" onClick={onClose}/>
+      <div className="drawer">
+        <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border-color)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:700,color:'var(--text-primary)'}}>{booking?.booking_ref || 'Loading…'}</div>
+            <div style={{fontSize:11.5,color:'var(--text-muted)'}}>Operational snapshot</div>
+          </div>
+          <button className="tb-btn" onClick={onClose}>{I.x()}</button>
+        </div>
+
+        {loading ? (
+          <div style={{padding:24,color:'var(--text-muted)',fontSize:13}}>Loading…</div>
+        ) : booking && (
+          <div className="scroll-y" style={{flex:1}}>
+            <div className="drawer-section">
+              <h4>Booking Overview</h4>
+              <div className="drawer-row"><span className="k">Customer</span><span>{booking.customer_name}</span></div>
+              <div className="drawer-row"><span className="k">Event</span><span>{booking.event_name || '—'}</span></div>
+              <div className="drawer-row"><span className="k">Hall</span><span>{booking.hall_name}</span></div>
+              <div className="drawer-row"><span className="k">Date</span><span>{Utils.formatDate(booking.event_date)}</span></div>
+              <div className="drawer-row"><span className="k">Time</span><span>{timeHM(booking.event_time_start)} – {timeHM(booking.event_time_end)}</span></div>
+              <div className="drawer-row"><span className="k">Guests</span><span>{booking.guest_count ?? '—'}</span></div>
+              <div className="drawer-row"><span className="k">Status</span><span>{Utils.statusBadge ? Utils.statusBadge(booking.status) : booking.status}</span></div>
+              {booking.is_priority && <div className="drawer-row"><span className="k">Priority</span><span style={{color:C.gold,fontWeight:700}}>★ VIP Booking</span></div>}
+            </div>
+
+            <div className="drawer-section">
+              <h4>Financial Summary</h4>
+              <div className="drawer-row"><span className="k">Revenue (Total)</span><span style={{fontWeight:700}}>{fmtS(booking.total_amount)}</span></div>
+              <div className="drawer-row"><span className="k">Deposit / Advance</span><span>{fmtS(booking.advance_paid)}</span></div>
+              <div className="drawer-row"><span className="k">Paid so far</span><span>{fmtS(booking.amount_paid || booking.total_paid || 0)}</span></div>
+              <div className="drawer-row"><span className="k">Outstanding</span><span style={{color:C.red,fontWeight:700}}>{fmtS(Math.max(0,(booking.total_amount||0)-(booking.amount_paid||booking.total_paid||0)))}</span></div>
+              {booking.discount_amount>0 && <div className="drawer-row"><span className="k">Discount</span><span>{fmtS(booking.discount_amount)}</span></div>}
+            </div>
+
+            <div className="drawer-section">
+              <h4>Staff ({staff.length})</h4>
+              {staff.length ? staff.map(s=>(
+                <div key={s.assignment_id} className="drawer-row"><span className="k">{s.staff_name}{s.role_note?` — ${s.role_note}`:''}</span><span style={{textTransform:'capitalize'}}>{s.status}</span></div>
+              )) : <div style={{fontSize:12.5,color:'var(--text-muted)'}}>No staff assigned yet.</div>}
+              <button className="qa-btn" style={{marginTop:8}} disabled={busy} onClick={assignMyself}>+ Assign Myself</button>
+            </div>
+
+            <div className="drawer-section">
+              <h4>Inventory ({resources.length})</h4>
+              {resources.length ? resources.map(r=>(
+                <div key={r.allocation_id} className="drawer-row"><span className="k">{r.resource_name}</span><span>× {r.quantity_allocated}</span></div>
+              )) : <div style={{fontSize:12.5,color:'var(--text-muted)'}}>No additional resources reserved.</div>}
+            </div>
+
+            <div className="drawer-section">
+              <h4>Catering</h4>
+              <div style={{fontSize:12.5,color:'var(--text-muted)'}}>
+                No catering package linked to this booking yet. Packages now draw pricing/tax automatically from the centralized Master Menu.
+              </div>
+            </div>
+
+            <div className="drawer-section">
+              <h4>Timeline</h4>
+              <div className="drawer-row"><span className="k">Setup</span><span>{booking.setup_minutes || 0} min</span></div>
+              <div className="drawer-row"><span className="k">Event</span><span>{timeHM(booking.event_time_start)} – {timeHM(booking.event_time_end)}</span></div>
+              <div className="drawer-row"><span className="k">Cleanup</span><span>{booking.cleanup_minutes || 0} min</span></div>
+              <div className="drawer-row"><span className="k">Cool-off</span><span>{booking.cooloff_minutes || 0} min</span></div>
+            </div>
+
+            {(booking.internal_notes || booking.special_requests || booking.notes) && (
+              <div className="drawer-section">
+                <h4>Notes</h4>
+                {booking.notes && <div style={{fontSize:12.5,marginBottom:6}}><b>Customer:</b> {booking.notes}</div>}
+                {booking.special_requests && <div style={{fontSize:12.5,marginBottom:6}}><b>Special Requests:</b> {booking.special_requests}</div>}
+                {booking.internal_notes && <div style={{fontSize:12.5}}><b>Internal:</b> {booking.internal_notes}</div>}
+              </div>
+            )}
+
+            {activities.length>0 && (
+              <div className="drawer-section">
+                <h4>Recent Activity</h4>
+                {activities.slice(0,5).map((a,i)=>(
+                  <div key={a.activity_id||i} style={{fontSize:12,color:'var(--text-secondary)',padding:'4px 0'}}>{a.description || a.action}</div>
+                ))}
+              </div>
+            )}
+
+            <div className="drawer-section" style={{display:'flex',flexWrap:'wrap',gap:8}}>
+              <h4 style={{width:'100%'}}>Quick Actions</h4>
+              <button className="qa-btn" disabled={busy} onClick={confirmBooking}>Confirm Booking</button>
+              <button className="qa-btn" disabled={busy} onClick={markDeposit}>Mark Deposit Received</button>
+              <button className="qa-btn" disabled={busy} onClick={markFullyPaid}>Mark Fully Paid</button>
+              <button className="qa-btn" disabled={busy} onClick={completeEvent}>Complete Event</button>
+              <button className="qa-btn danger" disabled={busy} onClick={cancelBooking}>Cancel Booking</button>
+              <a className="qa-btn" style={{textDecoration:'none',display:'inline-block'}} href={`../bookings/detail.html?id=${bookingId}`}>Open Full Detail →</a>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+/* ── Resource Matrix (left) ── */
+const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDate, setAnchorDate, onSelectBooking, onHoverBooking }) => {
+  const days = granularity==='hourly' ? [anchorDate] : Array.from({length:7},(_,i)=>addDays(anchorDate,i-3));
+  const cols = granularity==='hourly' ? 24 : days.length;
+
+  const barsForHall = (hallId) => {
+    return bookings.filter(b => b.hall_id===hallId && b.status!=='cancelled' && b.status!=='draft');
+  };
+
+  return (
+    <Card hover style={{padding:0,overflow:'hidden'}}>
+      <div style={{padding:'14px 18px',borderBottom:'1px solid var(--border-color)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10}}>
+        <div>
+          <h3 style={{fontSize:14,fontWeight:700,color:'var(--text-primary)'}}>Resource Matrix</h3>
+          <p style={{fontSize:11.5,color:'var(--text-muted)',marginTop:2}}>Halls × timeline — spot free slots and conflicts at a glance</p>
+        </div>
+        <div style={{display:'flex',gap:6,alignItems:'center'}}>
+          <button className="fpill" onClick={()=>setAnchorDate(addDays(anchorDate,granularity==='hourly'?-1:-7))}>‹</button>
+          <input type="date" value={anchorDate} onChange={e=>setAnchorDate(e.target.value)} style={{fontSize:12,padding:'5px 8px',borderRadius:8,border:'1px solid var(--border-color)',background:'var(--surface)',color:'var(--text-primary)'}}/>
+          <button className="fpill" onClick={()=>setAnchorDate(addDays(anchorDate,granularity==='hourly'?1:7))}>›</button>
+          {['hourly','daily','weekly'].map(g=>(
+            <button key={g} className={`fpill${granularity===g?' on':''}`} onClick={()=>setGranularity(g)} style={{textTransform:'capitalize'}}>{g}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Column headers */}
+      <div className="matrix-row" style={{borderBottom:'2px solid var(--border-color)'}}>
+        <div className="matrix-hall-label" style={{fontWeight:700,color:'var(--text-muted)',fontSize:10.5,textTransform:'uppercase'}}>Hall</div>
+        <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`}}>
+          {granularity==='hourly'
+            ? Array.from({length:24},(_,h)=>(<div key={h} style={{fontSize:9.5,color:'var(--text-muted)',textAlign:'center',padding:'6px 0',borderRight:'1px solid var(--border-color)'}}>{h}:00</div>))
+            : days.map(d=>(<div key={d} style={{fontSize:10.5,color:d===anchorDate?C.gold:'var(--text-muted)',fontWeight:d===anchorDate?700:500,textAlign:'center',padding:'6px 0',borderRight:'1px solid var(--border-color)'}}>{new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric'})}</div>))
+          }
+        </div>
+      </div>
+
+      <div className="scroll-y" style={{maxHeight:420}}>
+        {halls.map(h=>{
+          const hallBookings = barsForHall(h.hall_id);
+          return (
+            <div className="matrix-row" key={h.hall_id}>
+              <div className="matrix-hall-label" title={h.hall_name}>{h.hall_name}</div>
+              <div className="matrix-track" style={{gridTemplateColumns:`repeat(${cols},1fr)`}}>
+                <div className="matrix-grid-lines" style={{gridTemplateColumns:`repeat(${cols},1fr)`}}>
+                  {Array.from({length:cols},(_,i)=><div key={i}/>)}
+                </div>
+                {granularity==='hourly'
+                  ? hallBookings.filter(b=>b.event_date_iso===anchorDate).map(b=>{
+                      const startH = hourOf(b.event_time_start), endH = Math.max(startH+1, hourOf(b.event_time_end)||24);
+                      return (
+                        <div key={b.booking_id} className={`matrix-bar${b.is_priority?' vip':''}`}
+                          style={{gridColumn:`${startH+1} / ${endH+1}`,background:STATUS_COLOR[b.status]||C.slate}}
+                          title={`${b.event_name||b.booking_ref} · ${b.customer_name}`}
+                          onMouseEnter={()=>onHoverBooking(b)} onMouseLeave={()=>onHoverBooking(null)}
+                          onClick={()=>onSelectBooking(b.booking_id)}>
+                          {b.event_name || b.booking_ref}
+                        </div>
+                      );
+                    })
+                  : days.map((d,i)=>{
+                      const dayBookings = hallBookings.filter(b=>b.event_date_iso===d);
+                      if (!dayBookings.length) return <div key={d} style={{gridColumn:`${i+1} / ${i+2}`}}/>;
+                      return (
+                        <div key={d} style={{gridColumn:`${i+1} / ${i+2}`,display:'flex',flexDirection:'column',gap:2,padding:'3px 2px'}}>
+                          {dayBookings.slice(0,2).map(b=>(
+                            <div key={b.booking_id} className={`matrix-bar${b.is_priority?' vip':''}`} style={{margin:0,background:STATUS_COLOR[b.status]||C.slate}}
+                              title={`${b.event_name||b.booking_ref} · ${b.customer_name}`}
+                              onMouseEnter={()=>onHoverBooking(b)} onMouseLeave={()=>onHoverBooking(null)}
+                              onClick={()=>onSelectBooking(b.booking_id)}>
+                              {b.event_name || b.booking_ref}
+                            </div>
+                          ))}
+                          {dayBookings.length>2 && <div style={{fontSize:9.5,color:'var(--text-muted)',textAlign:'center'}}>+{dayBookings.length-2} more</div>}
+                        </div>
+                      );
+                    })
+                }
+              </div>
+            </div>
+          );
+        })}
+        {!halls.length && <div style={{padding:24,fontSize:13,color:'var(--text-muted)'}}>No halls found.</div>}
+      </div>
+
+      <div style={{padding:'10px 18px',display:'flex',gap:16,flexWrap:'wrap',borderTop:'1px solid var(--border-color)'}}>
+        {STATUS_LEGEND.map(l=>(
+          <div key={l.label} style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'var(--text-secondary)'}}>
+            <span className="legend-dot" style={{background:l.color}}/>{l.label}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+/* ── Context Panel (right) — syncs with selected date / hovered / selected booking ── */
+const ContextPanel = ({ anchorDate, bookings, halls, hoveredBooking, onSelectBooking }) => {
+  const dayBookings = useMemo(()=>bookings.filter(b=>b.event_date_iso===anchorDate && b.status!=='cancelled'), [bookings,anchorDate]);
+  const busyHalls = new Set(dayBookings.map(b=>b.hall_id));
+  const revenue = dayBookings.reduce((s,b)=>s+(b.amount_paid||0),0);
+  const guestTotal = dayBookings.reduce((s,b)=>s+(b.guest_count||0),0);
+
+  return (
+    <Card hover style={{padding:'16px 18px',display:'flex',flexDirection:'column',gap:14}}>
+      <div>
+        <h3 style={{fontSize:14,fontWeight:700,color:'var(--text-primary)'}}>Daily Operational Snapshot</h3>
+        <p style={{fontSize:11.5,color:'var(--text-muted)',marginTop:2}}>{new Date(anchorDate+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div style={{textAlign:'center',padding:'10px 4px',background:'rgba(37,99,235,.07)',borderRadius:10}}>
+          <div style={{fontSize:18,fontWeight:700,color:C.blue}}>{busyHalls.size}/{halls.length}</div>
+          <div style={{fontSize:10,color:'var(--text-muted)'}}>Halls Busy</div>
+        </div>
+        <div style={{textAlign:'center',padding:'10px 4px',background:'rgba(16,185,129,.08)',borderRadius:10}}>
+          <div style={{fontSize:18,fontWeight:700,color:C.green}}>{dayBookings.length}</div>
+          <div style={{fontSize:10,color:'var(--text-muted)'}}>Events Today</div>
+        </div>
+        <div style={{textAlign:'center',padding:'10px 4px',background:'rgba(197,160,89,.1)',borderRadius:10}}>
+          <div style={{fontSize:18,fontWeight:700,color:C.gold}}>{fmtS(revenue)}</div>
+          <div style={{fontSize:10,color:'var(--text-muted)'}}>Collected Today</div>
+        </div>
+        <div style={{textAlign:'center',padding:'10px 4px',background:'rgba(100,116,139,.1)',borderRadius:10}}>
+          <div style={{fontSize:18,fontWeight:700,color:C.slate}}>{guestTotal}</div>
+          <div style={{fontSize:10,color:'var(--text-muted)'}}>Total Guests</div>
+        </div>
+      </div>
+
+      {hoveredBooking && (
+        <div style={{padding:12,background:'rgba(197,160,89,.08)',borderRadius:10,border:'1px solid rgba(197,160,89,.25)'}}>
+          <div style={{fontSize:12,fontWeight:700,color:'var(--text-primary)',marginBottom:6}}>{hoveredBooking.event_name || hoveredBooking.booking_ref}</div>
+          <div style={{fontSize:11.5,color:'var(--text-secondary)',lineHeight:1.6}}>
+            {hoveredBooking.customer_name}<br/>
+            {hoveredBooking.hall_name} · {timeHM(hoveredBooking.event_time_start)}–{timeHM(hoveredBooking.event_time_end)}<br/>
+            {hoveredBooking.guest_count||0} guests · {hoveredBooking.status}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h4 style={{fontSize:11.5,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',marginBottom:8}}>Today's Bookings</h4>
+        <div className="scroll-y" style={{maxHeight:240,display:'flex',flexDirection:'column',gap:6}}>
+          {dayBookings.length ? dayBookings.map(b=>(
+            <div key={b.booking_id} onClick={()=>onSelectBooking(b.booking_id)}
+              style={{padding:'8px 10px',borderRadius:9,border:'1px solid var(--border-color)',cursor:'pointer',fontSize:12}}>
+              <div style={{fontWeight:600,color:'var(--text-primary)'}}>{b.event_name||b.booking_ref}</div>
+              <div style={{color:'var(--text-muted)',fontSize:11}}>{b.hall_name} · {timeHM(b.event_time_start)}</div>
+            </div>
+          )) : <div style={{fontSize:12,color:'var(--text-muted)'}}>No bookings for this date.</div>}
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const CommandCenterView = () => {
+  const [halls, setHalls] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [inventorySnapshot, setInventorySnapshot] = useState([]);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [granularity, setGranularity] = useState('daily');
+  const [anchorDate, setAnchorDate] = useState(toISO(new Date()));
+  const [hoveredBooking, setHoveredBooking] = useState(null);
+  const [drawerBookingId, setDrawerBookingId] = useState(null);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const fromDate = addDays(anchorDate, -7);
+      const toDate = addDays(anchorDate, 7);
+      const [hallsRes, bookingsRes, invRes, pendingRes] = await Promise.all([
+        API.halls.list({ limit:100 }).catch(()=>({data:{halls:[]}})),
+        API.bookings.list({ limit:300, from_date:fromDate, to_date:toDate }).catch(()=>({data:{bookings:[]}})),
+        API.resources.snapshot({ event_date:anchorDate }).catch(()=>({data:[]})),
+        API.payments.pending({ limit:200 }).catch(()=>({data:{pending:[]}})),
+      ]);
+      setHalls(hallsRes.data?.halls || hallsRes.data || []);
+      const rows = (bookingsRes.data?.bookings || []).map(b => ({ ...b, event_date_iso: dateOnly(b.event_date) }));
+      setBookings(rows);
+      setInventorySnapshot(Array.isArray(invRes.data) ? invRes.data : []);
+      setPendingTotal((pendingRes.data?.pending || []).length);
+    } catch (e) {
+      Utils.toast('Some Command Center data failed to load', 'warning');
+    } finally { setLoading(false); }
+  }, [anchorDate]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const kpis = useMemo(() => {
+    const todayISO = toISO(new Date());
+    const active = bookings.filter(b => b.event_date_iso===todayISO && b.status!=='cancelled');
+    const busyHalls = new Set(active.map(b=>b.hall_id));
+    const revenue = bookings.filter(b=>b.status!=='cancelled').reduce((s,b)=>s+(b.amount_paid||0),0);
+    const occPct = halls.length ? Math.round((busyHalls.size/halls.length)*100) : 0;
+    const shortageCount = inventorySnapshot.filter(r=>r.is_shortage).length;
+    return { active: active.length, revenue, occPct, shortageCount, busyHalls: busyHalls.size };
+  }, [bookings, halls, inventorySnapshot]);
+
+  const goOrToast = (href, label) => {
+    if (href) { window.location.assign(href); return; }
+    Utils.toast(`${label} module is coming soon`, 'info');
+  };
+
+  return (
+    <>
+      <div className="fu fu-1" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10}}>
+        <div>
+          <h1 style={{fontSize:20,fontWeight:700,color:'var(--text-primary)'}}>Mission Control</h1>
+          <p style={{fontSize:12.5,color:'var(--text-muted)',marginTop:2}}>Every card below is a shortcut — click through to the relevant module.</p>
+        </div>
+      </div>
+
+      <div className="fu fu-2" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12}}>
+        <KPICard IconEl={()=>I.building({width:18,height:18})} color={C.blue}  label="Hall Occupancy" value={kpis.occPct+'%'} sub={`${kpis.busyHalls}/${halls.length} busy today`} onClick={()=>goOrToast('../reports/occupancy.html')}/>
+        <KPICard IconEl={()=>I.dollarSign({width:18,height:18})} color={C.green} label="Revenue"        value={fmtS(kpis.revenue)}       sub="Collected, non-cancelled" onClick={()=>goOrToast('../reports/revenue.html')}/>
+        <KPICard IconEl={()=>I.calendar({width:18,height:18})}  color={C.purple} label="Active Events"  value={kpis.active}              sub="Scheduled today" onClick={()=>goOrToast('../bookings/index.html')}/>
+        <KPICard IconEl={()=>I.creditCard({width:18,height:18})} color={C.red}  label="Pending Payments" value={pendingTotal}            sub="Awaiting collection" onClick={()=>goOrToast('../payments/index.html')}/>
+        <KPICard IconEl={()=>I.alertTriangle({width:18,height:18})} color={kpis.shortageCount?C.red:C.slate} label="Inventory Alerts" value={kpis.shortageCount} sub="Resources at 0 remaining" onClick={()=>goOrToast(null,'Inventory')}/>
+        <KPICard IconEl={()=>I.users({width:18,height:18})} color={C.teal} label="Staff Allocation" value="—" sub="Assign staff from a booking" onClick={()=>goOrToast(null,'Staff Management')}/>
+        <KPICard IconEl={()=>I.clipboardList({width:18,height:18})} color={C.amber} label="Catering" value="Master Menu" sub="Centralized packages" onClick={()=>goOrToast(null,'Catering Packages')}/>
+        <KPICard IconEl={()=>I.users({width:18,height:18})} color={C.purple} label="Customer Follow-ups" value="CRM" sub="Manage customers" onClick={()=>goOrToast('../customers/index.html')}/>
+        <KPICard IconEl={()=>I.trendingUp({width:18,height:18})} color={C.blue} label="Sales Pipeline" value="View" sub="Leads & quotations" onClick={()=>goOrToast('../leads/index.html')}/>
+        <KPICard IconEl={()=>I.home({width:18,height:18})} color={C.slate} label="Maintenance" value="Halls" sub="Blocked dates & upkeep" onClick={()=>goOrToast('../halls/index.html')}/>
+      </div>
+
+      <div className="fu fu-3 split-view" style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:16,alignItems:'start'}}>
+        <ResourceMatrix
+          halls={halls} bookings={bookings}
+          granularity={granularity} setGranularity={setGranularity}
+          anchorDate={anchorDate} setAnchorDate={setAnchorDate}
+          onSelectBooking={setDrawerBookingId}
+          onHoverBooking={setHoveredBooking}
+        />
+        <ContextPanel
+          anchorDate={anchorDate} bookings={bookings} halls={halls}
+          hoveredBooking={hoveredBooking} onSelectBooking={setDrawerBookingId}
+        />
+      </div>
+
+      {loading && <div style={{fontSize:12,color:'var(--text-muted)'}}>Refreshing live data…</div>}
+
+      {drawerBookingId && (
+        <QuickDrawer bookingId={drawerBookingId} onClose={()=>setDrawerBookingId(null)} onChanged={loadAll}/>
+      )}
+    </>
+  );
+};
+
+const App = () => {
+  const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
+  const [mobOpen, setMobOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem('dashboard-dark-mode') === '1'; } catch { return false; }
+  });
+
+  useEffect(()=>{ if(typeof Auth!=='undefined'){ Auth.requireAuth(); Auth.applyTheme?.(); } },[]);
+
+  useEffect(()=>{
+    document.body.classList.toggle('dark-mode', darkMode);
+    document.body.style.colorScheme = darkMode ? 'dark' : 'light';
+    try { localStorage.setItem('dashboard-dark-mode', darkMode ? '1' : '0'); } catch (_) {}
+  }, [darkMode]);
+
+  useEffect(()=>{
+    const h=()=>{ const mob=window.innerWidth<768; setIsMobile(mob); if(!mob) setMobOpen(false); };
+    window.addEventListener('resize',h);
+    return()=>window.removeEventListener('resize',h);
+  },[]);
+
+  useEffect(()=>{
+    const sb=document.getElementById('sidebar');
+    const main=document.getElementById('main');
+    const ov=document.getElementById('overlay');
+    if(!sb||!main||!ov) return;
+    if(isMobile){ sb.className=mobOpen?'':'mobile-hidden'; main.className='mobile'; ov.className=mobOpen?'show':''; }
+    else { sb.className=collapsed?'collapsed':''; main.className=collapsed?'collapsed':''; ov.className=''; }
+  },[collapsed,isMobile,mobOpen]);
+
+  window.__closeSidebar=()=>setMobOpen(false);
+  function onMenu(){ isMobile?setMobOpen(o=>!o):setCollapsed(c=>!c); }
+
+  return (
+    <>
+      <Sidebar collapsed={collapsed} onCollapse={()=>setCollapsed(c=>!c)} isMobile={isMobile} mobileOpen={mobOpen}/>
+      <div id="main">
+        <Topbar onMenu={onMenu} darkMode={darkMode} setDarkMode={setDarkMode}/>
+        <div id="content"><CommandCenterView/></div>
+      </div>
+    </>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

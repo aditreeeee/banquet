@@ -111,6 +111,22 @@ const API = (() => {
         delete: (path)               => request('DELETE', path),
         upload: (path, formData)     => request('POST',   path, { rawForm: true, body: formData }),
 
+        /* ── Authenticated file download (exports) — plain <a href> can't carry the Bearer token ── */
+        download: async (path, params, filename) => {
+            const qs = new URLSearchParams(Object.entries(params || {}).filter(([, v]) => v !== null && v !== undefined && v !== ''));
+            const res = await fetch(`${BASE_URL}${path}?${qs.toString()}`, { headers: headers() });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || `Export failed (${res.status})`);
+            }
+            const blob = await res.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(url);
+        },
+
         /* ─ Auth endpoints ─ */
         auth: {
             login:         (email, password) => request('POST', '/auth/login',          { body: { email, password } }),
@@ -155,8 +171,17 @@ const API = (() => {
             create:   (d)    => request('POST',  '/bookings',          { body: d }),
             update:   (id,d) => request('PUT',   `/bookings/${id}`,    { body: d }),
             cancel:   (id,r) => request('POST',  `/bookings/${id}/cancel`, { body: { reason: r } }),
+            status:   (id,s) => request('PATCH', `/bookings/${id}/status`, { body: { status: s } }),
             price:    (d)    => request('POST',  '/bookings/calculate-price', { body: d }),
             checkAvail:(d)   => request('POST',  '/bookings/check-availability', { body: d }),
+            activities: (id)    => request('GET',  `/bookings/${id}/activities`),
+            resources:  (id)    => request('GET',  `/bookings/${id}/resources`),
+            contacts:   (id)    => request('GET',  `/bookings/${id}/contacts`),
+            addContact: (id,d)  => request('POST', `/bookings/${id}/contacts`, { body: d }),
+            removeContact: (id,contactId) => request('DELETE', `/bookings/${id}/contacts/${contactId}`),
+            staff:      (id)    => request('GET',  `/bookings/${id}/staff`),
+            assignStaff:(id,d)  => request('POST', `/bookings/${id}/staff`, { body: d }),
+            removeStaff:(id,assignmentId) => request('DELETE', `/bookings/${id}/staff/${assignmentId}`),
         },
 
         /* ─ Customers ─ */
@@ -165,6 +190,7 @@ const API = (() => {
             get:    (id)   => request('GET',  `/customers/${id}`),
             create: (d)    => request('POST', '/customers',        { body: d }),
             update: (id,d) => request('PUT',  `/customers/${id}`,  { body: d }),
+            bookingHistory: (id,p) => request('GET', `/customers/${id}/booking-history`, { params: p }),
         },
 
         /* ─ Payments ─ */
@@ -191,6 +217,35 @@ const API = (() => {
             create: (d) => request('POST', '/resources',        { body: d }),
             update: (id,d)=>request('PUT', `/resources/${id}`,  { body: d }),
             delete: (id)=> request('DELETE',`/resources/${id}`),
+            snapshot: (p) => request('GET', '/resources/snapshot', { params: p }),
+        },
+
+        /* ─ Catering (Master Menu packages) ─ */
+        catering: {
+            packages:    (p)     => request('GET',  '/catering/packages',        { params: p }),
+            package:     (id)    => request('GET',  `/catering/packages/${id}`),
+            createPackage: (d)   => request('POST', '/catering/packages',        { body: d }),
+            pricing:     (id)    => request('GET',  `/catering/packages/${id}/pricing`),
+            bill:        (id,p)  => request('GET',  `/catering/packages/${id}/bill`, { params: p }),
+            addItem:     (id,d)  => request('POST', `/catering/packages/${id}/items`, { body: d }),
+            removeItem:  (id,itemId) => request('DELETE', `/catering/packages/${id}/items/${itemId}`),
+            syncPrice:   (id)    => request('POST', `/catering/packages/${id}/sync-price`),
+        },
+
+        /* ─ Master Menu (menu items) ─ */
+        menuItems: {
+            list:       (p)    => request('GET',  '/menu-items',      { params: p }),
+            get:        (id)   => request('GET',  `/menu-items/${id}`),
+            create:     (d)    => request('POST', '/menu-items',       { body: d }),
+            update:     (id,d) => request('PUT',  `/menu-items/${id}`, { body: d }),
+            categories: ()     => request('GET',  '/menu-items/categories'),
+        },
+
+        /* ─ Operational Charges ─ */
+        operationalCharges: {
+            list:      ()      => request('GET', '/operational-charges'),
+            calculate: (p)     => request('GET', '/operational-charges/calculate', { params: p }),
+            upsert:    (type,d)=> request('PUT', `/operational-charges/${type}`,   { body: d }),
         },
 
         /* ─ Reports ─ */
@@ -200,6 +255,7 @@ const API = (() => {
             occupancy:  (p) => request('GET', '/reports/occupancy',   { params: p }),
             customers:  (p) => request('GET', '/reports/customers',   { params: p }),
             tax:        (p) => request('GET', '/reports/tax',         { params: p }),
+            ownerAnalytics: (p) => request('GET', '/reports/owner-analytics', { params: p }),
         },
 
         /* ─ Notifications ─ */
@@ -227,6 +283,22 @@ const API = (() => {
         /* ─ Audit logs ─ */
         audit: {
             list: (p) => request('GET', '/audit-logs', { params: p }),
+        },
+
+        /* ─ Leads (Sales Pipeline) ─ */
+        leads: {
+            list:    (p)    => request('GET',   '/leads',           { params: p }),
+            get:     (id)   => request('GET',   `/leads/${id}`),
+            create:  (d)    => request('POST',  '/leads',           { body: d }),
+            update:  (id,d) => request('PUT',   `/leads/${id}`,     { body: d }),
+            stage:   (id,d) => request('PATCH', `/leads/${id}/stage`, { body: d }),
+            convert: (id,d) => request('POST',  `/leads/${id}/convert`, { body: d }),
+        },
+
+        /* ─ Marketing Automation ─ */
+        marketing: {
+            send:    (d) => request('POST', '/marketing/send', { body: d }),
+            history: (p) => request('GET',  '/marketing/history', { params: p }),
         },
 
         getToken,

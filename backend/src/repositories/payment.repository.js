@@ -73,7 +73,10 @@ const findAll = async ({ companyId, branchId, status, method, bookingId, fromDat
             { ...params, limit, offset }
         ),
         executeQuery(
-            `SELECT COUNT(*) AS total FROM Payments p JOIN Bookings b ON b.booking_id = p.booking_id WHERE ${where}`,
+            `SELECT COUNT(*) AS total FROM Payments p
+             JOIN Bookings b ON b.booking_id = p.booking_id
+             JOIN Customers c ON c.customer_id = b.customer_id
+             WHERE ${where}`,
             params
         ),
     ]);

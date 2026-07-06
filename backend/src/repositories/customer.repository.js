@@ -131,8 +131,9 @@ const update = async (customerId, companyId, data) => {
 
 const getBookingHistory = async (customerId, companyId, { offset, limit }) => {
     const rows = await executeQuery(
-        `SELECT b.booking_id, b.booking_ref, b.event_date, b.event_name,
-                b.status, b.total_amount, h.hall_name
+        `SELECT b.booking_id, b.booking_ref, b.event_date, b.event_end_date, b.event_name,
+                b.event_time_start, b.event_time_end,
+                b.status, b.total_amount, b.amount_paid, b.updated_at, h.hall_name
          FROM Bookings b
          JOIN Halls h ON h.hall_id = b.hall_id
          WHERE b.customer_id = @customerId AND b.company_id = @companyId

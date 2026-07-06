@@ -1,0 +1,29 @@
+/**
+ * Marketing Automation Validators
+ */
+'use strict';
+
+const Joi = require('joi');
+
+const validate = (schema) => (req, res, next) => {
+    const { error, value } = schema.validate(req.body, { abortEarly: false, stripUnknown: true });
+    if (error) {
+        const { ValidationError } = require('../middleware/errorHandler');
+        const errors = error.details.map(d => ({ field: d.context?.key || d.path.join('.'), message: d.message }));
+        return next(new ValidationError('Validation failed', errors));
+    }
+    req.body = value;
+    next();
+};
+
+const sendSchema = Joi.object({
+    leadId:       Joi.number().integer().positive().optional(),
+    customerId:   Joi.number().integer().positive().optional(),
+    campaignType: Joi.string().valid(
+        'flyer', 'discount', 'festival_offer', 'wedding_package', 'anniversary_package', 'birthday_package'
+    ).required(),
+    subject: Joi.string().max(200).optional(),
+    message: Joi.string().max(4000).required(),
+}).or('leadId', 'customerId');
+
+module.exports = { validateSend: validate(sendSchema) };

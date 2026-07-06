@@ -15,5 +15,6 @@ router.get('/revenue',   requirePermission(PERMISSIONS.REPORTS_READ), ctrl.getRe
 router.get('/bookings',  requirePermission(PERMISSIONS.REPORTS_READ), ctrl.getBookings);
 router.get('/occupancy', requirePermission(PERMISSIONS.REPORTS_READ), ctrl.getOccupancy);
 router.get('/payments',  requirePermission(PERMISSIONS.REPORTS_READ), ctrl.getPayments);
+router.get('/owner-analytics', requirePermission(PERMISSIONS.REPORTS_READ), ctrl.getOwnerAnalytics);
 
 module.exports = router;

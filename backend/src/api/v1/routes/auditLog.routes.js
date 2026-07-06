@@ -42,10 +42,10 @@ router.get('/', requirePermission(PERMISSIONS.AUDIT_LOGS_READ), async (req, res)
             `SELECT al.log_id, al.action, al.entity_type, al.entity_id,
                     al.description, al.old_values, al.new_values,
                     al.ip_address, al.user_agent, al.created_at,
-                    CONCAT(u.first_name, ' ', u.last_name) AS user_name,
+                    CASE WHEN al.user_id IS NULL THEN 'System' ELSE CONCAT(u.first_name, ' ', u.last_name) END AS user_name,
                     u.email AS user_email
              FROM AuditLogs al
-             JOIN Users u ON u.user_id = al.user_id
+             LEFT JOIN Users u ON u.user_id = al.user_id
              WHERE ${where}
              ORDER BY al.created_at DESC
              OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,

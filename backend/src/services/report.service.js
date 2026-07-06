@@ -95,4 +95,75 @@ const getPaymentReport = async (query, actor) => {
     return { summary, payments, from, to };
 };
 
-module.exports = { getRevenueReport, getBookingReport, getOccupancyReport, getPaymentReport };
+// ─── Owner Analytics ────────────────────────────────────────────────────────
+/**
+ * Combined owner-facing analytics: revenue per hall (and per sqft), average
+ * booking value, cancellation/refund rates, hall utilization (reuses the
+ * occupancy report), most popular hall, top customers, inventory cost, and
+ * a month-over-month comparison.
+ *
+ * NOTE: labour cost and utility cost are NOT included — this schema has no
+ * fields tracking either yet, so "net contribution margin" here is revenue
+ * minus tracked inventory cost and discounts only, not a full P&L margin.
+ */
+const getOwnerAnalytics = async (query, actor) => {
+    const { from, to } = validateDateRange(query.from_date, query.to_date);
+    const branchId = actor.branchId || query.branch_id || null;
+    const companyId = actor.companyId;
+
+    // Previous period of equal length, immediately preceding `from`, for month-over-month comparison.
+    const rangeDays = Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
+    const previousTo = new Date(new Date(from).getTime() - 86400000);
+    const previousFrom = new Date(previousTo.getTime() - (rangeDays - 1) * 86400000);
+
+    const [
+        revenuePerHall, occupancy, topCustomers, rates, inventoryCost, monthlyComparison, summary,
+    ] = await Promise.all([
+        reportRepo.getRevenuePerHall({ companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getOccupancyReport({ companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getTopCustomers({ companyId, branchId, fromDate: from, toDate: to, limit: 10 }),
+        reportRepo.getCancellationAndRefundRates({ companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getInventoryCost({ companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getMonthlyComparison({
+            companyId, branchId,
+            currentFrom: from, currentTo: to,
+            previousFrom: previousFrom.toISOString().slice(0, 10),
+            previousTo:   previousTo.toISOString().slice(0, 10),
+        }),
+        reportRepo.getSummaryStats({ companyId, branchId, fromDate: from, toDate: to }),
+    ]);
+
+    const mostPopularHall = revenuePerHall.reduce((best, h) =>
+        (!best || h.bookings_count > best.bookings_count) ? h : best, null);
+    const peakOccupancyHall = occupancy.length ? occupancy[0] : null;
+
+    const avgBookingValue = summary.total_bookings > 0
+        ? Number((summary.gross_revenue / summary.total_bookings).toFixed(2))
+        : 0;
+
+    const netContributionMargin = Number(summary.gross_revenue) - Number(inventoryCost);
+
+    const revenueChangePct = monthlyComparison.previous.revenue > 0
+        ? Number((((monthlyComparison.current.revenue - monthlyComparison.previous.revenue) / monthlyComparison.previous.revenue) * 100).toFixed(2))
+        : null;
+    const bookingsChangePct = monthlyComparison.previous.bookings_count > 0
+        ? Number((((monthlyComparison.current.bookings_count - monthlyComparison.previous.bookings_count) / monthlyComparison.previous.bookings_count) * 100).toFixed(2))
+        : null;
+
+    return {
+        from, to,
+        revenuePerHall,
+        hallUtilization: occupancy,
+        mostPopularHall,
+        peakOccupancyHall,
+        topCustomers,
+        avgBookingValue,
+        cancellationRate: rates.cancellation_rate,
+        refundRate: rates.refund_rate,
+        inventoryCost,
+        netContributionMargin,
+        monthlyComparison: { ...monthlyComparison, revenueChangePct, bookingsChangePct },
+    };
+};
+
+module.exports = { getRevenueReport, getBookingReport, getOccupancyReport, getPaymentReport, getOwnerAnalytics };

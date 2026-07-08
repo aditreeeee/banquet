@@ -127,7 +127,12 @@ const cancel = async (req, res) => {
     const booking = await bookingService.cancel(
         parseInt(req.params.id, 10),
         req.body.reason,
-        actor(req)
+        actor(req),
+        {
+            cancellationCharge: req.body.cancellationCharge,
+            refundAmount:       req.body.refundAmount,
+            paymentId:          req.body.paymentId,
+        }
     );
     return response.success(res, booking, 'Booking cancelled');
 };
@@ -146,6 +151,16 @@ const getResources = async (req, res) => {
         req.companyId
     );
     return response.success(res, allocations);
+};
+
+const updateResources = async (req, res) => {
+    const allocations = await bookingService.updateResourceAllocations(
+        parseInt(req.params.id, 10),
+        req.companyId,
+        req.body.resources || [],
+        { userId: req.user.user_id }
+    );
+    return response.success(res, allocations, 'Inventory allocation updated');
 };
 
 const addSlot = async (req, res) => {
@@ -214,6 +229,6 @@ const removeStaff = async (req, res) => {
 
 module.exports = {
     checkAvailability, checkAvailabilityPost, calculatePrice, getBookedDates, create, getAll, getById, getByRef,
-    update, reschedule, updateStatus, cancel, getActivities, getResources, getContacts, addContact, removeContact,
+    update, reschedule, updateStatus, cancel, getActivities, getResources, updateResources, getContacts, addContact, removeContact,
     getStaff, assignStaff, removeStaff, clone, addSlot, getSlots,
 };

@@ -34,9 +34,17 @@ const normalize = (data) => ({
     address:      data.address                                        || null,
     city:         data.city                                           || null,
     state:        data.state                                          || null,
+    pincode:      data.pincode                                        || null,
+    gstNumber:    data.gstNumber    || data.gst_number                 || null,
     phone:        data.phone                                          || null,
     email:        data.email                                          || null,
+    imageUrl:     data.imageUrl     || data.image_url                  || null,
+    totalCapacity: data.totalCapacity || data.total_capacity           || null,
     branchId:     data.branchId     || data.branch_id                 || null,
+    // Frontend uses a 3-way status dropdown (active/inactive/maintenance) but the
+    // schema only has a boolean is_active — "maintenance" is treated as active
+    // (still bookable) since there's no separate maintenance flag on Banquets.
+    isActive:     data.isActive     ?? data.is_active ?? (data.status ? data.status !== 'inactive' : null),
 });
 
 const create = async (data, actor) => {

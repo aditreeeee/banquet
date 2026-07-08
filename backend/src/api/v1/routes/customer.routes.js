@@ -16,5 +16,6 @@ router.get('/:id',                   requirePermission(PERMISSIONS.CUSTOMERS_REA
 router.put('/:id',                   requirePermission(PERMISSIONS.CUSTOMERS_UPDATE), ctrl.update);
 router.patch('/:id',                 requirePermission(PERMISSIONS.CUSTOMERS_UPDATE), ctrl.update);
 router.get('/:id/booking-history',   requirePermission(PERMISSIONS.CUSTOMERS_READ),   ctrl.getHistory);
+router.delete('/:id',                requirePermission(PERMISSIONS.CUSTOMERS_DELETE), ctrl.deactivate);
 
 module.exports = router;

@@ -16,11 +16,36 @@ const expireTentativeHoldsJob = require('./src/jobs/expireTentativeHolds.job');
 const PORT = process.env.PORT || 3000;
 const ENV  = process.env.NODE_ENV || 'development';
 
+const DB_STARTUP_RETRIES    = parseInt(process.env.DB_STARTUP_RETRIES, 10) || 10;
+const DB_STARTUP_RETRY_MS   = parseInt(process.env.DB_STARTUP_RETRY_MS, 10) || 5000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Retries pre-warming the pool so a slow-starting SQL Server (e.g. right after
+// a host reboot, when it initializes slower than Node) doesn't permanently
+// kill the API — a transient failure here previously required a manual restart.
+const connectWithRetry = async () => {
+    for (let attempt = 1; attempt <= DB_STARTUP_RETRIES; attempt += 1) {
+        try {
+            await getPool();
+            return;
+        } catch (err) {
+            if (attempt === DB_STARTUP_RETRIES) {
+                throw err;
+            }
+            logger.error('DB connection attempt failed, retrying', {
+                attempt, maxAttempts: DB_STARTUP_RETRIES, error: err.message,
+            });
+            await sleep(DB_STARTUP_RETRY_MS);
+        }
+    }
+};
+
 // ─── Start ───────────────────────────────────────────────────────────────────
 (async () => {
     try {
-        // Pre-warm the DB connection pool
-        await getPool();
+        // Pre-warm the DB connection pool (with retry — see connectWithRetry)
+        await connectWithRetry();
 
         const server = app.listen(PORT, () => {
             logger.info('BanquetPro API server started', { port: PORT, env: ENV });

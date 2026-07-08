@@ -31,13 +31,25 @@ const getMeta = (req) => ({
     userAgent: req.headers['user-agent'] || '',
 });
 
+// ─── POST /auth/register ──────────────────────────────────────────────────────
+
+const register = async (req, res) => {
+    const user = await authService.register(req.body);
+    return response.success(
+        res,
+        { user },
+        'Registration submitted. Your account is awaiting administrator approval.',
+        201
+    );
+};
+
 // ─── POST /auth/login ─────────────────────────────────────────────────────────
 
 const login = async (req, res) => {
     const { email, password, remember_me } = req.body;
     const meta = getMeta(req);
 
-    const { user, accessToken, refreshToken, permissions } = await authService.login(
+    const { user, accessToken, refreshToken, permissions, roles } = await authService.login(
         { email, password, remember_me },
         meta
     );
@@ -53,6 +65,7 @@ const login = async (req, res) => {
         user,
         accessToken,
         permissions,
+        roles,
         // Also return in body for non-browser clients (mobile / API)
         refreshToken,
         tokenType: 'Bearer',
@@ -112,8 +125,8 @@ const refresh = async (req, res) => {
 // ─── GET /auth/me ─────────────────────────────────────────────────────────────
 
 const me = async (req, res) => {
-    const { user, permissions } = await authService.me(req.user.user_id);
-    return response.success(res, { user, permissions }, 'Profile retrieved');
+    const { user, permissions, roles } = await authService.me(req.user.user_id);
+    return response.success(res, { user, permissions, roles }, 'Profile retrieved');
 };
 
 // ─── POST /auth/forgot-password ───────────────────────────────────────────────
@@ -146,6 +159,7 @@ const changePassword = async (req, res) => {
 
 module.exports = {
     login,
+    register,
     logout,
     logoutAll,
     refresh,

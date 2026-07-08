@@ -5,12 +5,21 @@
 
 const marketingService = require('../../../services/marketing.service');
 const response = require('../../../utils/response');
+const { ValidationError } = require('../middleware/errorHandler');
 
 const actor = (req) => ({ userId: req.user.user_id, companyId: req.companyId });
 
 const send = async (req, res) => {
     const result = await marketingService.send(req.body, actor(req));
     return response.created(res, result, 'Campaign sent');
+};
+
+const uploadAttachment = async (req, res) => {
+    if (!req.file) throw new ValidationError('No file uploaded');
+    return response.created(res, {
+        url: `/uploads/campaigns/${req.file.filename}`,
+        name: req.file.originalname,
+    }, 'File uploaded');
 };
 
 const getHistory = async (req, res) => {
@@ -22,4 +31,4 @@ const getHistory = async (req, res) => {
     return response.success(res, history);
 };
 
-module.exports = { send, getHistory };
+module.exports = { send, getHistory, uploadAttachment };

@@ -8,6 +8,8 @@ const { requirePermission } = require('../middleware/auth');
 const { PERMISSIONS }       = require('../../../constants');
 const { executeQuery }      = require('../../../config/database');
 const response              = require('../../../utils/response');
+const auditLogRepo          = require('../../../repositories/auditLog.repository');
+const settingsService       = require('../../../services/settings.service');
 
 const router = Router();
 
@@ -127,29 +129,51 @@ router.post('/', requirePermission(PERMISSIONS.INVOICES_CREATE), async (req, res
     const year          = new Date().getFullYear();
     const invoiceNumber = `INV-${year}-${Date.now().toString().slice(-6)}`;
 
+    // Tax rates are configurable per company (Settings → Billing & Tax) rather
+    // than hardcoded, so GST changes take effect without a code change.
+    const { cgstRate, sgstRate } = await settingsService.getTaxRates(req.companyId);
+    const taxableAmount = parseFloat(b.total_amount);
+    const cgstAmount = Math.round(taxableAmount * (cgstRate / 100) * 100) / 100;
+    const sgstAmount = Math.round(taxableAmount * (sgstRate / 100) * 100) / 100;
+    const grandTotal = taxableAmount + cgstAmount + sgstAmount;
+
     const result = await executeQuery(
         `INSERT INTO Invoices
             (invoice_number, company_id, booking_id, customer_id,
              invoice_date, due_date,
              subtotal, discount_amount, taxable_amount,
+             cgst_rate, cgst_amount, sgst_rate, sgst_amount,
              grand_total, amount_paid, balance_due,
              payment_status, created_by, created_at)
          OUTPUT INSERTED.invoice_id AS insertId
          VALUES
             (@invoiceNumber, @companyId, @bookingId, @customerId,
              CAST(GETUTCDATE() AS DATE), DATEADD(day, 7, CAST(GETUTCDATE() AS DATE)),
-             @amount, 0, @amount,
-             @amount, 0, @amount,
+             @taxableAmount, 0, @taxableAmount,
+             @cgstRate, @cgstAmount, @sgstRate, @sgstAmount,
+             @grandTotal, 0, @grandTotal,
              'pending', @createdBy, GETUTCDATE())`,
         {
             invoiceNumber,
             companyId:  req.companyId,
             bookingId:  b.booking_id,
             customerId: b.customer_id,
-            amount:     b.total_amount,
+            taxableAmount,
+            cgstRate, cgstAmount, sgstRate, sgstAmount,
+            grandTotal,
             createdBy:  req.user.user_id,
         }
     );
+
+    await auditLogRepo.log({
+        companyId:  req.companyId,
+        userId:     req.user.user_id,
+        action:     'invoice.generated',
+        entityType: 'invoice',
+        entityId:   result[0].insertId,
+        description: `Invoice ${invoiceNumber} generated for booking ${b.booking_ref}`,
+        newValues:  { invoiceNumber, bookingId: b.booking_id, taxableAmount, cgstAmount, sgstAmount, grandTotal },
+    });
 
     return response.created(res, { invoice_id: result[0].insertId, invoice_number: invoiceNumber });
 });
@@ -168,6 +192,14 @@ router.delete('/:id', requirePermission(PERMISSIONS.INVOICES_CREATE), async (req
          WHERE invoice_id = @id AND company_id = @companyId`,
         { id: parseInt(req.params.id, 10), companyId: req.companyId }
     );
+    await auditLogRepo.log({
+        companyId:  req.companyId,
+        userId:     req.user.user_id,
+        action:     'invoice.cancelled',
+        entityType: 'invoice',
+        entityId:   req.params.id,
+        description: `Invoice ${req.params.id} cancelled`,
+    });
     return response.success(res, null, 'Invoice cancelled');
 });
 

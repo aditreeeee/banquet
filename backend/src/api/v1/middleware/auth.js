@@ -30,6 +30,8 @@ const authenticate = async (req, res, next) => {
             is_active: 1,
             role_id: 0,
             role_slug: 'super_admin',
+            roles: ['super_admin'],
+            roleIds: [0],
             permissions: [],
             isSuperAdmin: true,
         };
@@ -52,14 +54,12 @@ const authenticate = async (req, res, next) => {
             throw err; // Let global handler map JWT errors to 401
         }
 
-        // Load user with role (lightweight query)
+        // Load user (lightweight query)
         const result = await executeQuery(
             `SELECT
                 u.user_id, u.email, u.first_name, u.last_name,
-                u.company_id, u.branch_id, u.is_active,
-                u.role_id, r.role_slug
+                u.company_id, u.branch_id, u.is_active, u.role_id
              FROM Users u
-             INNER JOIN Roles r ON r.role_id = u.role_id
              WHERE u.user_id = @userId AND u.is_active = 1`,
             { userId: decoded.userId }
         );
@@ -70,28 +70,48 @@ const authenticate = async (req, res, next) => {
 
         const user = result[0];
 
-        // Load permissions (from cache or DB)
-        const cacheKey = `perms_${user.role_id}`;
+        // Load all roles assigned to this user (multi-role support via UserRoles).
+        // A user's effective permissions are the union of every assigned role's grants.
+        const roleRows = await executeQuery(
+            `SELECT r.role_id, r.role_slug
+             FROM UserRoles ur
+             INNER JOIN Roles r ON r.role_id = ur.role_id
+             WHERE ur.user_id = @userId AND r.is_active = 1`,
+            { userId: user.user_id }
+        );
+
+        if (!roleRows.length) {
+            throw new AuthError('User account has no roles assigned');
+        }
+
+        const roleIds   = roleRows.map(r => r.role_id).sort((a, b) => a - b);
+        const roleSlugs = roleRows.map(r => r.role_slug);
+
+        // Load permissions (from cache or DB) — union across all assigned roles
+        const cacheKey = `perms_${roleIds.join('-')}`;
         let permissions = permissionCache.get(cacheKey);
 
         if (!permissions) {
             const permResult = await executeQuery(
-                `SELECT p.permission_key
+                `SELECT DISTINCT p.permission_key
                  FROM RolePermissions rp
                  INNER JOIN Permissions p ON p.permission_id = rp.permission_id
-                 WHERE rp.role_id = @roleId`,
-                { roleId: user.role_id }
+                 WHERE rp.role_id IN (${roleIds.join(',')})`
             );
 
             permissions = permResult.map(r => r.permission_key);
             permissionCache.set(cacheKey, permissions);
         }
 
-        // Attach user to request
+        // Attach user to request. `role_slug` (primary/default role, from Users.role_id)
+        // is kept for display purposes only — authorization always uses `roles`/`permissions`.
         req.user = {
             ...user,
+            role_slug: roleRows.find(r => r.role_id === user.role_id)?.role_slug || roleSlugs[0],
+            roles: roleSlugs,
+            roleIds,
             permissions,
-            isSuperAdmin: user.role_slug === 'super_admin',
+            isSuperAdmin: roleSlugs.includes('super_admin'),
         };
 
         next();
@@ -140,8 +160,63 @@ const requireAnyPermission = (...permissionKeys) => (req, res, next) => {
 const requireRole = (...roleSlugs) => (req, res, next) => {
     if (!req.user) return next(new AuthError());
     if (req.user.isSuperAdmin) return next();
-    if (!roleSlugs.includes(req.user.role_slug)) return next(new ForbiddenError());
+    if (!roleSlugs.some(slug => req.user.roles.includes(slug))) return next(new ForbiddenError());
     next();
+};
+
+// ─── Scope-based access (branch / hall) ───────────────────────────────────────
+// Foundation for future multi-location deployments. A role's grant of a given
+// permission is tenant-wide by default; RolePermissionScopes optionally
+// restricts specific role+permission combos to a set of branches/halls. When
+// no scope rows exist for a role+permission, access remains unrestricted
+// (current behavior) — this is purely additive.
+const scopeCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
+
+const getPermissionScopes = async (roleIds, permissionKey) => {
+    const cacheKey = `scope_${roleIds.join('-')}_${permissionKey}`;
+    let rows = scopeCache.get(cacheKey);
+    if (rows) return rows;
+
+    rows = await executeQuery(
+        `SELECT rps.branch_id, rps.hall_id
+         FROM RolePermissionScopes rps
+         INNER JOIN Permissions p ON p.permission_id = rps.permission_id
+         WHERE rps.role_id IN (${roleIds.join(',')}) AND p.permission_key = @permissionKey`,
+        { permissionKey }
+    );
+    scopeCache.set(cacheKey, rows);
+    return rows;
+};
+
+/**
+ * Restrict a permission to specific branches/halls, if the role(s) granting
+ * it have scope rows defined. `resolveScope(req)` returns { branchId, hallId }
+ * for the entity being accessed (e.g. looked up from the route's :id).
+ * @param {string} permissionKey
+ * @param {(req) => Promise<{branchId?: number, hallId?: number}>} resolveScope
+ */
+const requireScope = (permissionKey, resolveScope) => async (req, res, next) => {
+    if (!req.user) return next(new AuthError());
+    if (req.user.isSuperAdmin) return next();
+
+    try {
+        const scopeRows = await getPermissionScopes(req.user.roleIds, permissionKey);
+        if (!scopeRows.length) return next(); // unrestricted — no scope configured
+
+        const { branchId, hallId } = await resolveScope(req);
+        const allowed = scopeRows.some(r =>
+            (r.branch_id == null || r.branch_id === branchId) &&
+            (r.hall_id == null || r.hall_id === hallId)
+        );
+
+        if (!allowed) {
+            logger.warn('Scope denied', { userId: req.user.user_id, permissionKey, branchId, hallId, path: req.path });
+            return next(new ForbiddenError('You do not have access to this branch/hall'));
+        }
+        next();
+    } catch (err) {
+        next(err);
+    }
 };
 
 // ─── Scope to Company (auto-inject company_id into query param) ───────────────
@@ -163,9 +238,18 @@ const scopeToCompany = (req, res, next) => {
     next();
 };
 
-// ─── Invalidate Permission Cache (call when role permissions change) ──────────
+// ─── Invalidate Permission Cache (call when role permissions or user-role
+// assignments change) ──────────────────────────────────────────────────────
+// Cache keys are the sorted, joined role_ids of a user's assigned-role set
+// (e.g. "perms_2-5"), since permissions are now a union across roles. A single
+// role_id can appear in many different users' composite keys, so we clear any
+// cache entry whose key contains it rather than trying to reconstruct the key.
 const invalidatePermissionCache = (roleId) => {
-    permissionCache.del(`perms_${roleId}`);
+    const needle = String(roleId);
+    permissionCache.keys().forEach((key) => {
+        const ids = key.replace('perms_', '').split('-');
+        if (ids.includes(needle)) permissionCache.del(key);
+    });
 };
 
 module.exports = {
@@ -173,6 +257,7 @@ module.exports = {
     requirePermission,
     requireAnyPermission,
     requireRole,
+    requireScope,
     scopeToCompany,
     invalidatePermissionCache,
 };

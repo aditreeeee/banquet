@@ -71,6 +71,40 @@ const findAll = async ({ companyId, branchId, search, isActive, source, offset, 
     return { rows, total: countRows[0].total };
 };
 
+/** Real dashboard stats for the customer index page's stat strip. */
+const getStats = async ({ companyId, branchId }) => {
+    const rows = await executeQuery(
+        `SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN c.created_at >= DATEADD(DAY, -DAY(GETUTCDATE()) + 1, CAST(GETUTCDATE() AS DATE)) THEN 1 ELSE 0 END) AS new_this_month,
+            (SELECT AVG(x.spend) FROM (
+                SELECT ISNULL(SUM(b.total_amount), 0) AS spend
+                FROM Customers c2
+                LEFT JOIN Bookings b ON b.customer_id = c2.customer_id AND b.status NOT IN ('draft','cancelled')
+                WHERE c2.company_id = @companyId AND (@branchId IS NULL OR c2.branch_id = @branchId)
+                GROUP BY c2.customer_id
+            ) x) AS avg_spend,
+            (SELECT COUNT(*) FROM (
+                SELECT b.customer_id, COUNT(*) AS booking_count
+                FROM Customers c3
+                JOIN Bookings b ON b.customer_id = c3.customer_id AND b.status NOT IN ('draft','cancelled')
+                WHERE c3.company_id = @companyId AND (@branchId IS NULL OR c3.branch_id = @branchId)
+                GROUP BY b.customer_id
+                HAVING COUNT(*) > 1
+            ) y) AS repeat_customers
+         FROM Customers c
+         WHERE c.company_id = @companyId AND (@branchId IS NULL OR c.branch_id = @branchId)`,
+        { companyId, branchId: branchId || null }
+    );
+    const s = rows[0] || {};
+    return {
+        total: s.total || 0,
+        new_this_month: s.new_this_month || 0,
+        avg_spend: Math.round(s.avg_spend || 0),
+        repeat_customers: s.repeat_customers || 0,
+    };
+};
+
 const create = async (data) => {
     const result = await executeQuery(
         `INSERT INTO Customers
@@ -109,6 +143,7 @@ const update = async (customerId, companyId, data) => {
              state           = ISNULL(@state,     state),
              notes           = ISNULL(@notes,     notes),
              source          = ISNULL(@source,    source),
+             is_active       = ISNULL(@isActive,  is_active),
              updated_at      = GETUTCDATE()
          WHERE customer_id = @id AND company_id = @companyId`,
         {
@@ -124,6 +159,7 @@ const update = async (customerId, companyId, data) => {
             state:     data.state          || null,
             notes:     data.notes          || null,
             source:    data.source         || null,
+            isActive:  data.isActive != null ? data.isActive : null,
         }
     );
     return findById(customerId, companyId);
@@ -144,5 +180,5 @@ const getBookingHistory = async (customerId, companyId, { offset, limit }) => {
     return rows;
 };
 
-module.exports = { findById, findByEmail, findAll, create, update, getBookingHistory };
+module.exports = { findById, findByEmail, findAll, create, update, getBookingHistory, getStats };
 

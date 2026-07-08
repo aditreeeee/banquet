@@ -11,11 +11,15 @@ const { PERMISSIONS }      = require('../../../constants');
 const router = Router();
 
 router.get('/roles',              ctrl.getRoles);
+router.get('/pending',            requirePermission(PERMISSIONS.USERS_READ),   ctrl.getPending);
 router.get('/',                   requirePermission(PERMISSIONS.USERS_READ),   ctrl.getAll);
 router.post('/',                  requirePermission(PERMISSIONS.USERS_CREATE), ctrl.create);
 router.get('/:id',                requirePermission(PERMISSIONS.USERS_READ),   ctrl.getById);
+router.get('/:id/schedule',       requirePermission(PERMISSIONS.USERS_READ),   ctrl.getSchedule);
 router.patch('/:id',              requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.update);
 router.put('/:id',                requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.update);
 router.patch('/:id/toggle-status',requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.toggleStatus);
+router.patch('/:id/approve',      requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.approve);
+router.patch('/:id/reject',       requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.reject);
 
 module.exports = router;

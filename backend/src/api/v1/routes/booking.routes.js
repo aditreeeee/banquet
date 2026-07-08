@@ -24,6 +24,7 @@ router.get('/ref/:ref',      requirePermission(PERMISSIONS.BOOKINGS_READ),   ctr
 router.get('/:id',           requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getById);
 router.get('/:id/activities', requirePermission(PERMISSIONS.BOOKINGS_READ),  ctrl.getActivities);
 router.get('/:id/resources',  requirePermission(PERMISSIONS.BOOKINGS_READ),  ctrl.getResources);
+router.put('/:id/resources',  requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateResources, ctrl.updateResources);
 router.get('/:id/contacts',   requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getContacts);
 router.post('/:id/contacts',  requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateContact, ctrl.addContact);
 router.delete('/:id/contacts/:contactId', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), ctrl.removeContact);

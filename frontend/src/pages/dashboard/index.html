@@ -133,6 +133,20 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
   box-shadow:0 0 9px rgba(197,160,89,.65);
 }
 .sb-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.sb-group-header{display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
+  margin:1px 8px;cursor:pointer;color:rgba(255,255,255,.52);font-size:13.5px;font-weight:500;
+  transition:background .18s ease,color .18s ease;user-select:none}
+.sb-group-header:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88)}
+.sb-group-header.has-active{color:#C5A059}
+.sb-group-chevron{margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:transform .25s ease;opacity:.55}
+.sb-group-header.expanded .sb-group-chevron{transform:rotate(90deg);opacity:1}
+#sidebar.collapsed .sb-group-chevron{opacity:0}
+.sb-group-children{max-height:0;overflow:hidden;transition:max-height .28s ease}
+.sb-group-children.expanded{max-height:400px}
+.sb-group-children .sb-item{padding-left:38px;font-size:12.5px}
+.sb-group-children .sb-icon{width:16px;height:16px}
+#sidebar.collapsed .sb-group-children{display:none}
 .sb-footer{margin-top:auto;border-top:1px solid rgba(197,160,89,.1);padding:14px 12px}
 .sb-avatar{width:34px;height:34px;border-radius:50%;background:rgba(197,160,89,.18);
   display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
@@ -233,7 +247,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 .scroll-y{overflow-y:auto}
 .scroll-y::-webkit-scrollbar{width:4px}
 .scroll-y::-webkit-scrollbar-thumb{background:rgba(197,160,89,.2);border-radius:9999px}
-#content{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:20px}
+#content{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
 
 /* ── Animations ──────────────────────────────────────────────── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -269,6 +283,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/dashboard-nav.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
 <script type="text/babel">
@@ -276,7 +291,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
    BanquetPro — Phase 4 Interactive React Dashboard
    React 18 + Recharts 2.8 + Tailwind CSS (Play CDN)
    SVG icons (Heroicons outline style, 20×20)
-   Auth: SKIP_AUTH=true (demo) — set false to enforce JWT
    ════════════════════════════════════════════════════════════════ */
 
 const { useState, useEffect, useMemo } = React;
@@ -476,106 +490,19 @@ const I = {
   ),
 };
 
-/* ── Navigation config ───────────────────────────────────────── */
-const NAV = [
-  { s:'Dashboard', items:[
-    { id:'dashboard',      icon:I.dashboard,   label:'Overview',        href:null },
-    { id:'commandCenter',  icon:I.building,    label:'Command Center',  href:'command_center.html' },
-  ]},
-  { s:'Operations', items:[
-    { id:'bookings',  icon:I.calendar,      label:'Bookings',  href:'../bookings/index.html'  },
-    { id:'banquets',  icon:I.building,      label:'Banquets',  href:'../banquets/index.html'  },
-    { id:'halls',     icon:I.home,          label:'Halls',     href:'../halls/index.html'     },
-  ]},
-  { s:'Inventory', items:[
-    { id:'masterMenu', icon:I.fileText,      label:'Master Menu', href:'../catering/menu.html'   },
-    { id:'inventory',  icon:I.clipboardList, label:'Inventory',   href:'../inventory/index.html' },
-  ]},
-  { s:'CRM', items:[
-    { id:'customers', icon:I.users,         label:'Customers',      href:'../customers/index.html' },
-    { id:'leads',     icon:I.clipboardList, label:'Sales Pipeline', href:'../leads/index.html'     },
-  ]},
-  { s:'Finance', items:[
-    { id:'payments',  icon:I.creditCard,    label:'Payments',  href:'../payments/index.html'  },
-    { id:'invoices',  icon:I.fileText,      label:'Invoices',  href:'../invoices/index.html'  },
-  ]},
-  { s:'Reports', items:[
-    { id:'r-rev',     icon:I.trendingUp,    label:'Revenue',        href:'../reports/revenue.html'         },
-    { id:'r-bk',      icon:I.clipboardList, label:'Bookings',       href:'../reports/bookings.html'        },
-    { id:'r-occ',     icon:I.calendarDays,  label:'Occupancy',      href:'../reports/occupancy.html'       },
-    { id:'r-own',     icon:I.trendingUp,    label:'Owner Analytics',href:'../reports/owner-analytics.html' },
-  ]},
-  { s:'Admin', items:[
-    { id:'users',    icon:I.user,           label:'Users',    href:'../users/index.html'    },
-    { id:'settings', icon:I.settings,       label:'Settings', href:'../settings/index.html' },
-  ]},
-];
+/* ── Navigation config (shared across dashboard pages — see dashboard-nav.js) ── */
+const NAV = getDashboardNav(I);
 
 /* ── Demo Data ───────────────────────────────────────────────── */
-const KPI_D = {
-  week:    {bookings:18,   revenue:485000,   pending:124000,  occ:72,  bd:+12,rd:+8, pd:-5, od:+3},
-  month:   {bookings:87,   revenue:2340000,  pending:445000,  occ:68,  bd:+7, rd:+15,pd:+2, od:-1},
-  quarter: {bookings:271,  revenue:7820000,  pending:1200000, occ:71,  bd:+18,rd:+22,pd:-8, od:+4},
-  year:    {bookings:1024, revenue:31450000, pending:4800000, occ:69,  bd:+31,rd:+28,pd:-12,od:+6},
-};
-const REV_D = {
-  week:[
-    {l:'Mon',r:68000,t:72000},{l:'Tue',r:45000,t:72000},{l:'Wed',r:82000,t:72000},
-    {l:'Thu',r:59000,t:72000},{l:'Fri',r:94000,t:72000},{l:'Sat',r:112000,t:72000},{l:'Sun',r:25000,t:72000},
-  ],
-  month:[
-    {l:'Week 1',r:520000,t:585000},{l:'Week 2',r:680000,t:585000},
-    {l:'Week 3',r:490000,t:585000},{l:'Week 4',r:650000,t:585000},
-  ],
-  quarter:[
-    {l:'Jan',r:2140000,t:2000000},{l:'Feb',r:2580000,t:2200000},{l:'Mar',r:3100000,t:2500000},
-  ],
-  year:[
-    {l:'Jan',r:2140000,t:2500000},{l:'Feb',r:2580000,t:2500000},{l:'Mar',r:3100000,t:2600000},
-    {l:'Apr',r:2820000,t:2700000},{l:'May',r:3240000,t:2800000},{l:'Jun',r:2960000,t:2800000},
-    {l:'Jul',r:3480000,t:2900000},{l:'Aug',r:3180000,t:3000000},{l:'Sep',r:2640000,t:2900000},
-    {l:'Oct',r:2840000,t:2800000},{l:'Nov',r:3420000,t:3000000},{l:'Dec',r:3050000,t:3200000},
-  ],
-};
-const STS_D = {
-  week:    [{n:'Confirmed',v:5,c:C.green},{n:'Advance Paid',v:8,c:C.purple},{n:'Fully Paid',v:4,c:C.gold},{n:'Cancelled',v:1,c:C.red}],
-  month:   [{n:'Confirmed',v:18,c:C.green},{n:'Advance Paid',v:35,c:C.purple},{n:'Fully Paid',v:28,c:C.gold},{n:'Cancelled',v:6,c:C.red}],
-  quarter: [{n:'Confirmed',v:42,c:C.green},{n:'Advance Paid',v:95,c:C.purple},{n:'Fully Paid',v:118,c:C.gold},{n:'Cancelled',v:16,c:C.red}],
-  year:    [{n:'Confirmed',v:152,c:C.green},{n:'Advance Paid',v:387,c:C.purple},{n:'Fully Paid',v:428,c:C.gold},{n:'Cancelled',v:57,c:C.red}],
-};
-const BOOKINGS_D = [
-  {id:'BNQ-2026-1041',customer:'Sharma Family',  event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-03',time:'10:00 AM',endTime:'11:00 PM',status:'confirmed',    amt:385000,paid:385000,guests:420,isPriority:true },
-  {id:'BNQ-2026-1042',customer:'TCS Ltd',         event:'Corporate',  hall:'Emerald Hall',   date:'2026-07-04',time:'09:00 AM',endTime:'05:00 PM',status:'advance_paid',amt:142000,paid:40000, guests:120,isPriority:false},
-  {id:'BNQ-2026-1043',customer:'Mehta Catering',  event:'Reception',  hall:'Royal Suite',    date:'2026-07-05',time:'06:00 PM',endTime:'11:00 PM',status:'fully_paid',  amt:98000, paid:98000, guests:150,isPriority:false},
-  {id:'BNQ-2026-1044',customer:'Patel Family',    event:'Engagement', hall:'Silver Terrace', date:'2026-07-05',time:'07:00 PM',endTime:'10:00 PM',status:'confirmed',   amt:62000, paid:15000, guests:90, isPriority:false},
-  {id:'BNQ-2026-1045',customer:'Gupta Weddings',  event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-07',time:'11:00 AM',endTime:'11:00 PM',status:'advance_paid',amt:420000,paid:105000,guests:480,isPriority:true },
-  {id:'BNQ-2026-1046',customer:'HCL India',        event:'Corporate',  hall:'Diamond Hall',   date:'2026-07-08',time:'09:30 AM',endTime:'06:00 PM',status:'confirmed',   amt:210000,paid:210000,guests:200,isPriority:false},
-  {id:'BNQ-2026-1047',customer:'Reddy Family',     event:'Birthday',   hall:'Emerald Hall',   date:'2026-07-10',time:'06:00 PM',endTime:'10:00 PM',status:'confirmed',   amt:75000, paid:20000, guests:80, isPriority:false},
-  {id:'BNQ-2026-1048',customer:'Singh Caterers',   event:'Wedding',    hall:'Grand Ballroom', date:'2026-07-12',time:'10:00 AM',endTime:'11:00 PM',status:'advance_paid',amt:395000,paid:100000,guests:450,isPriority:true },
-  {id:'BNQ-2026-1049',customer:'Wipro Ltd',         event:'Corporate',  hall:'Emerald Hall',   date:'2026-07-14',time:'09:00 AM',endTime:'05:00 PM',status:'confirmed',   amt:165000,paid:165000,guests:130,isPriority:false},
-  {id:'BNQ-2026-1050',customer:'Desai Family',      event:'Engagement', hall:'Royal Suite',    date:'2026-07-17',time:'06:00 PM',endTime:'10:00 PM',status:'confirmed',   amt:72000, paid:18000, guests:95, isPriority:false},
-];
-const ACTIVITY_D = [
-  {t:'2 min ago', a:'New booking created',     d:'BNQ-2026-1047 – Reddy Family Birthday',       icon:'calendar', c:C.green },
-  {t:'18 min ago',a:'Payment received',        d:'₹1,92,000 for BNQ-2026-1038 (Sharma Wedding)',icon:'check',    c:C.gold  },
-  {t:'1 hr ago',  a:'Invoice generated',       d:'INV-2026-892 for TCS Ltd Corporate Event',     icon:'receipt',  c:C.blue  },
-  {t:'2 hr ago',  a:'Booking confirmed',       d:'BNQ-2026-1044 – Patel Engagement',            icon:'check',    c:C.green },
-  {t:'3 hr ago',  a:'Hall blocked',            d:'Grand Ballroom blocked for maintenance Jul 6', icon:'lock',     c:C.red   },
-  {t:'5 hr ago',  a:'New customer registered', d:'Gupta Weddings – Mumbai',                      icon:'userplus', c:C.purple},
-  {t:'6 hr ago',  a:'Cancellation processed',  d:'BNQ-2026-1039 – Kapoor Anniversary',          icon:'xcircle',  c:C.amber },
-];
-const DEMO_NOTIFS = [
-  {id:1,title:'New booking received',body:'A new booking was created for Grand Ballroom.',created_at:new Date().toISOString(),is_read:false,type:'booking_confirmation'},
-  {id:2,title:'Payment pending',body:'A payment reminder was sent for an advance booking.',created_at:new Date(Date.now()-1000*60*20).toISOString(),is_read:false,type:'payment_reminder'},
-  {id:3,title:'Hall availability updated',body:'Emerald Hall availability was refreshed for today.',created_at:new Date(Date.now()-1000*60*60*3).toISOString(),is_read:true,type:'system'},
-];
-const HALLS_D = [
-  {n:'Grand Ballroom',occ:84,bk:22,cap:500},
-  {n:'Emerald Hall',  occ:71,bk:18,cap:350},
-  {n:'Royal Suite',   occ:67,bk:16,cap:200},
-  {n:'Silver Terrace',occ:58,bk:12,cap:400},
-  {n:'Diamond Hall',  occ:43,bk:8, cap:600},
-];
+/* Empty defaults shown until live data loads — never fabricated numbers. */
+const EMPTY_KPI = {bookings:0, revenue:0, pending:0, occ:0, bd:null, rd:null, pd:null, od:null};
+const KPI_D = { week:EMPTY_KPI, month:EMPTY_KPI, quarter:EMPTY_KPI, year:EMPTY_KPI };
+const REV_D = { week:[], month:[], quarter:[], year:[] };
+const STS_D = { week:[], month:[], quarter:[], year:[] };
+const BOOKINGS_D = [];
+const ACTIVITY_D = [];
+const DEMO_NOTIFS = [];
+const HALLS_D = [];
 const todayDate = new Date();
 const TODAY = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padStart(2,'0')}-${String(todayDate.getDate()).padStart(2,'0')}`;
 /* ── Helpers ─────────────────────────────────────────────────── */
@@ -586,9 +513,81 @@ const sL   = s => ({confirmed:'Confirmed',advance_paid:'Advance Paid',fully_paid
 const occC = v => v>=80?C.green:v>=55?C.amber:C.red;
 const ini  = n => n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
 const dL   = d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+/* MSSQL TIME columns come back as full datetimes on a 1970-01-01 epoch (or plain 'HH:MM:SS') — extract just the clock time */
+const fmtTime = t => {
+  if (!t) return '';
+  const m = String(t).match(/(\d{2}):(\d{2})/);
+  if (!m) return t;
+  const h = parseInt(m[1],10), min = m[2];
+  const period = h>=12 ? 'PM' : 'AM';
+  const h12 = h%12===0 ? 12 : h%12;
+  return `${h12}:${min} ${period}`;
+};
+const timeAgo = iso => {
+  const s = Math.max(0, Math.floor((Date.now()-new Date(iso).getTime())/1000));
+  if (s<60) return 'just now';
+  if (s<3600) return `${Math.floor(s/60)} min ago`;
+  if (s<86400) return `${Math.floor(s/3600)} hr ago`;
+  return `${Math.floor(s/86400)} day${Math.floor(s/86400)>1?'s':''} ago`;
+};
+const activityMeta = action => {
+  const a = (action||'').toLowerCase();
+  if (a.includes('cancel'))                      return {icon:'xcircle',  c:C.amber};
+  if (a.includes('payment') || a.includes('paid'))return {icon:'check',   c:C.gold};
+  if (a.includes('invoice'))                     return {icon:'receipt', c:C.blue};
+  if (a.includes('block') || a.includes('lock'))  return {icon:'lock',    c:C.red};
+  if (a.includes('customer'))                    return {icon:'userplus',c:C.purple};
+  return {icon:'calendar', c:C.green};
+};
+const ACTION_LABELS = {
+  'booking.created':        'New booking created',
+  'booking.updated':        'Booking updated',
+  'booking.cloned':         'Booking cloned',
+  'booking.cancelled':      'Booking cancelled',
+  'booking.status_changed': 'Booking status changed',
+  'booking.hold_expired':   'Tentative hold expired',
+  'booking.rescheduled':    'Booking rescheduled',
+  'lead.stage_changed':     'Lead stage changed',
+};
+const activityLabel = action => ACTION_LABELS[action] ||
+  (action||'Activity').replace(/^[a-z]+\./,'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+/* Maps the /dashboard/kpis bundle (kpi + charts + activity) into the shapes the demo constants use */
+const mapDashboardData = data => {
+  if (!data) return null;
+  const k = data.kpi || {};
+  const occRows = data.charts?.occupancy || [];
+  const avgOcc = occRows.length
+    ? Math.round(occRows.reduce((s,h)=>s+parseFloat(h.occupancy_pct||0),0)/occRows.length)
+    : 0;
+  const kpi = {
+    bookings: parseInt(k.total_bookings)||0,
+    revenue:  parseFloat(k.total_revenue)||0,
+    pending:  parseFloat(k.pending_amount)||0,
+    occ:      avgOcc,
+    bd:null, rd:null, pd:null, od:null, // no prior-period comparison from the API yet
+    revenueTarget:      parseFloat(k.revenue_target)||0,
+    revenueAchievedPct: parseFloat(k.revenue_achieved_pct)||0,
+    revenueRemaining:   parseFloat(k.revenue_remaining)||0,
+  };
+  const rev = (data.charts?.revenue||[]).map(r=>({l:r.label, r:parseFloat(r.revenue)||0, t:parseFloat(r.target)||0}));
+  const sts = (data.charts?.status||[]).map(s=>({n:sL(s.status), v:parseInt(s.count)||0, c:sC(s.status)}));
+  const activity = (data.activity||[]).map(a=>{
+    const meta = activityMeta(a.action);
+    const who  = a.entity_type==='booking' ? [a.customer_name, a.hall_name].filter(Boolean).join(' @ ') : '';
+    const base = a.description || (a.booking_ref ? `Booking ${a.booking_ref}` : 'Activity');
+    const d    = who ? `${base} — ${who}` : base;
+    return {
+      t: timeAgo(a.created_at), a: activityLabel(a.action), d, icon: meta.icon, c: meta.c,
+      bookingId: a.entity_type==='booking' ? a.entity_id : null,
+      module: a.entity_type ? Utils.titleCase(a.entity_type) : null,
+    };
+  });
+  return { kpi, rev, sts, activity };
+};
 const iso  = (y,m,d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 const actIcon = k => ({calendar:I.calendar,check:I.checkCircle,receipt:I.receipt,lock:I.lock,userplus:I.userPlus,xcircle:I.xCircle}[k]||I.checkCircle);
-const hallCapacity = h => (HALLS_D.find(x=>x.n===h)||{}).cap || null;
+let REAL_HALLS = HALLS_D; // replaced with live Halls data once fetched — see DashboardView's halls effect
+const hallCapacity = h => (REAL_HALLS.find(x=>x.n===h)||{}).cap || null;
 const paymentStatusOf = b => {
   if (b.status==='cancelled') return { label:'Cancelled', color:C.slate };
   if (b.paid>=b.amt && b.amt>0) return { label:'Fully Paid', color:C.green };
@@ -624,9 +623,32 @@ const Card = ({ children, className='', hover=false, style={}, onClick }) => (
 /* ════════════════════════════════════════════════════════════════
    SIDEBAR
    ════════════════════════════════════════════════════════════════ */
+const SIDEBAR_EXPANDED_KEY = 'bp_sidebar_expanded';
+const loadSidebarExpanded = () => { try { return JSON.parse(sessionStorage.getItem(SIDEBAR_EXPANDED_KEY)) || {}; } catch { return {}; } };
+const saveSidebarExpanded = (state) => { try { sessionStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify(state)); } catch {} };
+
+const isActiveNavHref = (href) => {
+  try {
+    const u = new URL(href, location.href);
+    return u.pathname === location.pathname && u.search === location.search;
+  } catch { return false; }
+};
+
 const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
-  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'Suresh',last_name:'Mehta',role_slug:'super_admin'};
-  const name = `${user.first_name} ${user.last_name}`;
+  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'',last_name:'',role_slug:null};
+  const name = `${user.first_name} ${user.last_name}`.trim() || '—';
+  const canSee = (perm) => !perm || (typeof Auth==='undefined') || Auth.hasPermission(perm);
+  const [expandedMap, setExpandedMap] = useState(loadSidebarExpanded);
+
+  const toggleGroup = (groupName, defaultOpen) => {
+    setExpandedMap(prev => {
+      const current = prev[groupName] ?? defaultOpen;
+      const next = { ...prev, [groupName]: !current };
+      saveSidebarExpanded(next);
+      return next;
+    });
+  };
+
   return (
     <aside id="sidebar" className={[collapsed&&!isMobile?'collapsed':'',isMobile&&!mobileOpen?'mobile-hidden':''].filter(Boolean).join(' ')}>
       {/* Brand */}
@@ -646,22 +668,30 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
       </div>
       {/* Nav */}
       <nav style={{flex:1,overflowY:'auto',overflowX:'hidden',paddingBottom:8}}>
-        {NAV.map(sec=>(
-          <div key={sec.s}>
-            <div className="sb-section">{sec.s}</div>
-            {sec.items.map(item=>(
-              item.href
-                ? <a key={item.id} href={item.href} className="sb-item" title={collapsed?item.label:undefined}>
+        {NAV.map(sec=>{
+          const visibleItems = sec.items.filter(it => canSee(it.perm));
+          if (!visibleItems.length) return null;
+          const hasActive = visibleItems.some(it => isActiveNavHref(it.href));
+          const isExpanded = expandedMap[sec.s] ?? hasActive;
+          return (
+            <div key={sec.s} className="nav-group">
+              <div className={`sb-group-header ${isExpanded?'expanded':''} ${hasActive?'has-active':''}`}
+                onClick={() => toggleGroup(sec.s, hasActive)} title={collapsed?sec.s:undefined}>
+                <span className="sb-icon">{visibleItems[0].icon()}</span>
+                <span className="sb-label">{sec.s}</span>
+                <span className="sb-group-chevron">{I.chevronRight({width:14,height:14})}</span>
+              </div>
+              <div className={`sb-group-children ${isExpanded?'expanded':''}`}>
+                {visibleItems.map(item=>(
+                  <a key={item.id} href={item.href} className={`sb-item ${isActiveNavHref(item.href)?'active':''}`} title={collapsed?item.label:undefined}>
                     <span className="sb-icon">{item.icon()}</span>
                     <span className="sb-label">{item.label}</span>
                   </a>
-                : <div key={item.id} className="sb-item active" title={collapsed?item.label:undefined}>
-                    <span className="sb-icon">{item.icon()}</span>
-                    <span className="sb-label">{item.label}</span>
-                  </div>
-            ))}
-          </div>
-        ))}
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </nav>
       {/* Footer */}
       <div className="sb-footer">
@@ -683,8 +713,8 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
 const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMode, setDarkMode, notifications, unreadCount, notifOpen, setNotifOpen, onMarkNotificationRead, onMarkAllNotificationsRead }) => {
   const PERIODS = [{k:'week',l:'Last 7 Days'},{k:'month',l:'Last 30 Days'},{k:'quarter',l:'Last 3 Months'},{k:'year',l:'Last 12 Months'}];
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'Suresh',last_name:'Mehta'};
-  const userName = `${user.first_name} ${user.last_name}`;
+  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'',last_name:''};
+  const userName = `${user.first_name} ${user.last_name}`.trim() || '—';
   const handleLogout = async () => {
     setUserMenuOpen(false);
     if (typeof Auth==='undefined') return;
@@ -760,9 +790,9 @@ const KPICard = ({ IconEl, label, value, delta, color, anim, href, desc, blurb, 
   const up = delta>=0;
   const showTrend = trend!=='none' && delta!=null;
   return (
-    <Card hover className={`fu ${anim}`} style={{padding:'18px 20px', cursor: href ? 'pointer' : 'default'}} onClick={href ? () => window.location.assign(href) : undefined}>
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
-        <div className="kpi-icon-wrap" style={{background:`${color}1A`,color}}><IconEl/></div>
+    <Card hover className={`fu ${anim}`} style={{padding:'12px 14px', cursor: href ? 'pointer' : 'default', height:128, display:'flex', flexDirection:'column', justifyContent:'space-between'}} onClick={href ? () => window.location.assign(href) : undefined}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div className="kpi-icon-wrap" style={{background:`${color}1A`,color,width:34,height:34}}><IconEl/></div>
         {showTrend && (
           <span className={`kpi-badge ${up?'badge-up':'badge-dn'}`}>
             {up
@@ -773,16 +803,18 @@ const KPICard = ({ IconEl, label, value, delta, color, anim, href, desc, blurb, 
           </span>
         )}
       </div>
-      <div className="kpi-val">{value}</div>
-      <div style={{display:'flex',alignItems:'center',gap:5}}>
-        <div className="kpi-label">{label}</div>
-        {desc && (
-          <span title={desc} style={{display:'inline-flex',color:'#9ca3af',cursor:'help'}} onClick={e=>e.stopPropagation()}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          </span>
-        )}
+      <div>
+        <div className="kpi-val" style={{fontFamily:"'Times New Roman', Times, serif",fontSize:22,lineHeight:1.1}}>{value}</div>
+        <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2}}>
+          <div className="kpi-label" style={{fontFamily:"'Times New Roman', Times, serif",fontWeight:700,fontSize:11.5,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label}</div>
+          {desc && (
+            <span title={desc} style={{display:'inline-flex',color:'#9ca3af',cursor:'help',flexShrink:0}} onClick={e=>e.stopPropagation()}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </span>
+          )}
+        </div>
+        {blurb && <div style={{fontSize:10,color:'#9ca3af',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'Times New Roman', Times, serif",fontStyle:'italic'}} title={blurb}>{blurb}</div>}
       </div>
-      {blurb && <div style={{fontSize:11,color:'#9ca3af',marginTop:4,lineHeight:1.4}}>{blurb}</div>}
     </Card>
   );
 };
@@ -810,7 +842,7 @@ const CTip = ({ active, payload, label, fmt }) => {
    REVENUE AREA CHART
    ════════════════════════════════════════════════════════════════ */
 const RevenueChart = ({ data }) => (
-  <ResponsiveContainer width="100%" height={228}>
+  <ResponsiveContainer width="100%" height={190}>
     <AreaChart data={data} margin={{top:8,right:8,left:0,bottom:0}}>
       <defs>
         <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
@@ -839,21 +871,17 @@ const RevenueChart = ({ data }) => (
 const StatusDonut = ({ data }) => {
   const total = data.reduce((s,d)=>s+d.v,0);
   const [hover, setHover] = useState(null);
-  const CL = ({ viewBox }) => {
-    const {cx,cy} = viewBox||{cx:0,cy:0};
-    return (
-      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
-        <tspan x={cx} dy="-8" fontSize={24} fontWeight={800} fill={C.navy}>{total}</tspan>
-        <tspan x={cx} dy={22} fontSize={11} fill="#9ca3af">Bookings</tspan>
-      </text>
-    );
-  };
   return (
-    <div>
+    <div style={{position:'relative'}}>
+      <div style={{position:'absolute',top:0,left:0,right:0,height:188,display:'flex',flexDirection:'column',
+        alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
+        <span style={{fontSize:24,fontWeight:800,color:C.navy}}>{total}</span>
+        <span style={{fontSize:11,color:'#9ca3af'}}>Bookings</span>
+      </div>
       <ResponsiveContainer width="100%" height={188}>
         <PieChart>
           <Pie data={data} dataKey="v" nameKey="n" cx="50%" cy="50%" innerRadius={56} outerRadius={80}
-            strokeWidth={2} stroke="rgba(255,255,255,.86)" paddingAngle={2} labelLine={false} label={<CL/>}
+            strokeWidth={2} stroke="rgba(255,255,255,.86)" paddingAngle={2} labelLine={false}
             onMouseEnter={(_,i)=>setHover(i)} onMouseLeave={()=>setHover(null)}>
             {data.map((d,i)=>(
               <Cell key={i} fill={d.c} opacity={hover===null||hover===i?1:.58}
@@ -953,18 +981,25 @@ const MiniCalendar = ({ selected, onSelect, eventsByDate }) => {
           const s=ds(d), isT=s===TODAY, isSel=s===selected;
           const dayEvents = eventsByDate[s]||[];
           const statusSet = [...new Set(dayEvents.map(b=>b.status))].slice(0,3);
+          const hasEvents = dayEvents.length>0;
           return (
             <button key={i} className={`cal-day${isT&&!isSel?' today':''}${isSel?' selected':''}`}
+              style={hasEvents && !isT && !isSel ? {background:`${sC(statusSet[0])}12`,border:`1px solid ${sC(statusSet[0])}30`} : undefined}
               onClick={()=>onSelect(isSel?null:s)}
               onMouseEnter={(e)=>handleEnter(e,s)}
               onMouseLeave={()=>setHoverDate(null)}>
+              {dayEvents.length>1 && (
+                <span style={{position:'absolute',top:2,right:3,fontSize:9,fontWeight:800,lineHeight:1,
+                  color:isT||isSel?'white':C.gold}}>{dayEvents.length}</span>
+              )}
               {d}
               {statusSet.length>0 && (
-                <span style={{position:'absolute',bottom:3,display:'flex',gap:2}}>
+                <span style={{position:'absolute',bottom:2,display:'flex',gap:3}}>
                   {statusSet.map((st,k)=>(
-                    <span key={k} style={{width:5,height:5,borderRadius:'50%',background:isT||isSel?'white':sC(st),boxShadow:`0 0 4px ${sC(st)}80`}}/>
+                    <span key={k} style={{width:7,height:7,borderRadius:'50%',background:isT||isSel?'white':sC(st),
+                      boxShadow:`0 0 5px ${sC(st)}a0`,border:isT||isSel?'none':`1px solid ${sC(st)}`}}/>
                   ))}
-                  {dayEvents.length>3 && <span style={{fontSize:8,color:isT||isSel?'white':C.gold,fontWeight:700,marginLeft:1}}>+</span>}
+                  {dayEvents.length>3 && <span style={{fontSize:9,color:isT||isSel?'white':C.gold,fontWeight:700,marginLeft:1}}>+</span>}
                 </span>
               )}
             </button>
@@ -993,8 +1028,11 @@ const MiniCalendar = ({ selected, onSelect, eventsByDate }) => {
    ════════════════════════════════════════════════════════════════ */
 const UpcomingList = ({ bookings, selected, onOpenBooking, now }) => {
   const list = selected ? bookings.filter(b=>b.date===selected) : bookings;
+  // Fills the card's remaining height (the card is a flex column — see the
+  // Upcoming Bookings <Card> above) instead of a fixed maxHeight that left
+  // blank space below a short list whenever the neighboring card was taller.
   return (
-    <div className="scroll-y" style={{maxHeight:360}}>
+    <div className="scroll-y" style={{flex:1,minHeight:0}}>
       {list.length===0&&(
         <div style={{textAlign:'center',padding:'32px 0',color:'#9ca3af',fontSize:13}}>
           No bookings for {dL(selected)}
@@ -1005,26 +1043,26 @@ const UpcomingList = ({ bookings, selected, onOpenBooking, now }) => {
         return (
         <a key={b.id} href={`../bookings/detail.html?id=${b.id}`}
           onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}}
-          style={{display:'flex',gap:12,alignItems:'flex-start',padding:'11px 2px',
+          style={{display:'flex',gap:10,alignItems:'flex-start',padding:'8px 2px',
             borderBottom:'1px solid rgba(229,231,235,.5)',textDecoration:'none'}}>
           <span style={{width:8,height:8,borderRadius:'50%',background:sC(b.status),flexShrink:0,marginTop:5}}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-              <span style={{fontWeight:700,fontSize:13,color:C.navy}}>{b.event}</span>
+              <span style={{fontWeight:700,fontSize:12.5,color:C.navy,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.event}</span>
               {b.isPriority && (
-                <span className="spill" style={{background:`${C.gold}20`,color:C.gold,fontSize:9.5,padding:'1px 7px'}}>★ VIP</span>
+                <span className="spill" style={{background:`${C.gold}20`,color:C.gold,fontSize:9.5,padding:'1px 7px',flexShrink:0}}>★ VIP</span>
               )}
             </div>
-            <div style={{fontSize:11.5,color:'#6b7280',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.customer} · {b.hall}</div>
-            <div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>{dL(b.date)} · {b.time}{b.endTime?` – ${b.endTime}`:''}{b.guests?` · ${b.guests} guests`:''}</div>
-            <div style={{display:'flex',gap:6,marginTop:5,flexWrap:'wrap'}}>
-              <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:10}}>{sL(b.status)}</span>
-              <span className="spill" style={{background:`${pay.color}18`,color:pay.color,fontSize:10}}>{pay.label}</span>
-              {now && <span className="spill" style={{background:'rgba(61,84,127,.08)',color:C.navy,fontSize:10}}>{countdownOf(b.date, now)}</span>}
+            <div style={{fontSize:11,color:'#6b7280',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.customer} · {b.hall}</div>
+            <div style={{fontSize:10.5,color:'#9ca3af',marginTop:1}}>{dL(b.date)} · {b.time}{b.endTime?` – ${b.endTime}`:''}{b.guests?` · ${b.guests} guests`:''}</div>
+            <div style={{display:'flex',gap:5,marginTop:4,flexWrap:'wrap'}}>
+              <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:9.5}}>{sL(b.status)}</span>
+              <span className="spill" style={{background:`${pay.color}18`,color:pay.color,fontSize:9.5}}>{pay.label}</span>
+              {now && <span className="spill" style={{background:'rgba(61,84,127,.08)',color:C.navy,fontSize:9.5}}>{countdownOf(b.date, now)}</span>}
             </div>
           </div>
           <div style={{textAlign:'right',flexShrink:0}}>
-            <div style={{fontWeight:700,fontSize:13,color:C.navy}}>{fmtS(b.amt)}</div>
+            <div style={{fontWeight:700,fontSize:12.5,color:C.navy}}>{fmtS(b.amt)}</div>
           </div>
         </a>
         );
@@ -1037,14 +1075,14 @@ const UpcomingList = ({ bookings, selected, onOpenBooking, now }) => {
    HALL OCCUPANCY
    ════════════════════════════════════════════════════════════════ */
 const OccupancyBars = ({ halls }) => (
-  <div style={{display:'flex',flexDirection:'column',gap:13}}>
+  <div style={{display:'flex',flexDirection:'column',gap:8}}>
     {halls.map((h,i)=>(
       <div key={i}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:5,alignItems:'center'}}>
-          <span style={{fontSize:12.5,fontWeight:500,color:C.navy}}>{h.n}</span>
-          <div style={{display:'flex',gap:10,alignItems:'center'}}>
-            <span style={{fontSize:11,color:'#9ca3af'}}>{h.bk} bookings · {fmtS(h.rev||0)}</span>
-            <b style={{fontSize:12.5,color:occC(h.occ)}}>{h.occ}%</b>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,alignItems:'center'}}>
+          <span style={{fontSize:11.5,fontWeight:500,color:C.navy}}>{h.n}</span>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:10.5,color:'#9ca3af'}}>{h.bk} bookings · {fmtS(h.rev||0)}</span>
+            <b style={{fontSize:11.5,color:occC(h.occ)}}>{h.occ}%</b>
           </div>
         </div>
         <div className="occ-bar"><div className="occ-fill" style={{width:`${h.occ}%`,background:occC(h.occ)}}/></div>
@@ -1057,21 +1095,27 @@ const OccupancyBars = ({ halls }) => (
    ACTIVITY FEED
    ════════════════════════════════════════════════════════════════ */
 const ActivityFeed = ({ items }) => (
-  <div className="scroll-y" style={{maxHeight:278}}>
+  <div className="scroll-y" style={{flex:1,minHeight:0}}>
+    {items.length===0&&(
+      <div style={{textAlign:'center',padding:'32px 0',color:'#9ca3af',fontSize:13}}>No recent activity</div>
+    )}
     {items.map((a,i)=>{
       const AIcon = actIcon(a.icon);
+      const clickable = Boolean(a.bookingId);
       return (
-        <div key={i} style={{display:'flex',gap:10,padding:'9px 0',borderBottom:'1px solid rgba(229,231,235,.5)'}}>
-          <div style={{width:28,height:28,borderRadius:8,background:`${a.c}18`,display:'flex',alignItems:'center',
+        <div key={i} onClick={clickable?()=>window.location.assign(`../bookings/detail.html?id=${a.bookingId}`):undefined}
+          style={{display:'flex',gap:10,padding:'7px 0',borderBottom:'1px solid rgba(229,231,235,.5)',cursor:clickable?'pointer':'default'}}>
+          <div style={{width:26,height:26,borderRadius:8,background:`${a.c}18`,display:'flex',alignItems:'center',
             justifyContent:'center',flexShrink:0,color:a.c}}>
             <AIcon/>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:'flex',justifyContent:'space-between',gap:8}}>
-              <span style={{fontWeight:600,fontSize:12.5,color:C.navy}}>{a.a}</span>
-              <span style={{fontSize:11,color:'#9ca3af',flexShrink:0,whiteSpace:'nowrap'}}>{a.t}</span>
+              <span style={{fontWeight:600,fontSize:12,color:C.navy,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.a}</span>
+              <span style={{fontSize:10.5,color:'#9ca3af',flexShrink:0,whiteSpace:'nowrap'}}>{a.t}</span>
             </div>
-            <div style={{fontSize:11.5,color:'#6b7280',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.d}</div>
+            <div style={{fontSize:11,color:'#6b7280',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.d}</div>
+            {a.module && <div style={{fontSize:9.5,color:'#c5a059',marginTop:1,fontWeight:600,textTransform:'uppercase',letterSpacing:.3}}>{a.module}</div>}
           </div>
         </div>
       );
@@ -1093,7 +1137,7 @@ const BookingsTable = ({ bookings, onOpenBooking }) => (
       <tbody>
         {bookings.map(b=>(
           <tr key={b.id} className="t-row" onClick={()=>onOpenBooking?.(b.id)}>
-            <td><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{fontFamily:'monospace',fontSize:11.5,background:'rgba(61,84,127,.07)',padding:'2px 7px',borderRadius:5,color:C.navy,textDecoration:'none',display:'inline-block'}}>{b.id}</a></td>
+            <td><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{fontFamily:'monospace',fontSize:11.5,background:'rgba(61,84,127,.07)',padding:'2px 7px',borderRadius:5,color:C.navy,textDecoration:'none',display:'inline-block'}}>{b.ref||b.id}</a></td>
             <td style={{fontWeight:600}}><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{color:C.navy,textDecoration:'none'}}>{b.customer}</a></td>
             <td style={{color:'#6b7280'}}>{b.event}</td>
             <td style={{color:'#6b7280',fontSize:12}}>{b.hall}</td>
@@ -1117,7 +1161,12 @@ const DashboardView = ({ period, searchQuery }) => {
   const [hallFilter, setHallFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
   const [now, setNow] = useState(() => new Date());
-  const kpi=KPI_D[period], rev=REV_D[period], sts=STS_D[period];
+  const [liveData, setLiveData] = useState(null);
+  const [halls, setHalls] = useState(HALLS_D);
+  const kpi = liveData?.kpi || KPI_D[period];
+  const rev = liveData?.rev || REV_D[period];
+  const sts = liveData?.sts || STS_D[period];
+  const activityItems = liveData?.activity || ACTIVITY_D;
   const firstName = (typeof Auth!=='undefined'?Auth.getUser():null)?.first_name || 'there';
 
   useEffect(() => {
@@ -1130,17 +1179,50 @@ const DashboardView = ({ period, searchQuery }) => {
     (async()=>{
       try{
         if(typeof API==='undefined') return;
+        const r = await API.dashboard.kpis({ period });
+        const mapped = mapDashboardData(r?.data);
+        if(!dead && mapped) setLiveData(mapped);
+      }catch(_){ if(!dead) setLiveData(null); }
+    })();
+    return()=>{dead=true};
+  },[period]);
+
+  // Hall Occupancy widget must list real halls from the Halls module, not the
+  // hardcoded HALLS_D demo set — otherwise the names shown never match the DB.
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        if(typeof API==='undefined') return;
+        const r = await API.halls.list({ limit:100, is_active:true });
+        const rows = r?.data?.halls || [];
+        if(!dead && rows.length){
+          const mapped = rows.map(h=>({ n:h.hall_name, cap:h.capacity_seated||h.capacity||0 }));
+          setHalls(mapped);
+          REAL_HALLS = mapped;
+        }
+      }catch(_){ /* keep halls empty — no fabricated hall data */ }
+    })();
+    return()=>{dead=true};
+  },[]);
+
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        if(typeof API==='undefined') return;
         const r=await API.get(`/dashboard/bookings?period=${period}`);
         const raw=Array.isArray(r?.data)?r.data:(Array.isArray(r?.data?.bookings)?r.data.bookings:[]);
         if(!dead&&raw.length){
           setBookings(raw.map(b=>({
-            id:       b.booking_ref||b.id,
+            id:       b.booking_id??b.id,
+            ref:      b.booking_ref||b.ref||b.id,
             customer: b.customer_name||b.customer,
             event:    b.event_name||b.event,
             hall:     b.hall_name||b.hall,
             date:     (b.event_date||b.date||'').substring(0,10),
-            time:     b.event_time_start||b.start_time||b.time||'',
-            endTime:  b.event_time_end||b.end_time||b.endTime||'',
+            time:     fmtTime(b.event_time_start||b.start_time||b.time),
+            endTime:  fmtTime(b.event_time_end||b.end_time||b.endTime),
             status:   b.booking_status||b.status||'confirmed',
             amt:      parseFloat(b.total_amount||b.amt)||0,
             paid:     parseFloat(b.amount_paid??b.paid)||0,
@@ -1172,7 +1254,7 @@ const DashboardView = ({ period, searchQuery }) => {
         const matchesDate = !selDate || b.date === selDate;
         const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
         const matchesHall = hallFilter === 'all' || b.hall === hallFilter;
-        const haystack = `${b.customer} ${b.event} ${b.hall} ${b.id} ${sL(b.status)}`.toLowerCase();
+        const haystack = `${b.customer} ${b.event} ${b.hall} ${b.ref||b.id} ${sL(b.status)}`.toLowerCase();
         const matchesQuery = !q || haystack.includes(q);
         return matchesDate && matchesStatus && matchesHall && matchesQuery;
       })
@@ -1203,12 +1285,12 @@ const DashboardView = ({ period, searchQuery }) => {
   const hallStats = useMemo(() => {
     const days = occFilter==='today' ? 1 : 30;
     const rangeBookings = bookings.filter(b => b.date && b.status!=='cancelled' && inOccRange(b.date, occFilter, now));
-    return HALLS_D.map(h => {
+    return halls.map(h => {
       const hb = rangeBookings.filter(b=>b.hall===h.n);
       const bookedDays = new Set(hb.map(b=>b.date)).size;
       return { n:h.n, cap:h.cap, occ: Math.min(100, Math.round((bookedDays/days)*100)), bk: hb.length, rev: hb.reduce((s,b)=>s+b.amt,0) };
     });
-  }, [bookings, occFilter, now]);
+  }, [bookings, occFilter, now, halls]);
   const hallStatsTotals = useMemo(() => ({
     slots: hallStats.reduce((s,h)=>s+h.bk,0),
     revenue: hallStats.reduce((s,h)=>s+h.rev,0),
@@ -1243,7 +1325,7 @@ const DashboardView = ({ period, searchQuery }) => {
       </div>
 
       {/* KPI row */}
-      <div className="resp-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
+      <div className="resp-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
         <KPICard IconEl={()=>I.calendar({width:22,height:22})}   label="Total Bookings"   value={kpi.bookings.toLocaleString()} delta={kpi.bd} color={C.purple} anim="fu-1" href="../bookings/index.html"
           blurb="Number of bookings created in the selected period."
           desc="Count of all bookings created in the selected period, excluding cancelled and draft holds. % change is vs. the previous equivalent period."/>
@@ -1259,41 +1341,68 @@ const DashboardView = ({ period, searchQuery }) => {
       </div>
 
       {/* Charts */}
-      <div className="resp-2 fu fu-3" style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:16,alignItems:'start'}}>
-        <Card hover style={{padding:'18px 20px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+      <div className="resp-2 fu fu-3" style={{display:'grid',gridTemplateColumns:'1fr 280px',gap:12,alignItems:'start'}}>
+        <Card hover style={{padding:'12px 16px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
             <div>
-              <h3 style={{fontSize:14,fontWeight:700,color:C.navy}}>Revenue vs Target</h3>
-              <p style={{fontSize:12,color:'#9ca3af',marginTop:2}}>{fmtS(kpi.revenue)} collected this period</p>
+              <h3 style={{fontSize:13,fontWeight:700,color:C.navy}}>Revenue vs Target</h3>
+              <p style={{fontSize:11,color:'#9ca3af',marginTop:1}}>{fmtS(kpi.revenue)} collected this period</p>
             </div>
-            <span style={{fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:9999,
-              background:`${kpi.rd>=0?C.green:C.red}15`,color:kpi.rd>=0?C.green:C.red}}>
-              {kpi.rd>=0?'▲':'▼'} {Math.abs(kpi.rd)}% vs prev
-            </span>
+            {kpi.rd!=null && (
+              <span style={{fontSize:10.5,fontWeight:600,padding:'3px 10px',borderRadius:9999,
+                background:`${kpi.rd>=0?C.green:C.red}15`,color:kpi.rd>=0?C.green:C.red}}>
+                {kpi.rd>=0?'▲':'▼'} {Math.abs(kpi.rd)}% vs prev
+              </span>
+            )}
           </div>
+          {kpi.revenueTarget>0 ? (
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8,padding:'7px 10px',background:'rgba(61,84,127,.04)',borderRadius:10}}>
+              <div>
+                <div style={{fontSize:10,color:'#9ca3af'}}>Target</div>
+                <div style={{fontSize:12.5,fontWeight:700,color:C.navy}}>{fmtS(kpi.revenueTarget)}</div>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:'#9ca3af'}}>Achieved</div>
+                <div style={{fontSize:12.5,fontWeight:700,color:kpi.revenueAchievedPct>=100?C.green:C.navy}}>{kpi.revenueAchievedPct}%</div>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:'#9ca3af'}}>Remaining</div>
+                <div style={{fontSize:12.5,fontWeight:700,color:C.amber}}>{fmtS(kpi.revenueRemaining)}</div>
+              </div>
+              <div style={{flex:1,height:6,background:'rgba(61,84,127,.1)',borderRadius:9999,overflow:'hidden'}}>
+                <div style={{width:`${Math.min(100,kpi.revenueAchievedPct)}%`,height:'100%',background:kpi.revenueAchievedPct>=100?C.green:C.gold,borderRadius:9999}}/>
+              </div>
+            </div>
+          ) : (
+            <div style={{fontSize:11,color:'#9ca3af',marginBottom:8}}>
+              No revenue target set — <a href="../settings/index.html" style={{color:C.gold}}>configure one in Settings</a>.
+            </div>
+          )}
           <RevenueChart data={rev}/>
         </Card>
-        <Card hover style={{padding:'18px 20px'}}>
-          <h3 style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:14}}>Booking Status</h3>
+        <Card hover style={{padding:'12px 16px'}}>
+          <h3 style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:6}}>Booking Status</h3>
           <StatusDonut data={sts}/>
         </Card>
       </div>
 
       {/* Calendar + Upcoming */}
-      <div className="resp-2 fu fu-4" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        <Card hover style={{padding:'18px 20px'}}>
-          <h3 style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:14,display:'flex',alignItems:'center',gap:8}}>
+      <div className="resp-2 fu fu-4" style={{display:'grid',gridTemplateColumns:'3fr 2fr',gap:12}}>
+        <Card hover style={{padding:'12px 16px',height:300,display:'flex',flexDirection:'column'}}>
+          <h3 style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:8,display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
             {I.calendarDays({width:16,height:16})}
             Booking Calendar
             {selDate&&<span style={{fontWeight:500,fontSize:12,color:C.gold}}>· {dL(selDate)}</span>}
           </h3>
-          <MiniCalendar selected={selDate} onSelect={setSelDate} eventsByDate={eventsByDate}/>
+          <div style={{flex:1,minHeight:0,overflowY:'auto'}}>
+            <MiniCalendar selected={selDate} onSelect={setSelDate} eventsByDate={eventsByDate}/>
+          </div>
         </Card>
-        <Card hover style={{padding:'18px 20px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-            <h3 style={{fontSize:14,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
+        <Card hover style={{padding:'12px 16px',display:'flex',flexDirection:'column',height:300}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexShrink:0}}>
+            <h3 style={{fontSize:13,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
               Upcoming Bookings
-              <span style={{background:'rgba(61,84,127,.1)',color:C.navy,padding:'2px 8px',borderRadius:9999,fontSize:11.5,fontWeight:600}}>
+              <span style={{background:'rgba(61,84,127,.1)',color:C.navy,padding:'2px 8px',borderRadius:9999,fontSize:11,fontWeight:600}}>
                 {filteredBookings.length}
               </span>
             </h3>
@@ -1304,46 +1413,48 @@ const DashboardView = ({ period, searchQuery }) => {
       </div>
 
       {/* Occupancy + Activity */}
-      <div className="resp-2 fu fu-5" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        <Card hover style={{padding:'18px 20px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
-            <h3 style={{fontSize:14,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
+      <div className="resp-2 fu fu-5" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <Card hover style={{padding:'12px 16px',height:300,display:'flex',flexDirection:'column'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexWrap:'wrap',gap:8,flexShrink:0}}>
+            <h3 style={{fontSize:13,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
               {I.building({width:16,height:16})} Hall Occupancy
             </h3>
             <ViewAllLink href="../reports/occupancy.html"/>
           </div>
-          <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+          <div style={{display:'flex',gap:6,marginBottom:8,flexWrap:'wrap',flexShrink:0}}>
             {OCC_FILTERS.map(f=>(
-              <button key={f.k} className={`fpill${occFilter===f.k?' on':''}`} style={{padding:'4px 12px',fontSize:11.5}} onClick={()=>setOccFilter(f.k)}>{f.l}</button>
+              <button key={f.k} className={`fpill${occFilter===f.k?' on':''}`} style={{padding:'3px 10px',fontSize:11}} onClick={()=>setOccFilter(f.k)}>{f.l}</button>
             ))}
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
-            <div style={{textAlign:'center',padding:'8px 4px',background:'rgba(37,99,235,.06)',borderRadius:10}}>
-              <div style={{fontSize:16,fontWeight:700,color:C.blue}}>{hallStatsTotals.avgOcc}%</div>
-              <div style={{fontSize:10,color:'#9ca3af'}}>Avg Occupancy</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:8,flexShrink:0}}>
+            <div style={{textAlign:'center',padding:'6px 4px',background:'rgba(37,99,235,.06)',borderRadius:10}}>
+              <div style={{fontSize:14,fontWeight:700,color:C.blue}}>{hallStatsTotals.avgOcc}%</div>
+              <div style={{fontSize:9.5,color:'#9ca3af'}}>Avg Occupancy</div>
             </div>
-            <div style={{textAlign:'center',padding:'8px 4px',background:'rgba(197,160,89,.08)',borderRadius:10}}>
-              <div style={{fontSize:16,fontWeight:700,color:C.gold}}>{hallStatsTotals.slots}</div>
-              <div style={{fontSize:10,color:'#9ca3af'}}>Occupied Slots</div>
+            <div style={{textAlign:'center',padding:'6px 4px',background:'rgba(197,160,89,.08)',borderRadius:10}}>
+              <div style={{fontSize:14,fontWeight:700,color:C.gold}}>{hallStatsTotals.slots}</div>
+              <div style={{fontSize:9.5,color:'#9ca3af'}}>Occupied Slots</div>
             </div>
-            <div style={{textAlign:'center',padding:'8px 4px',background:'rgba(16,185,129,.08)',borderRadius:10}}>
-              <div style={{fontSize:16,fontWeight:700,color:C.green}}>{fmtS(hallStatsTotals.revenue)}</div>
-              <div style={{fontSize:10,color:'#9ca3af'}}>Revenue</div>
+            <div style={{textAlign:'center',padding:'6px 4px',background:'rgba(16,185,129,.08)',borderRadius:10}}>
+              <div style={{fontSize:14,fontWeight:700,color:C.green}}>{fmtS(hallStatsTotals.revenue)}</div>
+              <div style={{fontSize:9.5,color:'#9ca3af'}}>Revenue</div>
             </div>
           </div>
-          <OccupancyBars halls={hallStats}/>
-          <div style={{marginTop:14,display:'flex',gap:14,flexWrap:'wrap'}}>
+          <div style={{flex:1,minHeight:0,overflowY:'auto'}} className="scroll-y">
+            <OccupancyBars halls={hallStats}/>
+          </div>
+          <div style={{marginTop:8,display:'flex',gap:12,flexWrap:'wrap',flexShrink:0}}>
             {[{c:C.green,l:'High ≥80%'},{c:C.amber,l:'Mid ≥55%'},{c:C.red,l:'Low <55%'}].map(x=>(
-              <span key={x.l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11.5,color:'#6b7280'}}>
+              <span key={x.l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'#6b7280'}}>
                 <span style={{width:8,height:8,borderRadius:'50%',background:x.c,display:'inline-block'}}/>
                 {x.l}
               </span>
             ))}
           </div>
         </Card>
-        <Card hover style={{padding:'18px 20px'}}>
-          <h3 style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:14}}>Recent Activity</h3>
-          <ActivityFeed items={ACTIVITY_D}/>
+        <Card hover style={{padding:'12px 16px',display:'flex',flexDirection:'column',height:300}}>
+          <h3 style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:6,flexShrink:0}}>Recent Activity</h3>
+          <ActivityFeed items={activityItems}/>
         </Card>
       </div>
 
@@ -1378,8 +1489,8 @@ const DashboardView = ({ period, searchQuery }) => {
         <BookingsTable bookings={visibleBookings} onOpenBooking={openBookingDetail}/>
       </Card>
 
-      <footer style={{textAlign:'center',fontSize:12,color:'#9ca3af',paddingBottom:16}}>
-        © 2026 BanquetPro Enterprise · Phase 4 Interactive Dashboard
+      <footer style={{textAlign:'center',fontSize:12,color:'#9ca3af',padding:'16px 0',marginTop:8,borderTop:'1px solid rgba(61,84,127,.08)'}}>
+        © {new Date().getFullYear()} BanquetPro — Enterprise Banquet Hall Management
       </footer>
     </>
   );

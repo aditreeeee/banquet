@@ -24,6 +24,10 @@ const sendSchema = Joi.object({
     ).required(),
     subject: Joi.string().max(200).optional(),
     message: Joi.string().max(4000).required(),
+    attachmentUrl:  Joi.string().uri({ relativeOnly: true }).max(500).optional(),
+    attachmentName: Joi.string().max(255).optional(),
+    websiteUrl:     Joi.string().uri().max(500).optional(),
+    socialLinks:    Joi.array().items(Joi.string().uri().max(300)).max(10).optional(),
 }).or('leadId', 'customerId');
 
 module.exports = { validateSend: validate(sendSchema) };

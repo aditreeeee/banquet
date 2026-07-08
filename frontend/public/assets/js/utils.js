@@ -6,8 +6,25 @@
 const Utils = (() => {
     'use strict';
 
+    /* ── Currency setting (Settings → Billing & Tax → Currency) ──
+       Loaded once per page load via loadCurrencySetting(); formatCurrency/
+       formatCurrencyShort read this cache so the configured currency applies
+       everywhere without every caller having to pass it explicitly. Defaults
+       to INR (the value every company effectively used before this setting
+       existed) until the async load resolves or if it fails. */
+    const CURRENCY_SYMBOLS = { INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'د.إ' };
+    let _currency = { code: 'INR', symbol: '₹' };
+
+    async function loadCurrencySetting() {
+        try {
+            const res = await API.settings.get();
+            const code = res.data?.general?.currency || 'INR';
+            _currency = { code, symbol: CURRENCY_SYMBOLS[code] || code };
+        } catch (_) { /* keep default */ }
+    }
+
     /* ── Number / Currency ── */
-    function formatCurrency(amount, currency = 'INR') {
+    function formatCurrency(amount, currency = _currency.code) {
         if (amount === null || amount === undefined) return '—';
         return new Intl.NumberFormat('en-IN', {
             style: 'currency', currency,
@@ -25,13 +42,21 @@ const Utils = (() => {
         return n.toFixed(decimals) + '%';
     }
 
-    /** Compact currency: ₹2.8L, ₹45K, ₹3.2Cr */
+    /** Compact currency: ₹2.8L, ₹45K, ₹3.2Cr (lakh/crore only make sense for
+        INR; other currencies use a plain K/M/B scale). */
     function formatCurrencyShort(amount) {
         if (amount === null || amount === undefined) return '—';
-        if (amount >= 10000000) return '₹' + (amount / 10000000).toFixed(1) + 'Cr';
-        if (amount >= 100000)   return '₹' + (amount / 100000).toFixed(1) + 'L';
-        if (amount >= 1000)     return '₹' + (amount / 1000).toFixed(1) + 'K';
-        return '₹' + amount;
+        const sym = _currency.symbol;
+        if (_currency.code === 'INR') {
+            if (amount >= 10000000) return sym + (amount / 10000000).toFixed(1) + 'Cr';
+            if (amount >= 100000)   return sym + (amount / 100000).toFixed(1) + 'L';
+            if (amount >= 1000)     return sym + (amount / 1000).toFixed(1) + 'K';
+            return sym + amount;
+        }
+        if (amount >= 1000000000) return sym + (amount / 1000000000).toFixed(1) + 'B';
+        if (amount >= 1000000)    return sym + (amount / 1000000).toFixed(1) + 'M';
+        if (amount >= 1000)       return sym + (amount / 1000).toFixed(1) + 'K';
+        return sym + amount;
     }
 
     /* ── Date / Time ── */
@@ -56,8 +81,12 @@ const Utils = (() => {
 
     function formatTime(time) {
         if (!time) return '—';
-        // Expects HH:MM or HH:MM:SS
-        const [h, m] = time.split(':').map(Number);
+        // MSSQL TIME columns come back as full datetimes on a 1970-01-01 epoch
+        // (e.g. "1970-01-01T08:00:00.000Z"), not always a plain "HH:MM(:SS)"
+        // string — extract the clock time regardless of which shape we get.
+        const match = String(time).match(/(\d{2}):(\d{2})/);
+        if (!match) return '—';
+        const h = parseInt(match[1], 10), m = parseInt(match[2], 10);
         const ampm = h >= 12 ? 'PM' : 'AM';
         const h12  = h % 12 || 12;
         return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
@@ -313,6 +342,7 @@ const Utils = (() => {
     }
 
     return {
+        loadCurrencySetting,
         formatCurrency, formatCurrencyShort, formatNumber, formatPercent,
         formatDate, formatDateTime, formatTime, timeAgo,
         capitalize, titleCase, truncate, initials, slugify,

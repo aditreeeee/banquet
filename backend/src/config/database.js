@@ -73,12 +73,25 @@ const getPool = async () => {
  * The mssql driver infers native JS types (string/number/boolean/Date/Buffer)
  * automatically, which is sufficient for the vast majority of queries here.
  *
+ * A bare JS `null` with no type hint is inferred by the driver as NVarChar(1).
+ * That's harmless for direct comparisons, but it's a landmine for the very
+ * common `ISNULL(@param, existingColumn)` partial-update pattern used across
+ * the repositories: SQL Server's ISNULL takes its *result type* from the
+ * first argument's *declared* type — so even though @param being NULL means
+ * "keep the existing value", the returned string gets silently truncated to
+ * 1 character by the implicit conversion. Explicitly typing null params as
+ * NVarChar(MAX) avoids this.
+ *
  * @param {sql.Request} request
  * @param {Object} params - { paramName: value }
  */
 const bindParams = (request, params = {}) => {
     Object.entries(params).forEach(([key, value]) => {
-        request.input(key, value === undefined ? null : value);
+        if (value === undefined || value === null) {
+            request.input(key, sql.NVarChar(sql.MAX), null);
+        } else {
+            request.input(key, value);
+        }
     });
 };
 

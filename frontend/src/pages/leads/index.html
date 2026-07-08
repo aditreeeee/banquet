@@ -26,23 +26,7 @@
 </head>
 <body>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
-<aside class="sidebar" id="sidebar">
-    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
-    <nav class="sidebar-nav">
-        <div class="nav-section-label">Dashboard</div>
-        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
-        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
-<div class="nav-section-label">Inventory</div>
-        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
-        <a href="../inventory/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
-                <div class="nav-section-label">CRM</div>
-        <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle></svg></span><span class="sidebar-text">Customers</span></a>
-        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">Sales Pipeline</span></a>
-        <div class="nav-section-label">Reports</div>
-        <a href="../reports/owner-analytics.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg></span><span class="sidebar-text">Owner Analytics</span></a>
-    </nav>
-    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
-</aside>
+<aside class="sidebar" id="sidebar"></aside>
 
 <div class="main-content" id="mainContent">
     <header class="topbar">
@@ -166,6 +150,18 @@
                     </div>
                     <div class="col-12"><label class="form-label">Subject (optional)</label><input type="text" class="form-control" id="cmpSubject" placeholder="Uses a default subject if left blank"></div>
                     <div class="col-12"><label class="form-label">Message *</label><textarea class="form-control" id="cmpMessage" rows="4" placeholder="What would you like to offer this lead?"></textarea></div>
+                    <div class="col-12"><hr style="margin:4px 0"></div>
+                    <div class="col-12">
+                        <label class="form-label">Attachment (PDF, image, flyer, brochure)</label>
+                        <input type="file" class="form-control" id="cmpAttachment" accept=".pdf,.jpg,.jpeg,.png,.webp,.gif">
+                        <div class="form-text" id="cmpAttachmentStatus"></div>
+                    </div>
+                    <div class="col-12"><label class="form-label">Website URL (optional)</label><input type="url" class="form-control" id="cmpWebsiteUrl" placeholder="https://..."></div>
+                    <div class="col-12">
+                        <label class="form-label">Social Links (optional)</label>
+                        <input type="text" class="form-control" id="cmpSocialLinks" placeholder="Comma-separated: https://instagram.com/..., https://facebook.com/...">
+                        <div class="form-text">Separate multiple links with commas</div>
+                    </div>
                 </div>
                 <div id="cmpHistory" style="margin-top:16px;font-size:12px;color:var(--text-muted)"></div>
             </div>
@@ -184,6 +180,8 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
 <script>
 Auth.requireAuth('../auth/login.html');
@@ -354,6 +352,10 @@ async function openCampaignModal(leadId) {
     pendingLeadId = leadId;
     document.getElementById('cmpSubject').value = '';
     document.getElementById('cmpMessage').value = '';
+    document.getElementById('cmpAttachment').value = '';
+    document.getElementById('cmpAttachmentStatus').textContent = '';
+    document.getElementById('cmpWebsiteUrl').value = '';
+    document.getElementById('cmpSocialLinks').value = '';
     campaignModal = new bootstrap.Modal(document.getElementById('campaignModal'));
     campaignModal.show();
 
@@ -363,7 +365,13 @@ async function openCampaignModal(leadId) {
         const res = await API.marketing.history({ lead_id: leadId });
         const history = res.data || [];
         histEl.innerHTML = history.length
-            ? `<strong>Previous sends:</strong><br>` + history.map(h => `${new Date(h.created_at).toLocaleDateString()} — ${h.campaign_type} (${h.delivery_status})`).join('<br>')
+            ? `<strong>Previous sends:</strong><br>` + history.map(h => {
+                const links = [];
+                if (h.attachment_url) links.push(`<a href="${(window.APP_CONFIG?.apiBase||'').replace('/api/v1','')}${h.attachment_url}" target="_blank">📎 ${h.attachment_name||'attachment'}</a>`);
+                if (h.website_url) links.push(`<a href="${h.website_url}" target="_blank">🔗 website</a>`);
+                if (Array.isArray(h.social_links)) h.social_links.forEach((l,i) => links.push(`<a href="${l}" target="_blank">🔗 social ${i+1}</a>`));
+                return `${new Date(h.created_at).toLocaleDateString()} — ${h.campaign_type} (${h.delivery_status})${links.length?' · '+links.join(' · '):''}`;
+              }).join('<br>')
             : 'No previous campaigns sent to this lead.';
     } catch {
         histEl.textContent = '';
@@ -373,12 +381,36 @@ async function openCampaignModal(leadId) {
 async function submitCampaign() {
     const message = document.getElementById('cmpMessage').value.trim();
     if (!message) { Utils.toast('Message is required', 'error'); return; }
+
+    let attachmentUrl, attachmentName;
+    const file = document.getElementById('cmpAttachment').files[0];
+    if (file) {
+        const statusEl = document.getElementById('cmpAttachmentStatus');
+        statusEl.textContent = 'Uploading…';
+        try {
+            const up = await API.marketing.upload(file);
+            attachmentUrl = up.data.url;
+            attachmentName = up.data.name;
+            statusEl.textContent = `Uploaded: ${attachmentName}`;
+        } catch (err) {
+            statusEl.textContent = '';
+            Utils.toast(err.message || 'Failed to upload attachment', 'error');
+            return;
+        }
+    }
+
+    const socialLinks = document.getElementById('cmpSocialLinks').value
+        .split(',').map(s => s.trim()).filter(Boolean);
+
     try {
         const res = await API.marketing.send({
             leadId: pendingLeadId,
             campaignType: document.getElementById('cmpType').value,
             subject: document.getElementById('cmpSubject').value.trim() || undefined,
             message,
+            attachmentUrl, attachmentName,
+            websiteUrl: document.getElementById('cmpWebsiteUrl').value.trim() || undefined,
+            socialLinks: socialLinks.length ? socialLinks : undefined,
         });
         campaignModal.hide();
         Utils.toast(res.data.delivery_status === 'sent' ? 'Campaign sent!' : 'Campaign logged (email delivery failed — check SMTP config)', res.data.delivery_status === 'sent' ? 'success' : 'info');

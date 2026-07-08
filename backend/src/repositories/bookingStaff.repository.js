@@ -51,4 +51,19 @@ const remove = async (assignmentId, bookingId, companyId) => {
     );
 };
 
-module.exports = { listForBooking, assign, updateStatus, remove };
+/** All assignments for a staff member across every booking — their schedule/assigned events. */
+const listForUser = async (userId, companyId) => {
+    return executeQuery(
+        `SELECT bsa.assignment_id, bsa.booking_id, bsa.role_note, bsa.status, bsa.created_at,
+                b.booking_ref, b.event_name, b.event_date, b.event_time_start, b.event_time_end, b.status AS booking_status,
+                h.hall_name
+         FROM BookingStaffAssignments bsa
+         JOIN Bookings b ON b.booking_id = bsa.booking_id
+         JOIN Halls h    ON h.hall_id    = b.hall_id
+         WHERE bsa.user_id = @userId AND b.company_id = @companyId
+         ORDER BY b.event_date DESC`,
+        { userId, companyId }
+    );
+};
+
+module.exports = { listForBooking, assign, updateStatus, remove, listForUser };

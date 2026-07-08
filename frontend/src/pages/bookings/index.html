@@ -21,36 +21,7 @@
 </head>
 <body>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
-<aside class="sidebar" id="sidebar">
-    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
-    <nav class="sidebar-nav">
-        <div class="nav-section-label">Dashboard</div>
-        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
-        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
-        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Venues</div>
-        <a href="../banquets/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 20V9l8-5 8 5v11"></path><path d="M8 20v-5h8v5"></path><path d="M10 9h4"></path></svg></span><span class="sidebar-text">Banquets</span></a>
-        <a href="../halls/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg></span><span class="sidebar-text">Halls</span></a>
-        <div class="nav-section-label">Bookings</div>
-        <a href="index.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
-        <a href="create.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager,booking_executive"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
-        <div class="nav-section-label">Inventory</div>
-        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
-        <a href="../inventory/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
-        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager,booking_executive">CRM</div>
-        <a href="../customers/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager,booking_executive"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
-        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Finance</div>
-        <a href="../payments/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span><span class="sidebar-text">Payments</span></a>
-        <a href="../invoices/index.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg></span><span class="sidebar-text">Invoices</span></a>
-        <div class="nav-section-label" data-require-role="super_admin,company_admin,branch_manager">Reports</div>
-        <a href="../reports/revenue.html" class="sidebar-link" data-require-role="super_admin,company_admin,branch_manager"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path></svg></span><span class="sidebar-text">Revenue</span></a>
-    </nav>
-    <div class="sidebar-footer">
-        <div style="display:flex;align-items:center;gap:10px;padding:8px">
-            <div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div>
-            <div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div><div style="color:rgba(255,255,255,.5);font-size:11px" data-user-role></div></div>
-        </div>
-    </div>
-</aside>
+<aside class="sidebar" id="sidebar"></aside>
 
 <div class="main-content" id="mainContent">
     <header class="topbar">
@@ -113,6 +84,27 @@
                 <button class="btn-ghost" onclick="clearFilters()" style="font-size:12px;padding:6px 12px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg> Clear</button>
             </div>
 
+            <!-- Bulk actions bar (shown once at least one row is selected) -->
+            <div id="bulkActionsBar" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--brand-primary-light);border:1px solid var(--brand-primary);border-radius:var(--radius-md);margin-bottom:12px">
+                <span style="font-size:13px;font-weight:700;color:var(--brand-primary)"><span id="bulkSelCount">0</span> selected</span>
+                <button class="btn-ghost" data-require-perm="bookings:confirm" style="font-size:12px" onclick="bulkConfirm()">Confirm Selected</button>
+                <button class="btn-ghost" data-require-perm="bookings:cancel" style="font-size:12px;color:var(--color-danger)" onclick="bulkCancel()">Cancel Selected</button>
+                <select id="bulkStatusSelect" data-require-perm="bookings:confirm" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border-color)">
+                    <option value="">Update status to…</option>
+                    <option value="tentative">Tentative</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="advance_paid">Advance Paid</option>
+                    <option value="fully_paid">Fully Paid</option>
+                    <option value="completed">Completed</option>
+                    <option value="no_show">No Show</option>
+                </select>
+                <button class="btn-ghost" data-require-perm="bookings:confirm" style="font-size:12px" onclick="bulkUpdateStatus()">Apply</button>
+                <button class="btn-ghost" data-require-perm="invoices:create" style="font-size:12px" onclick="bulkGenerateInvoices()">Generate Invoices</button>
+                <button class="btn-ghost" data-require-perm="bookings:update" style="font-size:12px" onclick="bulkAssignStaff()">Assign Staff</button>
+                <button class="btn-ghost" style="font-size:12px" onclick="bulkExport()">Export Selected</button>
+                <button class="btn-ghost" style="font-size:12px;margin-left:auto" onclick="clearSelection()">Clear Selection</button>
+            </div>
+
             <!-- Table -->
             <div class="table-responsive">
                 <table class="table">
@@ -161,6 +153,22 @@
                     <option value="other">Other</option>
                 </select>
                 <textarea class="form-control" id="cancelNote" rows="3" placeholder="Additional details…"></textarea>
+                <div class="row g-3" style="margin-top:4px">
+                    <div class="col-md-6">
+                        <label class="form-label">Cancellation Charge (₹)</label>
+                        <input type="number" class="form-control" id="cancelCharge" min="0" placeholder="0">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Refund Against Payment</label>
+                        <select class="form-select" id="cancelRefundPayment">
+                            <option value="">No refund</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6" id="cancelRefundAmtWrap" style="display:none">
+                        <label class="form-label">Refund Amount (₹)</label>
+                        <input type="number" class="form-control" id="cancelRefundAmt" min="0" placeholder="0">
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn-ghost" data-bs-dismiss="modal">Keep Booking</button>
@@ -200,23 +208,15 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
 <script>
 Auth.requireAuth('../auth/login.html');
 
 let currentPage = 1;
 const PAGE_SIZE = 20;
-
-const DEMO_BOOKINGS = [
-    { booking_id:1, booking_ref:'BNQ-2026-000001', customer_name:'Arjun Sharma',  event_name:'Wedding Ceremony',     event_type:'wedding',    event_date:'2026-07-15', hall_name:'Royal Ballroom',  guest_count:450, total_amount:225000, amount_paid:56250,  status:'advance_paid', is_priority:true  },
-    { booking_id:2, booking_ref:'BNQ-2026-000002', customer_name:'Priya Patel',   event_name:'Birthday Celebration', event_type:'birthday',   event_date:'2026-07-18', hall_name:'Crystal Hall',    guest_count:120, total_amount:85000,  amount_paid:0,       status:'confirmed',    is_priority:false },
-    { booking_id:3, booking_ref:'BNQ-2026-000003', customer_name:'Rahul Gupta',   event_name:'Corporate Seminar',    event_type:'corporate',  event_date:'2026-07-20', hall_name:'Executive Suite', guest_count:80,  total_amount:42000,  amount_paid:42000,   status:'fully_paid',   is_priority:false },
-    { booking_id:4, booking_ref:'BNQ-2026-000004', customer_name:'Anjali Singh',  event_name:'Reception Dinner',     event_type:'reception',  event_date:'2026-07-22', hall_name:'Garden Lawn',     guest_count:300, total_amount:148000, amount_paid:0,       status:'confirmed',    is_priority:false },
-    { booking_id:5, booking_ref:'BNQ-2026-000005', customer_name:'Vikram Mehta',  event_name:'Silver Anniversary',   event_type:'anniversary',event_date:'2026-07-25', hall_name:'Terrace Lounge',  guest_count:150, total_amount:68000,  amount_paid:17000,   status:'advance_paid', is_priority:false },
-    { booking_id:6, booking_ref:'BNQ-2026-000006', customer_name:'Neha Agarwal',  event_name:'Engagement Ceremony',  event_type:'engagement', event_date:'2026-07-28', hall_name:'Maharaja Hall',   guest_count:200, total_amount:185000, amount_paid:185000,  status:'completed',    is_priority:true  },
-    { booking_id:7, booking_ref:'BNQ-2026-000007', customer_name:'Sanjay Kumar',  event_name:'Tech Summit',          event_type:'corporate',  event_date:'2026-08-01', hall_name:'Diamond Hall',    guest_count:250, total_amount:132000, amount_paid:0,       status:'draft',        is_priority:false },
-    { booking_id:8, booking_ref:'BNQ-2026-000008', customer_name:'Kavita Joshi',  event_name:'Baby Shower',          event_type:'private_party',event_date:'2026-08-05', hall_name:'Executive Suite', guest_count:60,  total_amount:38000,  amount_paid:0,       status:'cancelled',   is_priority:false },
-];
+let allLoadedBookings = [];
 
 const STATUS_DROPDOWN_OPTIONS = ['tentative','confirmed','advance_paid','fully_paid','completed','archived','no_show'];
 
@@ -247,17 +247,19 @@ async function loadBookings(page = 1) {
         const res      = await API.bookings.list(params);
         const bookings = res.data?.bookings  || [];
         const meta     = res.data?.meta      || { total: bookings.length, page, limit: PAGE_SIZE };
+        allLoadedBookings = bookings;
         renderTable(bookings);
         updateStats(res.data?.stats || {});
+        updateBulkBar();
         Utils.renderPagination('paginationWrap', { page: meta.page || page, limit: meta.limit || PAGE_SIZE, total: meta.total || bookings.length }, loadBookings);
     } catch (err) {
-        // Show the real failure instead of silently swapping in unfiltered demo
-        // data — that made filtering look "broken" when the actual API call
-        // had failed for an unrelated reason (auth, network, etc.).
-        Utils.toast(err.message || 'Unable to load bookings from the server — showing demo data', 'error');
-        renderTable(DEMO_BOOKINGS);
+        // Show the real failure instead of silently swapping in demo data —
+        // that made it look like the request had succeeded with unrelated data.
+        Utils.toast(err.message || 'Unable to load bookings from the server', 'error');
+        allLoadedBookings = [];
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4">Unable to load bookings. Please try again.</td></tr>';
         updateStats({});
-        Utils.renderPagination('paginationWrap', { page:1, limit:20, total:DEMO_BOOKINGS.length }, loadBookings);
+        Utils.renderPagination('paginationWrap', { page:1, limit:20, total:0 }, loadBookings);
     }
 }
 
@@ -274,7 +276,7 @@ function renderTable(bookings) {
         const canChangeStatus = !['cancelled'].includes(b.status);
         return `
     <tr>
-        <td><input type="checkbox" class="row-check" value="${id}" style="accent-color:var(--brand-primary)"></td>
+        <td><input type="checkbox" class="row-check" value="${id}" style="accent-color:var(--brand-primary)" onchange="updateBulkBar()"></td>
         <td>
             <a href="detail.html?id=${id}" style="color:var(--brand-primary);font-weight:600;text-decoration:none;font-family:var(--font-mono);font-size:12px">${b.booking_ref}</a>
             ${b.is_priority ? '<span class="badge-status" style="background:var(--color-warning-bg);color:var(--color-warning);margin-left:4px" title="Priority / VIP booking">★ VIP</span>' : ''}
@@ -320,6 +322,102 @@ function updateStats(s) {
 
 function toggleSelectAll(cb) {
     document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+    updateBulkBar();
+}
+
+function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.row-check:checked')).map(c => parseInt(c.value, 10));
+}
+
+function updateBulkBar() {
+    const ids = getSelectedIds();
+    document.getElementById('bulkSelCount').textContent = ids.length;
+    document.getElementById('bulkActionsBar').style.display = ids.length ? 'flex' : 'none';
+}
+
+function clearSelection() {
+    document.querySelectorAll('.row-check, #selectAll').forEach(c => c.checked = false);
+    updateBulkBar();
+}
+
+/** Runs an async action for each id, tolerating individual failures so one bad
+    row doesn't block the rest of the batch, then reports a single summary toast. */
+async function runBulk(ids, actionFn, verb) {
+    let ok = 0, failed = 0;
+    for (const id of ids) {
+        try { await actionFn(id); ok++; }
+        catch (_) { failed++; }
+    }
+    Utils.toast(
+        failed === 0 ? `${verb} ${ok} booking${ok===1?'':'s'}` : `${verb} ${ok} booking${ok===1?'':'s'} — ${failed} failed`,
+        failed === 0 ? 'success' : 'warning'
+    );
+    clearSelection();
+    loadBookings(currentPage);
+}
+
+async function bulkConfirm() {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    if (!await Utils.confirm(`Confirm ${ids.length} selected booking(s)?`, { title: 'Confirm Bookings' })) return;
+    await runBulk(ids, id => API.bookings.status(id, 'confirmed'), 'Confirmed');
+}
+
+async function bulkCancel() {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    const reason = prompt(`Cancel ${ids.length} selected booking(s) — reason:`, 'Bulk cancellation');
+    if (reason === null) return;
+    await runBulk(ids, id => API.bookings.cancel(id, reason), 'Cancelled');
+}
+
+async function bulkUpdateStatus() {
+    const ids = getSelectedIds();
+    const status = document.getElementById('bulkStatusSelect').value;
+    if (!ids.length || !status) { Utils.toast('Select a status to apply first', 'warning'); return; }
+    if (!await Utils.confirm(`Set ${ids.length} selected booking(s) to "${Utils.titleCase(status)}"?`, { title: 'Update Status' })) return;
+    await runBulk(ids, id => API.bookings.status(id, status), 'Updated');
+}
+
+async function bulkGenerateInvoices() {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    if (!await Utils.confirm(`Generate invoices for ${ids.length} selected booking(s)? Bookings that already have one will be skipped.`, { title: 'Generate Invoices' })) return;
+    await runBulk(ids, id => API.invoices.generate({ bookingId: id }), 'Generated invoices for');
+}
+
+async function bulkAssignStaff() {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    try {
+        const res = await API.users.list({ limit: 200 });
+        const staff = res.data?.users || [];
+        const options = staff.map(u => `${u.user_id}: ${u.first_name} ${u.last_name} (${u.role_name||''})`).join('\n');
+        const pick = prompt(`Assign which staff member to ${ids.length} selected booking(s)?\nEnter their user ID:\n\n${options}`);
+        if (!pick) return;
+        const userId = parseInt(pick, 10);
+        if (!staff.some(u => u.user_id === userId)) { Utils.toast('No staff member with that ID', 'error'); return; }
+        await runBulk(ids, id => API.bookings.assignStaff(id, { userId }), 'Assigned staff to');
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to load staff list', 'error');
+    }
+}
+
+function bulkExport() {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    const rows = ids.map(id => allLoadedBookings.find(b => parseInt(b.booking_id||b.id, 10) === id)).filter(Boolean);
+    const headers = ['Booking Ref','Customer','Event','Date','Hall','Guests','Amount','Status'];
+    const csvRows = rows.map(b => [
+        b.booking_ref, b.customer_name, b.event_name, b.event_date, b.hall_name, b.guest_count, b.total_amount, b.status,
+    ].map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(','));
+    const csv = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `bookings-export-${Date.now()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
 }
 
 const handleSearch = Utils.debounce(() => loadBookings(1), 350);
@@ -349,19 +447,46 @@ async function updateBookingStatus(id, newStatus, selectEl) {
 }
 
 let cancelModal;
-function openCancel(id) {
+async function openCancel(id) {
     document.getElementById('cancelBookingId').value = id;
     document.getElementById('cancelNote').value      = '';
+    document.getElementById('cancelCharge').value     = '';
+    document.getElementById('cancelRefundAmt').value  = '';
+    document.getElementById('cancelRefundAmtWrap').style.display = 'none';
+    const sel = document.getElementById('cancelRefundPayment');
+    sel.innerHTML = '<option value="">No refund</option>';
+    try {
+        const res = await API.payments.history(id);
+        (res.data?.payments || []).filter(p => p.amount > 0 && p.payment_status !== 'refunded').forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.payment_id;
+            o.textContent = `${p.payment_ref || 'Payment'} — ${Utils.formatCurrency(p.amount)} (${Utils.titleCase(p.payment_method||'')})`;
+            sel.appendChild(o);
+        });
+    } catch (_) { /* refund selection is optional — non-fatal if payments can't load */ }
     cancelModal = new bootstrap.Modal(document.getElementById('cancelModal'));
     cancelModal.show();
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('cancelRefundPayment')?.addEventListener('change', e => {
+        document.getElementById('cancelRefundAmtWrap').style.display = e.target.value ? '' : 'none';
+    });
+});
+
 async function confirmCancel() {
-    const id     = document.getElementById('cancelBookingId').value;
-    const reason = document.getElementById('cancelReason').value;
-    const note   = document.getElementById('cancelNote').value;
+    const id       = document.getElementById('cancelBookingId').value;
+    const reason   = document.getElementById('cancelReason').value;
+    const note     = document.getElementById('cancelNote').value;
+    const charge   = parseFloat(document.getElementById('cancelCharge').value) || undefined;
+    const paymentId = document.getElementById('cancelRefundPayment').value || undefined;
+    const refundAmount = paymentId ? (parseFloat(document.getElementById('cancelRefundAmt').value) || undefined) : undefined;
     try {
-        await API.bookings.cancel(id, `${reason}: ${note}`);
+        await API.bookings.cancel(id, `${reason}: ${note}`, {
+            cancellationCharge: charge,
+            paymentId: paymentId ? parseInt(paymentId, 10) : undefined,
+            refundAmount,
+        });
         cancelModal?.hide();
         Utils.toast('Booking cancelled successfully', 'success');
         loadBookings(currentPage);

@@ -16,6 +16,7 @@
         initScrollTop();
         Auth.populateUserUI();
         Auth.highlightNav();
+        Utils.loadCurrencySetting();
         loadNotifications();
 
         // Bootstrap tooltips
@@ -117,11 +118,6 @@
 
     /* ── NOTIFICATIONS ── */
     const NOTIF_STORAGE_KEY = 'bnq_notifications_state';
-    const DEFAULT_NOTIFICATIONS = [
-        { notification_id: 1, title: 'New booking received', body: 'A new booking was created for Grand Ballroom.', created_at: new Date().toISOString(), is_read: false, notification_type: 'booking_confirmation' },
-        { notification_id: 2, title: 'Payment pending', body: 'A payment reminder was sent for an advance booking.', created_at: new Date(Date.now() - 1000 * 60 * 20).toISOString(), is_read: false, notification_type: 'payment_reminder' },
-        { notification_id: 3, title: 'Hall availability updated', body: 'Emerald Hall availability was refreshed for today.', created_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), is_read: true, notification_type: 'system' }
-    ];
 
     function normalizeNotification(n, index) {
         return {
@@ -198,30 +194,27 @@
         const panel = document.getElementById('notifList');
         if (!panel) return;
 
-        const stored = getStoredNotifications() || DEFAULT_NOTIFICATIONS.map(normalizeNotification);
-        saveStoredNotifications(stored);
+        const stored = getStoredNotifications() || [];
         renderNotifications(stored);
         setNotificationBadge(stored.filter(n => !n.is_read).length);
 
         try {
             const res = await API.notifications?.list?.();
             const apiNotifs = Array.isArray(res?.data?.notifications) ? res.data.notifications : [];
-            if (apiNotifs.length) {
-                const normalized = apiNotifs.map(normalizeNotification);
-                saveStoredNotifications(normalized);
-                renderNotifications(normalized);
-                setNotificationBadge(normalized.filter(n => !n.is_read).length);
-            }
+            const normalized = apiNotifs.map(normalizeNotification);
+            saveStoredNotifications(normalized);
+            renderNotifications(normalized);
+            setNotificationBadge(normalized.filter(n => !n.is_read).length);
         } catch (_) {
-            renderNotifications(stored);
-            setNotificationBadge(stored.filter(n => !n.is_read).length);
+            // Keep whatever was already cached from a prior successful load — never
+            // substitute fabricated notifications when the live fetch fails.
         }
     }
 
     /* ── MARK ALL NOTIFS READ ── */
     document.addEventListener('click', async e => {
         if (e.target.closest('[data-action="mark-all-read"]')) {
-            const stored = getStoredNotifications() || DEFAULT_NOTIFICATIONS.map(normalizeNotification);
+            const stored = getStoredNotifications() || [];
             const updated = stored.map(n => ({ ...n, is_read: true }));
             saveStoredNotifications(updated);
             renderNotifications(updated);

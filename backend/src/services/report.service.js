@@ -28,21 +28,52 @@ const validateDateRange = (fromDate, toDate) => {
     return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
 };
 
+/** Shifts a YYYY-MM-DD date back exactly one calendar year (handles Feb 29 gracefully). */
+const shiftYearBack = (dateStr) => {
+    const d = new Date(dateStr);
+    d.setUTCFullYear(d.getUTCFullYear() - 1);
+    return d.toISOString().slice(0, 10);
+};
+
 const getRevenueReport = async (query, actor) => {
     const { from, to } = validateDateRange(query.from_date, query.to_date);
-    const groupBy = ['day', 'month'].includes(query.group_by) ? query.group_by : 'month';
+    const groupBy = ['day', 'week', 'month'].includes(query.group_by) ? query.group_by : 'month';
     const key = `revenue:c${actor.companyId}:b${actor.branchId || 0}:${from}:${to}:${groupBy}`;
 
     const cached = cache.get(key);
     if (cached) return cached;
 
     const branchId = actor.branchId || query.branch_id || null;
-    const [series, summary] = await Promise.all([
+    const priorFrom = shiftYearBack(from);
+    const priorTo   = shiftYearBack(to);
+
+    const [series, priorYearSeries, summary, refundedAmount] = await Promise.all([
         reportRepo.getRevenueReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to, groupBy }),
+        reportRepo.getRevenueReport({ companyId: actor.companyId, branchId, fromDate: priorFrom, toDate: priorTo, groupBy }),
         reportRepo.getSummaryStats({  companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getRefundedAmount({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
     ]);
 
-    const data = { summary, series, from, to, groupBy };
+    // Year-over-year per bucket — matched by position (bucket N this year vs bucket N last
+    // year), since a "this month" vs "same month last year" range produces the same bucket
+    // count. Null (not 0%) when there's no prior-year data to compare against, since a
+    // 0% YoY reads as "flat", not "no history yet".
+    const seriesWithYoy = series.map((row, i) => {
+        const prior = priorYearSeries[i];
+        const yoy_change = prior && prior.total_revenue > 0
+            ? Number((((row.total_revenue - prior.total_revenue) / prior.total_revenue) * 100).toFixed(1))
+            : null;
+        return { ...row, yoy_change, prior_year_revenue: prior ? prior.total_revenue : null };
+    });
+
+    const netRevenue = Number(summary.total_revenue) - Number(refundedAmount);
+    const cancelledAmount = seriesWithYoy.reduce((s, r) => s + (Number(r.cancelled_amount) || 0), 0);
+
+    const data = {
+        summary: { ...summary, refunded_amount: refundedAmount, net_revenue: netRevenue, cancelled_amount: cancelledAmount },
+        series: seriesWithYoy,
+        from, to, groupBy,
+    };
     cache.set(key, data);
     return data;
 };
@@ -71,13 +102,32 @@ const getOccupancyReport = async (query, actor) => {
     const cached = cache.get(key);
     if (cached) return cached;
 
-    const data = await reportRepo.getOccupancyReport({
-        companyId: actor.companyId,
-        branchId:  actor.branchId || query.branch_id || null,
-        fromDate:  from,
-        toDate:    to,
-    });
+    const branchId = actor.branchId || query.branch_id || null;
     // NOTE: branchId already falls back to query.branch_id when actor has no fixed branch.
+
+    const [byHall, daily] = await Promise.all([
+        reportRepo.getOccupancyReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getDailyOccupancy({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+    ]);
+
+    const totalOccupied = byHall.reduce((s, h) => s + Number(h.occupied_days || 0), 0);
+    const totalAvailable = byHall.reduce((s, h) => s + Number(h.total_days || 0), 0);
+    const avgOccupancyPct = totalAvailable > 0 ? Number((totalOccupied * 100 / totalAvailable).toFixed(1)) : 0;
+    const peakDay = daily.reduce((best, d) =>
+        (!best || Number(d.occupancy_pct) > Number(best.occupancy_pct)) ? d : best, null);
+
+    const data = {
+        kpi: {
+            avg_occupancy_pct: avgOccupancyPct,
+            peak_day: peakDay ? peakDay.occ_date : null,
+            peak_day_pct: peakDay ? Number(peakDay.occupancy_pct) : 0,
+            total_booked_hall_days: totalOccupied,
+            total_available_hall_days: totalAvailable,
+        },
+        by_hall: byHall,
+        daily,
+        from, to,
+    };
 
     cache.set(key, data);
     return data;
@@ -138,10 +188,10 @@ const getOwnerAnalytics = async (query, actor) => {
     const peakOccupancyHall = occupancy.length ? occupancy[0] : null;
 
     const avgBookingValue = summary.total_bookings > 0
-        ? Number((summary.gross_revenue / summary.total_bookings).toFixed(2))
+        ? Number((summary.total_revenue / summary.total_bookings).toFixed(2))
         : 0;
 
-    const netContributionMargin = Number(summary.gross_revenue) - Number(inventoryCost);
+    const netContributionMargin = Number(summary.total_revenue) - Number(inventoryCost);
 
     const revenueChangePct = monthlyComparison.previous.revenue > 0
         ? Number((((monthlyComparison.current.revenue - monthlyComparison.previous.revenue) / monthlyComparison.previous.revenue) * 100).toFixed(2))

@@ -6,11 +6,13 @@
 const { executeQuery } = require('../config/database');
 
 const BASE_SELECT = `
-    SELECT b.banquet_id, b.banquet_name, b.description, b.address, b.city, b.state,
-           b.phone, b.email, b.is_active, b.created_at,
+    SELECT b.banquet_id, b.banquet_name, b.description, b.address_line1 AS address, b.city, b.state,
+           b.pincode, b.gst_number, b.phone, b.email, b.cover_image_url AS image_url,
+           b.total_capacity, b.average_rating AS avg_rating, b.total_reviews, b.total_bookings,
+           b.is_active, b.created_at,
            b.company_id, b.branch_id,
            br.branch_name,
-           (SELECT COUNT(*) FROM Halls h WHERE h.banquet_id = b.banquet_id AND h.is_active = 1) AS active_halls
+           (SELECT COUNT(*) FROM Halls h WHERE h.banquet_id = b.banquet_id AND h.is_active = 1) AS total_halls
     FROM Banquets b
     LEFT JOIN Branches br ON br.branch_id = b.branch_id
 `;
@@ -64,9 +66,13 @@ const slugify = (name) =>
 
 const create = async (data) => {
     const result = await executeQuery(
-        `INSERT INTO Banquets (company_id, branch_id, banquet_name, banquet_slug, description, address_line1, city, state, phone, email, is_active, created_at, updated_at)
+        `INSERT INTO Banquets (company_id, branch_id, banquet_name, banquet_slug, description,
+             address_line1, city, state, pincode, gst_number, phone, email, cover_image_url,
+             total_capacity, is_active, created_at, updated_at)
          OUTPUT INSERTED.banquet_id AS id
-         VALUES (@companyId, @branchId, @name, @slug, @desc, @address, @city, @state, @phone, @email, 1, GETUTCDATE(), GETUTCDATE())`,
+         VALUES (@companyId, @branchId, @name, @slug, @desc,
+             @address, @city, @state, @pincode, @gstNumber, @phone, @email, @imageUrl,
+             @totalCapacity, @isActive, GETUTCDATE(), GETUTCDATE())`,
         {
             companyId: data.companyId,
             branchId:  data.branchId  || null,
@@ -76,8 +82,13 @@ const create = async (data) => {
             address:   data.address   || null,
             city:      data.city      || null,
             state:     data.state     || null,
+            pincode:   data.pincode   || null,
+            gstNumber: data.gstNumber || null,
             phone:     data.phone     || null,
             email:     data.email     || null,
+            imageUrl:  data.imageUrl  || null,
+            totalCapacity: data.totalCapacity || 0,
+            isActive:  data.isActive != null ? !!data.isActive : true,
         }
     );
     return findById(result[0].id, data.companyId);
@@ -86,14 +97,19 @@ const create = async (data) => {
 const update = async (banquetId, companyId, data) => {
     await executeQuery(
         `UPDATE Banquets
-         SET banquet_name = ISNULL(@name,    banquet_name),
-             description  = ISNULL(@desc,    description),
-             address      = ISNULL(@address, address),
-             city         = ISNULL(@city,    city),
-             state        = ISNULL(@state,   state),
-             phone        = ISNULL(@phone,   phone),
-             email        = ISNULL(@email,   email),
-             updated_at   = GETUTCDATE()
+         SET banquet_name    = ISNULL(@name,      banquet_name),
+             description     = ISNULL(@desc,      description),
+             address_line1   = ISNULL(@address,   address_line1),
+             city            = ISNULL(@city,      city),
+             state           = ISNULL(@state,     state),
+             pincode         = ISNULL(@pincode,   pincode),
+             gst_number      = ISNULL(@gstNumber,  gst_number),
+             phone           = ISNULL(@phone,     phone),
+             email           = ISNULL(@email,     email),
+             cover_image_url = ISNULL(@imageUrl,  cover_image_url),
+             total_capacity  = ISNULL(@totalCapacity, total_capacity),
+             is_active       = ISNULL(@isActive,  is_active),
+             updated_at      = GETUTCDATE()
          WHERE banquet_id = @id AND company_id = @companyId`,
         {
             id:        banquetId,
@@ -103,8 +119,13 @@ const update = async (banquetId, companyId, data) => {
             address:   data.address      || null,
             city:      data.city         || null,
             state:     data.state        || null,
+            pincode:   data.pincode      || null,
+            gstNumber: data.gstNumber    || null,
             phone:     data.phone        || null,
             email:     data.email        || null,
+            imageUrl:  data.imageUrl     || null,
+            totalCapacity: data.totalCapacity || null,
+            isActive:  data.isActive != null ? !!data.isActive : null,
         }
     );
     return findById(banquetId, companyId);

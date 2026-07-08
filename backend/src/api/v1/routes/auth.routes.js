@@ -27,6 +27,17 @@ router.post('/login',
 );
 
 /**
+ * POST /api/v1/auth/register
+ * Creates a new account in 'pending' approval status — cannot log in until
+ * an administrator approves it (see PATCH /users/:id/approve).
+ */
+router.post('/register',
+    authLimiter,
+    validate('register'),
+    authController.register
+);
+
+/**
  * POST /api/v1/auth/refresh
  * Rotates the refresh token; accepts token from cookie or body
  */

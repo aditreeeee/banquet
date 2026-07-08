@@ -56,4 +56,9 @@ const syncPrice = async (req, res) => {
     return response.success(res, pkg, 'Package price recalculated from Master Menu');
 };
 
-module.exports = { listPackages, getPackage, createPackage, getPricing, calculateBill, addItem, removeItem, syncPrice };
+const deletePackage = async (req, res) => {
+    await cateringService.deletePackage(parseInt(req.params.id, 10), req.companyId);
+    return response.success(res, null, 'Catering package deleted');
+};
+
+module.exports = { listPackages, getPackage, createPackage, getPricing, calculateBill, addItem, removeItem, syncPrice, deletePackage };

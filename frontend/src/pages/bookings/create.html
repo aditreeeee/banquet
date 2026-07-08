@@ -10,7 +10,47 @@
 <link href="../../../public/assets/css/app.css"   rel="stylesheet">
 <style>
 /* â”€â”€ Wizard layout â”€â”€ */
-.wizard-container { max-width:860px; margin:0 auto; }
+.wizard-container {
+    max-width: 1220px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start;
+}
+.wizard-main { min-width: 0; }
+
+/* â”€â”€ Live Booking Summary panel â”€â”€ */
+.summary-panel {
+    position: sticky; top: 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 18px 18px 16px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+.summary-title { font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.summary-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.summary-kpi {
+    background: var(--bg-surface-2); border-radius: var(--radius-md); padding: 9px 10px;
+    transition: background .3s ease;
+}
+.summary-kpi.flash { background: rgba(124,58,237,.16); }
+.summary-kpi .k-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+.summary-kpi .k-value { font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-section { border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; }
+.summary-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: var(--text-secondary); }
+.summary-row.total { font-weight: 700; font-size: 13.5px; color: var(--text-primary); border-top: 1px dashed var(--border-color); margin-top: 6px; padding-top: 8px; }
+.summary-validation { border-radius: var(--radius-md); padding: 9px 11px; font-size: 11.5px; margin-bottom: 10px; display: flex; gap: 7px; align-items: flex-start; }
+.summary-validation.ok      { background: var(--color-success-bg); color: var(--color-success); }
+.summary-validation.bad     { background: var(--color-danger-bg);  color: var(--color-danger); }
+.summary-validation.pending { background: var(--bg-surface-2); color: var(--text-muted); }
+.summary-toggle { display: none; }
+
+@media (max-width: 991px) {
+    .wizard-container { grid-template-columns: 1fr; max-width: 860px; }
+    .summary-panel { position: static; max-height: none; order: -1; }
+    .summary-panel.collapsed .summary-body { display: none; }
+    .summary-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; cursor: pointer; background: none; border: none; padding: 0; }
+}
 
 /* Steps header */
 .wizard-header {
@@ -133,6 +173,8 @@
     .step-lbl { display:none; }
     .steps-track::before { left:18px; right:18px; }
 }
+.op-timeline-bar { display:flex; height:34px; border-radius:8px; overflow:hidden; font-size:10.5px; color:white; font-weight:600; margin-top:6px; }
+.op-timeline-bar > div { display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; padding:0 4px; }
 </style>
 </head>
 <body>
@@ -140,36 +182,7 @@
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- Sidebar (abbreviated) -->
-<aside class="sidebar" id="sidebar">
-    <a href="../dashboard/index.html" class="sidebar-brand">
-        <div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div>
-        <span class="sidebar-brand-text">BanquetPro</span>
-    </a>
-    <nav class="sidebar-nav">
-        <div class="nav-section-label">Dashboard</div>
-        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
-        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
-        <div class="nav-section-label">Bookings</div>
-        <a href="index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span class="sidebar-text">All Bookings</span></a>
-        <a href="create.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span><span class="sidebar-text">New Booking</span></a>
-        <div class="nav-section-label">Inventory</div>
-        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
-        <a href="../inventory/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
-        <div class="nav-section-label">CRM</div>
-        <a href="../customers/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="sidebar-text">Customers</span></a>
-        <div class="nav-section-label">Finance</div>
-        <a href="../payments/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg></span><span class="sidebar-text">Payments</span></a>
-    </nav>
-    <div class="sidebar-footer">
-        <div style="display:flex;align-items:center;gap:10px;padding:8px">
-            <div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div>
-            <div class="sidebar-text">
-                <div style="color:white;font-size:13px;font-weight:600" data-user-name></div>
-                <div style="color:rgba(255,255,255,.5);font-size:11px" data-user-role></div>
-            </div>
-        </div>
-    </div>
-</aside>
+<aside class="sidebar" id="sidebar"></aside>
 
 <div class="main-content" id="mainContent">
     <header class="topbar">
@@ -191,6 +204,7 @@
 
     <main class="page-content">
         <div class="wizard-container">
+        <div class="wizard-main">
 
             <!-- Wizard Header -->
             <div class="wizard-header">
@@ -225,20 +239,20 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Event Date <span style="color:var(--color-danger)">*</span></label>
-                            <input type="date" class="form-control" id="eventDate" min="" required>
+                            <input type="date" class="form-control" id="eventDate" min="" required onchange="syncStep1FromDOM()">
                             <div class="invalid-feedback" id="eventDate_error"></div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Expected Guests <span style="color:var(--color-danger)">*</span></label>
-                            <input type="number" class="form-control" id="guestCount" min="1" max="5000" placeholder="e.g. 300" required>
+                            <input type="number" class="form-control" id="guestCount" min="1" max="5000" placeholder="e.g. 300" required oninput="syncStep1FromDOM()">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Start Time <span style="color:var(--color-danger)">*</span></label>
-                            <input type="time" class="form-control" id="startTime" value="08:00" required>
+                            <input type="time" class="form-control" id="startTime" value="08:00" required onchange="recalcOperationalSchedule()">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">End Time <span style="color:var(--color-danger)">*</span></label>
-                            <input type="time" class="form-control" id="endTime" value="23:00" required>
+                            <input type="time" class="form-control" id="endTime" value="23:00" required onchange="recalcOperationalSchedule()">
                         </div>
                         <div class="col-12">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -248,13 +262,47 @@
                         </div>
                         <div class="col-md-6" id="eventEndDateWrap" style="display:none">
                             <label class="form-label">Event End Date <span style="color:var(--color-danger)">*</span></label>
-                            <input type="date" class="form-control" id="eventEndDate">
+                            <input type="date" class="form-control" id="eventEndDate" onchange="syncStep1FromDOM()">
                         </div>
                         <div class="col-12">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;background:var(--color-warning-bg);border-radius:var(--radius-md)">
                                 <input type="checkbox" id="priorityBooking" style="accent-color:var(--color-warning);width:16px;height:16px">
                                 <span style="font-size:13px;font-weight:600;color:var(--color-warning)">Priority Booking <span style="font-weight:400">— overrides normal queue, 20% surcharge applies</span></span>
                             </label>
+                        </div>
+
+                        <div class="col-12"><hr></div>
+                        <div class="col-12">
+                            <h6 style="font-weight:700;color:var(--text-primary);margin-bottom:2px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg> Operational Scheduling</h6>
+                            <p style="color:var(--text-muted);font-size:12.5px;margin-bottom:14px">Setup, cleaning and cool-off windows around the event — these drive hall availability, double-booking prevention and occupancy calculations.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Setup Duration (minutes)</label>
+                            <input type="number" class="form-control" id="setupMinutes" min="0" max="1440" step="15" value="60" onchange="recalcOperationalSchedule()">
+                            <div class="form-text">Time required before the event begins.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cleaning Duration (minutes)</label>
+                            <input type="number" class="form-control" id="cleanupMinutes" min="0" max="1440" step="15" value="60" onchange="recalcOperationalSchedule()">
+                            <div class="form-text">Time required immediately after the event.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cool-Off Duration (minutes)</label>
+                            <input type="number" class="form-control" id="cooloffMinutes" min="0" max="1440" step="15" value="30" onchange="recalcOperationalSchedule()">
+                            <div class="form-text">Buffer reserved after cleaning before the hall can be booked again.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Event Readiness Period (computed)</label>
+                            <input type="text" class="form-control" id="readinessDisplay" readonly>
+                            <div class="form-text">Setup start → event start</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" style="margin-bottom:4px">Hall Release Time (computed)</label>
+                            <div id="releaseDisplay" style="font-size:18px;font-weight:800;color:var(--brand-primary)">—</div>
+                            <div class="form-text">When the hall becomes available again</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="op-timeline-bar" id="opTimelineBar"></div>
                         </div>
                     </div>
                 </div>
@@ -363,52 +411,24 @@
             <div class="step-panel card" id="step5">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:8px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 3v8"></path><path d="M6 11h4"></path><path d="M10 3v8"></path><path d="M14 5h4"></path><path d="M16 3v10"></path></svg> Catering Package</h5>
-                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Optional — select a package or skip this step.</p>
+                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Optional — select a Master Menu catering package or skip this step. Pricing, tax, and inventory are calculated live from the <a href="../catering/menu.html" target="_blank">Master Menu</a>.</p>
+                    <div class="row g-3" id="cateringPkgList">
+                        <div class="col-12"><div class="form-text">Loading catering packages…</div></div>
+                    </div>
                     <div class="row g-3">
-                        <div class="col-md-3 col-6">
-                            <div class="pkg-card" onclick="selectPkg('none',0,'No Catering')">
-                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></div>
-                                <div style="font-weight:600;font-size:13px">No Catering</div>
-                                <div style="font-size:12px;color:var(--text-muted)">Self-arranged</div>
-                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹0</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="pkg-card" onclick="selectPkg(1,450,'Veg Standard')">
-                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 12h16"></path><path d="M8 12c0-4 3-7 4-7s4 3 4 7"></path></svg></div>
-                                <div style="font-weight:600;font-size:13px">Veg Standard</div>
-                                <div style="font-size:12px;color:var(--text-muted)">25 dishes, welcome drinks</div>
-                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹450/plate</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="pkg-card" onclick="selectPkg(2,650,'Veg Premium')">
-                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20c2-8 8-12 14-12"></path><path d="M5 20c4-2 7-5 8-10"></path></svg></div>
-                                <div style="font-weight:600;font-size:13px">Veg Premium</div>
-                                <div style="font-size:12px;color:var(--text-muted)">40 dishes, live counters</div>
-                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹650/plate</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="pkg-card" onclick="selectPkg(3,600,'Non-Veg Standard')">
-                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M8 4c2 2 4 4 4 8"></path><path d="M4 8c4 0 7 2 9 6"></path></svg></div>
-                                <div style="font-weight:600;font-size:13px">Non-Veg Std.</div>
-                                <div style="font-size:12px;color:var(--text-muted)">30 dishes, dessert bar</div>
-                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹600/plate</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="pkg-card" onclick="selectPkg(4,850,'Non-Veg Premium')">
-                                <div style="font-size:24px;margin-bottom:8px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M7 3c0 4 2 6 5 6"></path><path d="M7 9c4 0 8 2 8 8"></path></svg></div>
-                                <div style="font-weight:600;font-size:13px">Non-Veg Premium</div>
-                                <div style="font-size:12px;color:var(--text-muted)">50 dishes, live grills</div>
-                                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹850/plate</div>
-                            </div>
-                        </div>
                         <div class="col-12" id="cateringPlateInput" style="display:none">
                             <label class="form-label">Number of Plates</label>
-                            <input type="number" class="form-control" id="plateCount" style="max-width:200px" placeholder="Plates">
+                            <input type="number" class="form-control" id="plateCount" style="max-width:200px" placeholder="Plates" onchange="onPlateCountChange()">
                             <div class="form-text">Minimum plates = expected guests</div>
+                        </div>
+                        <div class="col-12" id="cateringBillSummary" style="display:none">
+                            <div class="alert alert-light border" style="font-size:13px">
+                                <div class="d-flex justify-content-between"><span>Price per plate (from Master Menu)</span><strong id="cbsPPP">₹0</strong></div>
+                                <div class="d-flex justify-content-between"><span>Tax included per plate</span><strong id="cbsTax">₹0</strong></div>
+                                <div class="d-flex justify-content-between" style="border-top:1px solid var(--border-color);margin-top:6px;padding-top:6px">
+                                    <span>Catering total (<span id="cbsPlates">0</span> plates)</span><strong id="cbsTotal">₹0</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -436,7 +456,7 @@
                         </div>
                         <div class="col-md-6" id="customDecoWrap" style="display:none">
                             <label class="form-label">Custom Amount (₹)</label>
-                            <input type="number" class="form-control" id="customDecoAmount" min="0" placeholder="Enter amount">
+                            <input type="number" class="form-control" id="customDecoAmount" min="0" placeholder="Enter amount" oninput="updateDecoPrice()">
                         </div>
                         <div class="col-12">
                             <label class="form-label">Decoration Notes</label>
@@ -468,36 +488,31 @@
 
                         <div class="col-12"><hr></div>
 
-                        <div class="col-12">
-                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;display:block">Utilities Required</label>
-                            <div class="row g-2" id="utilitiesGrid">
-                                <!-- Generated by JS -->
-                            </div>
-                        </div>
                         <div class="col-md-4">
                             <label class="form-label">Staff Count</label>
-                            <input type="number" class="form-control" id="staffCount" min="0" placeholder="e.g. 12">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Setup Duration (minutes)</label>
-                            <input type="number" class="form-control" id="setupMinutes" min="0" max="1440" placeholder="e.g. 120">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Cleanup Duration (minutes)</label>
-                            <input type="number" class="form-control" id="cleanupMinutes" min="0" max="1440" placeholder="e.g. 60">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Cool-off Duration (minutes)</label>
-                            <input type="number" class="form-control" id="cooloffMinutes" min="0" max="1440" placeholder="e.g. 30">
-                            <div class="form-text">Extra buffer reserved after cleanup before the hall can be rebooked.</div>
+                            <input type="number" class="form-control" id="staffCount" min="0" placeholder="e.g. 12" oninput="syncServicesFromDOM()">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Cleanup Charge (₹)</label>
-                            <input type="number" class="form-control" id="cleanupCharge" min="0" placeholder="0">
+                            <input type="number" class="form-control" id="cleanupCharge" min="0" placeholder="0" oninput="syncServicesFromDOM()">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Late Exit Charge (₹)</label>
-                            <input type="number" class="form-control" id="lateExitCharge" min="0" placeholder="0">
+                            <input type="number" class="form-control" id="lateExitCharge" min="0" placeholder="0" oninput="syncServicesFromDOM()">
+                        </div>
+
+                        <div class="col-12"><hr></div>
+
+                        <div class="col-12">
+                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">
+                                Inventory Allocation
+                            </label>
+                            <p style="color:var(--text-muted);font-size:12.5px;margin-bottom:12px">
+                                Recommended automatically from your guest count and current stock. Adjust any quantity before confirming.
+                            </p>
+                            <div id="inventoryAllocList" class="table-responsive">
+                                <div class="form-text">Loading recommendations…</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -589,6 +604,16 @@
                         </div>
                     </div>
 
+                    <div id="editInventorySection" style="display:none;margin-top:20px">
+                        <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Inventory Allocation</div>
+                        <p style="color:var(--text-muted);font-size:12.5px;margin-bottom:12px">
+                            Recalculated from the updated guest count. Adjust any quantity — saving will update the reserved inventory for this booking.
+                        </p>
+                        <div id="editInventoryAllocList" class="table-responsive">
+                            <div class="form-text">Loading…</div>
+                        </div>
+                    </div>
+
                     <div style="margin-top:20px;padding:14px 16px;background:var(--bg-surface-2);border-radius:var(--radius-md)">
                         <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
                             <input type="checkbox" id="termsAccept" style="margin-top:3px;accent-color:var(--brand-primary)">
@@ -607,6 +632,42 @@
                     </button>
                 </div>
             </div>
+
+        </div><!-- /wizard-main -->
+
+        <!-- Live Booking Summary (persistent panel — same shared `state`
+             object the wizard reads/writes; no duplicated business logic) -->
+        <aside class="summary-panel" id="summaryPanel">
+            <button class="summary-toggle" onclick="document.getElementById('summaryPanel').classList.toggle('collapsed')">
+                <span class="summary-title" style="margin:0"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg> Booking Summary</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="summary-title" style="display:none" id="summaryTitleDesktop"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg> Booking Summary</div>
+            <div class="summary-body" id="summaryBody">
+                <div id="summaryValidation"></div>
+                <div class="summary-kpi-grid">
+                    <div class="summary-kpi" id="sumKpiHall"><div class="k-label">Hall</div><div class="k-value">—</div></div>
+                    <div class="summary-kpi" id="sumKpiDate"><div class="k-label">Date</div><div class="k-value">—</div></div>
+                    <div class="summary-kpi" id="sumKpiTime"><div class="k-label">Time</div><div class="k-value">—</div></div>
+                    <div class="summary-kpi" id="sumKpiGuests"><div class="k-label">Guests</div><div class="k-value">—</div></div>
+                </div>
+                <div class="summary-section" style="border-top:none;padding-top:0;margin-top:0">
+                    <div class="summary-row"><span>Customer</span><span id="sumCustomer">—</span></div>
+                    <div class="summary-row"><span>Catering</span><span id="sumCatering">—</span></div>
+                    <div class="summary-row"><span>Decoration</span><span id="sumDecor">₹0</span></div>
+                    <div class="summary-row"><span>Services</span><span id="sumServices">₹0</span></div>
+                    <div class="summary-row"><span>Inventory</span><span id="sumInventory">—</span></div>
+                    <div class="summary-row"><span>Staff Assigned</span><span id="sumStaff">—</span></div>
+                </div>
+                <div class="summary-section">
+                    <div class="summary-row"><span>Subtotal</span><span id="sumSubtotal">₹0</span></div>
+                    <div class="summary-row"><span>Tax</span><span id="sumTax">₹0</span></div>
+                    <div class="summary-row"><span>Priority Surcharge</span><span id="sumPriorityRow" style="display:none"><span id="sumPriority">₹0</span></span></div>
+                    <div class="summary-row total"><span>Grand Total</span><span id="sumTotal">₹0</span></div>
+                    <div class="summary-row"><span>Advance Due (<span id="sumAdvPct">—</span>%)</span><span id="sumAdvance">₹0</span></div>
+                </div>
+            </div>
+        </aside>
 
         </div><!-- /wizard-container -->
     </main>
@@ -663,6 +724,8 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
 <script>
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -693,23 +756,6 @@ const SERVICES = [
     { id:8, name:'Valet Parking',     price:8000  },
 ];
 
-// Must match UTILITY_OPTIONS in backend/src/api/v1/validators/booking.validator.js
-const UTILITIES = [
-    { key:'microphones',   label:'Microphones' },
-    { key:'speakers',      label:'Speakers' },
-    { key:'stage',         label:'Stage' },
-    { key:'projector',     label:'Projector' },
-    { key:'led',           label:'LED Screen' },
-    { key:'lighting',      label:'Lighting' },
-    { key:'generator',     label:'Generator' },
-    { key:'photography',   label:'Photography' },
-    { key:'security',      label:'Security' },
-    { key:'parking',       label:'Parking' },
-    { key:'power_backup',  label:'Power Backup' },
-    { key:'cleaning',      label:'Cleaning' },
-    { key:'kitchen',       label:'Kitchen' },
-];
-
 /* ── Edit mode ── */
 let editMode      = false;
 let editBookingId = null;
@@ -718,6 +764,12 @@ let editBookingId = null;
 const state = {
     currentStep:    1,
     bookingRef:     '',
+    originalEventDate:  '',
+    originalStartTime:  '',
+    originalEndTime:    '',
+    originalEventEndDate: '',
+    scheduleLocked: false,
+    lockedStatus:   '',
     eventDate:      '',
     banquetId:      null,
     banquetName:    '',
@@ -739,6 +791,9 @@ const state = {
     cateringPPP:    0,
     plateCount:     0,
     cateringTotal:  0,
+    cateringPricePerPlate: null,
+    cateringTaxAmount:     null,
+    resourceAllocations:   [], // [{resourceId, resourceName, quantity, available}] — editable inventory recommendations
     decorationAmt:  0,
     selectedServices:[],
     servicesTotal:  0,
@@ -753,30 +808,90 @@ const state = {
     isMultiDay:     false,
     eventEndDate:   '',
     theme:          '',
-    utilities:      [],
     staffCount:     null,
-    setupMinutes:   0,
-    cleanupMinutes: 0,
-    cooloffMinutes: 0,
+    setupMinutes:   60,
+    cleanupMinutes: 60,
+    cooloffMinutes: 30,
     cleanupCharge:  0,
     lateExitCharge: 0,
 };
+
+/* Advance % and GST rate come from Settings (Billing & Tax tab) rather than
+   being hard-coded — see loadOperationalDefaults(), which fetches these
+   alongside the setup/cleanup/cooloff durations. Fallbacks here match the
+   defaults settings.service.js uses server-side until Settings has been
+   configured, so client and server never disagree. */
+let settingsAdvancePct = 50;
+let settingsTaxPct = 18; // cgst_rate + sgst_rate
 
 /* ── Multi-day toggle ── */
 function toggleMultiDay() {
     const checked = document.getElementById('multiDayEvent').checked;
     document.getElementById('eventEndDateWrap').style.display = checked ? '' : 'none';
+    recalcOperationalSchedule();
 }
 
-/* ── Utilities grid ── */
-function renderUtilities() {
-    document.getElementById('utilitiesGrid').innerHTML = UTILITIES.map(u => `
-    <div class="col-md-3 col-6">
-        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;background:var(--bg-surface);font-size:12.5px">
-            <input type="checkbox" class="util-check" value="${u.key}" style="accent-color:var(--brand-primary);width:15px;height:15px">
-            ${u.label}
-        </label>
-    </div>`).join('');
+/* ── Operational Scheduling (setup / event / cleaning / cool-off timeline) ──
+   Drives the same setup_minutes/cleanup_minutes/cooloff_minutes fields the
+   backend already uses for availability overlap checks, double-booking
+   prevention and occupancy calculations (see booking.repository.js) — this
+   just surfaces them at booking-creation time instead of a separate page. */
+function hmToMinutes(hm) { const [h,m] = (hm||'0:0').split(':').map(Number); return h*60+m; }
+function minutesToHm(mins) {
+    mins = ((mins % 1440) + 1440) % 1440;
+    const h = Math.floor(mins/60), m = mins%60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function fmtHm(hm) {
+    const [h,m] = (hm||'0:0').split(':').map(Number);
+    const period = h>=12?'PM':'AM', h12 = h%12===0?12:h%12;
+    return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+}
+
+/* Mirrors the Step-1 date/time/guest fields into `state` live (previously
+   only captured on Next-click via validateCurrentStep) so the summary panel
+   and its live availability check stay in sync as the user types. */
+function syncStep1FromDOM() {
+    state.eventDate    = document.getElementById('eventDate').value;
+    state.guestCount   = parseInt(document.getElementById('guestCount').value) || 0;
+    state.startTime    = document.getElementById('startTime').value || '08:00';
+    state.endTime      = document.getElementById('endTime').value   || '23:00';
+    state.isMultiDay   = document.getElementById('multiDayEvent').checked;
+    state.eventEndDate = state.isMultiDay ? document.getElementById('eventEndDate').value : '';
+    renderSummaryPanel();
+}
+
+function recalcOperationalSchedule() {
+    syncStep1FromDOM();
+    const startTime = document.getElementById('startTime').value || '08:00';
+    const endTime    = document.getElementById('endTime').value   || '23:00';
+    const isMultiDay = document.getElementById('multiDayEvent').checked;
+    const setupMinutes   = parseInt(document.getElementById('setupMinutes').value)   || 0;
+    const cleanupMinutes = parseInt(document.getElementById('cleanupMinutes').value) || 0;
+    const cooloffMinutes = parseInt(document.getElementById('cooloffMinutes').value) || 0;
+
+    const startMin = hmToMinutes(startTime);
+    const endMin   = hmToMinutes(endTime);
+    const readinessStart = minutesToHm(startMin - setupMinutes);
+    // For multi-day/overnight events the release time is on the event end date,
+    // not the start date — the clock-of-day math is still valid for display purposes.
+    const releaseTime    = minutesToHm(endMin + cleanupMinutes + cooloffMinutes);
+
+    document.getElementById('readinessDisplay').value = `${fmtHm(readinessStart)} → ${fmtHm(startTime)}`;
+    document.getElementById('releaseDisplay').textContent = fmtHm(releaseTime) + (isMultiDay ? ' (on end date)' : '');
+
+    const eventMins = isMultiDay ? Math.max(endMin - startMin, 60) : Math.max(endMin - startMin, 1);
+    const totalMins = setupMinutes + eventMins + cleanupMinutes + cooloffMinutes;
+    const seg = (mins, color, label) => `<div title="${label}: ${mins}m" style="flex:${Math.max(mins,1)};background:${color}">${mins/totalMins > 0.07 ? label : ''}</div>`;
+    document.getElementById('opTimelineBar').innerHTML =
+        seg(setupMinutes, '#F59E0B', 'Setup') +
+        seg(eventMins, '#7C3AED', 'Event') +
+        seg(cleanupMinutes, '#0D9488', 'Cleaning') +
+        seg(cooloffMinutes, '#6B7280', 'Cool-off');
+
+    state.setupMinutes = setupMinutes;
+    state.cleanupMinutes = cleanupMinutes;
+    state.cooloffMinutes = cooloffMinutes;
 }
 
 /* â”€â”€ Render step track â”€â”€ */
@@ -793,7 +908,11 @@ function renderSteps() {
     }).join('');
 
     document.getElementById('currentStepNum').textContent  = state.currentStep;
-    document.getElementById('stepDescription').textContent = STEPS[state.currentStep - 1].desc;
+    document.getElementById('stepDescription').textContent = (editMode && state.currentStep === 1)
+        ? (state.scheduleLocked
+            ? `Editing ${state.bookingRef} — date/time can't change once a booking is ${state.lockedStatus}`
+            : `Editing ${state.bookingRef} — hall cannot be changed, but date/time can be updated (availability is re-checked)`)
+        : STEPS[state.currentStep - 1].desc;
     document.getElementById('wizardProgress').style.width  = (state.currentStep / 9 * 100) + '%';
 
     // Show/hide panels
@@ -801,13 +920,16 @@ function renderSteps() {
         const el = document.getElementById(`step${s.id}`);
         if (el) el.classList.toggle('active', s.id === state.currentStep);
     });
+
+    renderSummaryPanel();
 }
 
 /* â”€â”€ Navigation â”€â”€ */
 async function nextStep() {
     if (!validateCurrentStep()) return;
-    // Editing an existing booking cannot change banquet/hall/date (no reschedule flow here) —
-    // skip straight from Date & Time (step 1) to Event Info (step 4).
+    // Editing an existing booking cannot change banquet/hall (no rebooking-to-a-
+    // different-hall flow here) — skip straight from Date & Time (step 1, which
+    // IS editable — see reschedule()) to Event Info (step 4).
     if (editMode && state.currentStep === 1) {
         state.currentStep = 4;
         renderSteps();
@@ -817,6 +939,7 @@ async function nextStep() {
     // Edit mode has no catering/decoration/services/pricing to review — only event details change.
     if (editMode && state.currentStep === 4) {
         populateConfirmation();
+        await syncEditInventoryAllocations();
         state.currentStep = 9;
         renderSteps();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -824,6 +947,7 @@ async function nextStep() {
     }
     if (state.currentStep === 1) await loadBanquets();
     if (state.currentStep === 2) await loadHalls();
+    if (state.currentStep === 6) await loadInventoryRecommendations();
     if (state.currentStep === 7) calculatePrice();
     if (state.currentStep === 8) populateConfirmation();
     state.currentStep = Math.min(9, state.currentStep + 1);
@@ -911,14 +1035,14 @@ function validateCurrentStep() {
     }
 
     if (state.currentStep === 5) {
-        if (state.cateringPkgId && state.cateringPkgId !== 'none') {
+        if (state.cateringPkgId) {
             const pc = parseInt(document.getElementById('plateCount').value);
             if (!pc || pc < state.guestCount) {
                 showAlert(`Plate count must be at least ${state.guestCount} (your guest count).`);
                 return false;
             }
-            state.plateCount    = pc;
-            state.cateringTotal = pc * state.cateringPPP;
+            // cateringTotal/cateringTaxAmount/cateringPricePerPlate are already computed
+            // server-side from the Master Menu via refreshCateringBill() — don't override them here.
         }
     }
 
@@ -930,16 +1054,7 @@ function validateCurrentStep() {
     }
 
     if (state.currentStep === 7) {
-        const selected = document.querySelectorAll('.svc-check:checked');
-        state.selectedServices = Array.from(selected).map(c => ({ id: parseInt(c.dataset.id), name: c.dataset.name, price: parseInt(c.dataset.price) }));
-        state.servicesTotal = state.selectedServices.reduce((s, x) => s + x.price, 0);
-        state.utilities      = Array.from(document.querySelectorAll('.util-check:checked')).map(c => c.value);
-        state.staffCount     = parseInt(document.getElementById('staffCount').value)     || null;
-        state.setupMinutes   = parseInt(document.getElementById('setupMinutes').value)   || 0;
-        state.cleanupMinutes = parseInt(document.getElementById('cleanupMinutes').value) || 0;
-        state.cooloffMinutes = parseInt(document.getElementById('cooloffMinutes').value) || 0;
-        state.cleanupCharge  = parseInt(document.getElementById('cleanupCharge').value)  || 0;
-        state.lateExitCharge = parseInt(document.getElementById('lateExitCharge').value) || 0;
+        syncServicesFromDOM();
     }
 
     if (state.currentStep === 9) {
@@ -1020,6 +1135,7 @@ function selectBanquet(id, name) {
     document.querySelectorAll('#banquetsGrid .hall-card').forEach(c => c.classList.remove('selected'));
     const cards = document.querySelectorAll('#banquetsGrid .hall-card');
     cards.forEach(c => { if (c.querySelector('.hall-name')?.textContent === name) c.classList.add('selected'); });
+    calculatePrice();
 }
 
 /* ── Load halls for the selected banquet (Step 3) ── */
@@ -1093,29 +1209,159 @@ function selectHall(id, name, price) {
     document.querySelectorAll('#hallsGrid .hall-card').forEach(c => c.classList.remove('selected'));
     const cards = document.querySelectorAll('#hallsGrid .hall-card');
     cards.forEach(c => { if (c.querySelector('.hall-name')?.textContent === name) c.classList.add('selected'); });
+    calculatePrice();
 }
 
-/* â”€â”€ Catering â”€â”€ */
-function selectPkg(id, ppp, name) {
+/* ── Catering — packages are real Master Menu-derived data from the backend,
+   never hardcoded. Pricing/tax are computed server-side per plate count. ── */
+let cateringPackages = [];
+
+async function loadCateringPackages() {
+    const list = document.getElementById('cateringPkgList');
+    try {
+        const res = await API.catering.packages();
+        cateringPackages = res.data?.packages || res.data || [];
+    } catch (err) {
+        list.innerHTML = `<div class="col-12"><div class="form-text text-danger">Could not load catering packages: ${getErrorMessage(err, 'unknown error')}</div></div>`;
+        return;
+    }
+    renderCateringPackages();
+}
+
+function renderCateringPackages() {
+    const list = document.getElementById('cateringPkgList');
+    const cards = [
+        `<div class="col-md-3 col-6">
+            <div class="pkg-card" onclick="selectPkg(null,0,'No Catering',this)">
+                <div style="font-weight:600;font-size:13px">No Catering</div>
+                <div style="font-size:12px;color:var(--text-muted)">Self-arranged</div>
+                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹0</div>
+            </div>
+        </div>`,
+        ...cateringPackages.map(p => `
+        <div class="col-md-3 col-6">
+            <div class="pkg-card" onclick="selectPkg(${p.package_id},${p.price_per_plate},'${(p.package_name||'').replace(/'/g,"\\'")}',this)">
+                <div style="font-weight:600;font-size:13px">${p.package_name}</div>
+                <div style="font-size:12px;color:var(--text-muted)">${(p.package_type||'').replace('_',' ')} · min ${p.min_plates||0} plates</div>
+                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹${Number(p.price_per_plate).toFixed(0)}/plate</div>
+            </div>
+        </div>`),
+    ];
+    list.innerHTML = cards.join('');
+}
+
+function selectPkg(id, ppp, name, cardEl) {
     state.cateringPkgId = id;
     state.cateringName  = name;
     state.cateringPPP   = ppp;
     document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
-    event.currentTarget.classList.add('selected');
+    cardEl?.classList.add('selected');
     const wrap = document.getElementById('cateringPlateInput');
-    if (id && id !== 'none') {
+    if (id) {
         wrap.style.display = '';
-        document.getElementById('plateCount').value = state.guestCount;
+        const plateInput = document.getElementById('plateCount');
+        plateInput.value = state.guestCount || '';
+        refreshCateringBill();
     } else {
         wrap.style.display = 'none';
+        document.getElementById('cateringBillSummary').style.display = 'none';
         state.cateringTotal = 0;
+        state.cateringPricePerPlate = null;
+        state.cateringTaxAmount = null;
+        calculatePrice();
     }
 }
 
-/* â”€â”€ Decoration â”€â”€ */
+function onPlateCountChange() { refreshCateringBill(); }
+
+/* Fetches the real per-plate price/tax/total from the Master Menu-backed package —
+   this is the "pricing/tax populate automatically" requirement, not a manual multiply. */
+async function refreshCateringBill() {
+    if (!state.cateringPkgId) return;
+    const plates = parseInt(document.getElementById('plateCount').value) || 0;
+    if (!plates) return;
+    try {
+        const res  = await API.catering.bill(state.cateringPkgId, { guest_count: plates });
+        const bill = res.data || {};
+        state.plateCount            = plates;
+        state.cateringTotal         = Number(bill.total_bill) || 0;
+        state.cateringTaxAmount     = Number(bill.total_tax) || 0;
+        state.cateringPricePerPlate = Number(bill.computed_price_per_plate) || 0;
+
+        document.getElementById('cateringBillSummary').style.display = '';
+        document.getElementById('cbsPPP').textContent   = Utils.formatCurrency(bill.computed_price_per_plate || 0);
+        document.getElementById('cbsTax').textContent   = Utils.formatCurrency(bill.computed_tax_per_plate || 0);
+        document.getElementById('cbsPlates').textContent = plates;
+        document.getElementById('cbsTotal').textContent = Utils.formatCurrency(state.cateringTotal);
+        calculatePrice();
+    } catch (err) {
+        Utils.toast(getErrorMessage(err, 'Could not calculate catering pricing'), 'error');
+    }
+}
+
+/* ── Inventory Allocation — auto-recommended from guest count + live stock,
+   remains fully editable before the booking is submitted (resources[] is
+   sent as-is at creation and enforced/overallocation-checked server-side). ── */
+async function loadInventoryRecommendations() {
+    const wrap = document.getElementById('inventoryAllocList');
+    if (!state.guestCount || !state.eventDate) {
+        wrap.innerHTML = '<div class="form-text">Set event date and guest count first.</div>';
+        return;
+    }
+    try {
+        const res = await API.resources.recommendations({ guest_count: state.guestCount, event_date: state.eventDate });
+        const rows = res.data || [];
+        state.resourceAllocations = rows.map(r => ({
+            resourceId:   r.resource_id,
+            resourceName: r.resource_name,
+            category:     r.category,
+            quantity:     r.recommended_quantity,
+            available:    r.available,
+        }));
+        renderInventoryAllocations();
+    } catch (err) {
+        wrap.innerHTML = `<div class="form-text text-danger">Could not load inventory recommendations: ${getErrorMessage(err, 'unknown error')}</div>`;
+    }
+}
+
+function renderInventoryAllocations() {
+    const wrap = document.getElementById('inventoryAllocList');
+    if (!state.resourceAllocations.length) {
+        wrap.innerHTML = '<div class="form-text">No matching inventory categories found.</div>';
+        return;
+    }
+    wrap.innerHTML = `
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Item</th><th>Category</th><th style="width:140px">Quantity</th><th>Available</th></tr></thead>
+            <tbody>
+                ${state.resourceAllocations.map((a, i) => `
+                    <tr>
+                        <td>${a.resourceName}</td>
+                        <td style="text-transform:capitalize;color:var(--text-muted)">${a.category}</td>
+                        <td><input type="number" class="form-control form-control-sm" min="0" value="${a.quantity}"
+                                onchange="updateInventoryQty(${i}, this.value)"></td>
+                        <td class="${a.quantity > a.available ? 'text-danger' : 'text-muted'}">
+                            ${a.available}${a.quantity > a.available ? ' ⚠ insufficient' : ''}
+                        </td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>`;
+}
+
+function updateInventoryQty(index, value) {
+    const qty = Math.max(0, parseInt(value, 10) || 0);
+    state.resourceAllocations[index].quantity = qty;
+    renderInventoryAllocations();
+}
+
+/* ── Decoration ── */
 function updateDecoPrice() {
     const v = document.getElementById('decorationType').value;
     document.getElementById('customDecoWrap').style.display = v === 'custom' ? '' : 'none';
+    state.decorationAmt = v === 'custom'
+        ? parseInt(document.getElementById('customDecoAmount').value) || 0
+        : parseInt(v) || 0;
+    calculatePrice();
 }
 
 /* â”€â”€ Customer search â”€â”€ */
@@ -1167,6 +1413,7 @@ function selectCustomer(id, name, email = '') {
     if (email) {
         document.getElementById('selectedCustomer').dataset.email = email;
     }
+    renderSummaryPanel();
 }
 
 function clearCustomer() {
@@ -1176,6 +1423,7 @@ function clearCustomer() {
     document.getElementById('customerId').value = '';
     document.getElementById('selectedCustomer').style.display = 'none';
     document.getElementById('selectedCustomer').removeAttribute('data-email');
+    renderSummaryPanel();
 }
 
 function openNewCustomerModal() {
@@ -1202,12 +1450,22 @@ async function createCustomer() {
     }
 }
 
+function syncServicesFromDOM() {
+    const selected = document.querySelectorAll('.svc-check:checked');
+    state.selectedServices = Array.from(selected).map(c => ({ id: parseInt(c.dataset.id), name: c.dataset.name, price: parseInt(c.dataset.price) }));
+    state.servicesTotal = state.selectedServices.reduce((s, x) => s + x.price, 0);
+    state.staffCount     = parseInt(document.getElementById('staffCount').value)     || null;
+    state.cleanupCharge  = parseInt(document.getElementById('cleanupCharge').value)  || 0;
+    state.lateExitCharge = parseInt(document.getElementById('lateExitCharge').value) || 0;
+    calculatePrice();
+}
+
 /* â”€â”€ Services grid â”€â”€ */
 function renderServices() {
     document.getElementById('servicesGrid').innerHTML = SERVICES.map(s => `
     <div class="col-md-4 col-6">
         <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;background:var(--bg-surface)">
-            <input type="checkbox" class="svc-check" data-id="${s.id}" data-name="${s.name}" data-price="${s.price}" style="accent-color:var(--brand-primary);width:16px;height:16px">
+            <input type="checkbox" class="svc-check" data-id="${s.id}" data-name="${s.name}" data-price="${s.price}" onchange="syncServicesFromDOM()" style="accent-color:var(--brand-primary);width:16px;height:16px">
             <div>
                 <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${s.name}</div>
                 <div style="font-size:11px;color:var(--text-muted)">${Utils.formatCurrency(s.price)}</div>
@@ -1219,16 +1477,16 @@ function renderServices() {
 /* â”€â”€ Price calculation â”€â”€ */
 function calculatePrice() {
     const sub   = state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal;
-    const tax   = Math.round(sub * 0.18);
+    const tax   = Math.round(sub * (settingsTaxPct / 100));
     state.taxAmt     = tax;
     state.grandTotal = sub - state.discountAmt + tax;
 
     // Priority surcharge: 20% of the booking total, billed separately (matches backend calculatePrioritySurcharge)
     state.prioritySurcharge = state.isPriority ? Math.round(state.grandTotal * 0.20) : 0;
 
-    // Advance auto-calculation: 50% if event is <30 days out, else 20% (matches backend calculateAdvanceAmount)
-    const daysUntilEvent = Math.ceil((new Date(state.eventDate) - new Date()) / (1000 * 60 * 60 * 24));
-    state.advancePct = daysUntilEvent < 30 ? 50 : 20;
+    // Advance auto-calculation uses the company's configured advance % (Settings →
+    // Billing & Tax), same as backend calculateAdvanceAmount — see settingsAdvancePct.
+    state.advancePct = settingsAdvancePct;
     state.advanceAmt = Math.ceil(state.grandTotal * (state.advancePct / 100));
 
     document.getElementById('prHall').textContent       = Utils.formatCurrency(state.hallBasePrice);
@@ -1242,6 +1500,99 @@ function calculatePrice() {
     document.getElementById('prPriority').textContent  = Utils.formatCurrency(state.prioritySurcharge);
     document.getElementById('prAdvancePct').textContent = state.advancePct;
     document.getElementById('prAdvance').textContent    = Utils.formatCurrency(state.advanceAmt);
+
+    renderSummaryPanel();
+}
+
+/* ── Live Booking Summary panel ──────────────────────────────────────────
+   Reads the exact shared `state` object the wizard steps mutate — this is
+   purely a view over state, it never recomputes business logic itself
+   (calculatePrice() above stays the single source of truth for pricing).
+   Called from calculatePrice() (so it's always in sync whenever pricing
+   changes) plus directly from selection handlers that don't otherwise touch
+   pricing (hall/banquet/catering selection, step navigation) so the summary
+   never lags behind the form by more than one keystroke/click. */
+let summaryFlashTimer = {};
+function flashKpi(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('flash');
+    clearTimeout(summaryFlashTimer[id]);
+    summaryFlashTimer[id] = setTimeout(() => el.classList.remove('flash'), 600);
+}
+
+let lastSummarySnapshot = {};
+function renderSummaryPanel() {
+    const setKpi = (id, value) => {
+        const el = document.getElementById(id);
+        const valEl = el.querySelector('.k-value');
+        const text = value || '—';
+        if (valEl.textContent !== text) { valEl.textContent = text; flashKpi(id); }
+    };
+
+    setKpi('sumKpiHall',   state.hallName || (state.banquetName ? `${state.banquetName} (hall pending)` : ''));
+    setKpi('sumKpiDate',   state.eventDate ? Utils.formatDate(state.eventDate) + (state.isMultiDay && state.eventEndDate ? ` – ${Utils.formatDate(state.eventEndDate)}` : '') : '');
+    setKpi('sumKpiTime',   state.startTime && state.endTime ? `${state.startTime} – ${state.endTime}` : '');
+    setKpi('sumKpiGuests', state.guestCount ? Utils.formatNumber(state.guestCount) : '');
+
+    document.getElementById('sumCustomer').textContent = state.customerName || 'Not selected';
+    document.getElementById('sumCatering').textContent = state.cateringPkgId ? `${state.cateringName} (${state.plateCount||0} plates)` : 'None';
+    document.getElementById('sumDecor').textContent     = Utils.formatCurrency(state.decorationAmt);
+    document.getElementById('sumServices').textContent  = Utils.formatCurrency(state.servicesTotal);
+    document.getElementById('sumInventory').textContent = state.resourceAllocations.length ? `${state.resourceAllocations.length} item(s)` : 'None';
+    document.getElementById('sumStaff').textContent     = state.staffCount ? `${state.staffCount} assigned` : 'Not assigned';
+
+    const sub = state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal;
+    document.getElementById('sumSubtotal').textContent = Utils.formatCurrency(sub - state.discountAmt);
+    document.getElementById('sumTax').textContent      = Utils.formatCurrency(state.taxAmt);
+    document.getElementById('sumPriorityRow').style.display = state.isPriority ? '' : 'none';
+    document.getElementById('sumPriority').textContent = Utils.formatCurrency(state.prioritySurcharge);
+    document.getElementById('sumTotal').textContent    = Utils.formatCurrency(state.grandTotal + state.prioritySurcharge);
+    document.getElementById('sumAdvPct').textContent   = state.advancePct;
+    document.getElementById('sumAdvance').textContent  = Utils.formatCurrency(state.advanceAmt);
+
+    scheduleLiveAvailabilityCheck();
+}
+
+/* ── Live validation: double-booking / hall availability ──────────────────
+   Debounced check against the same GET /bookings/check-availability the
+   backend enforces at submit time (booking.service.js checkAvailability) —
+   this doesn't replace that server-side enforcement, it just surfaces the
+   same answer earlier so the user isn't surprised at the final step. */
+const summaryValidationEl = () => document.getElementById('summaryValidation');
+let availabilityCheckTimer = null;
+function scheduleLiveAvailabilityCheck() {
+    clearTimeout(availabilityCheckTimer);
+    if (!state.hallId || !state.eventDate || !state.startTime || !state.endTime) {
+        summaryValidationEl().innerHTML = '';
+        return;
+    }
+    summaryValidationEl().innerHTML = `<div class="summary-validation pending"><span>⏳</span><span>Checking availability…</span></div>`;
+    availabilityCheckTimer = setTimeout(runLiveAvailabilityCheck, 500);
+}
+
+async function runLiveAvailabilityCheck() {
+    const el = summaryValidationEl();
+    if (!state.hallId || !state.eventDate || !state.startTime || !state.endTime) { el.innerHTML = ''; return; }
+    try {
+        const res = await API.bookings.checkAvail({
+            hallId:    state.hallId,
+            eventDate: state.eventDate,
+            startTime: state.startTime,
+            endTime:   state.endTime,
+        });
+        const available = res.data?.available !== false;
+        const capOk = !state.guestCount || !res.data?.hall || (res.data.hall.capacity_seated || res.data.hall.capacity || Infinity) >= state.guestCount;
+        if (available && capOk) {
+            el.innerHTML = `<div class="summary-validation ok"><span>✓</span><span>Hall is available for this date &amp; time${state.guestCount ? ' and capacity is sufficient' : ''}.</span></div>`;
+        } else if (!available) {
+            el.innerHTML = `<div class="summary-validation bad"><span>⚠</span><span>This hall is already booked for the selected date/time — pick another slot or hall.</span></div>`;
+        } else {
+            el.innerHTML = `<div class="summary-validation bad"><span>⚠</span><span>Guest count exceeds this hall's capacity — choose a larger hall or reduce guest count.</span></div>`;
+        }
+    } catch (err) {
+        el.innerHTML = `<div class="summary-validation pending"><span>—</span><span>Availability will be re-checked when you submit.</span></div>`;
+    }
 }
 
 async function applyCoupon() {
@@ -1290,6 +1641,26 @@ async function submitBooking() {
     if (editMode && editBookingId) {
         Utils.showLoader(btn, 'Saving changes…');
         try {
+            // Reschedule first (date/time/end-date are a separate endpoint from the
+            // rest of the fields — see backend/src/services/booking.service.js
+            // reschedule() vs update()). Only call it if the user actually changed
+            // something, so an untouched schedule never re-triggers an availability
+            // check the user didn't ask for.
+            const scheduleChanged = !state.scheduleLocked && (
+                state.eventDate !== state.originalEventDate ||
+                state.startTime !== state.originalStartTime ||
+                state.endTime   !== state.originalEndTime   ||
+                (state.isMultiDay ? state.eventEndDate : '') !== state.originalEventEndDate
+            );
+            if (scheduleChanged) {
+                await API.bookings.reschedule(editBookingId, {
+                    eventDate:      state.eventDate,
+                    eventTimeStart: state.startTime,
+                    eventTimeEnd:   state.endTime,
+                    eventEndDate:   state.isMultiDay ? state.eventEndDate : undefined,
+                });
+            }
+
             // The update endpoint only accepts these fields (see booking.validator.js updateSchema)
             const payload = {
                 eventName:  state.eventName      || undefined,
@@ -1298,7 +1669,6 @@ async function submitBooking() {
                 notes:      state.specialRequests || undefined,
                 theme:            state.theme          || undefined,
                 decorationNotes:  document.getElementById('decorationNotes')?.value || undefined,
-                utilities:        state.utilities.length ? state.utilities : undefined,
                 staffCount:       state.staffCount     ?? undefined,
                 eventEndDate:     state.isMultiDay ? state.eventEndDate : undefined,
                 setupMinutes:     state.setupMinutes,
@@ -1306,8 +1676,25 @@ async function submitBooking() {
                 cooloffMinutes:   state.cooloffMinutes,
                 cleanupCharge:    state.cleanupCharge,
                 lateExitCharge:   state.lateExitCharge,
+                cateringPackageId:     state.cateringPkgId          ?? undefined,
+                cateringPricePerPlate: state.cateringPricePerPlate  ?? undefined,
+                cateringTaxAmount:     state.cateringTaxAmount      ?? undefined,
             };
             const res = await API.bookings.update(editBookingId, payload);
+
+            // Sync inventory to whatever's shown in the Inventory Allocation section —
+            // covers both a guest-count-driven recalculation and manual adjustments.
+            if (state.resourceAllocations.length) {
+                try {
+                    await API.bookings.updateResources(
+                        editBookingId,
+                        state.resourceAllocations.filter(a => a.quantity > 0).map(a => ({ resourceId: a.resourceId, quantity: a.quantity }))
+                    );
+                } catch (invErr) {
+                    Utils.toast(getErrorMessage(invErr, 'Booking saved, but inventory reallocation failed — please adjust it from the booking detail page.'), 'warning');
+                }
+            }
+
             const ref = res.data?.booking_ref || state.bookingRef || '';
             document.getElementById('successRef').textContent = ref;
             document.querySelector('#successModal h4').textContent = 'Booking Updated!';
@@ -1339,7 +1726,6 @@ async function submitBooking() {
             isPriority:       state.isPriority,
             theme:            state.theme || undefined,
             decorationNotes:  document.getElementById('decorationNotes')?.value || undefined,
-            utilities:        state.utilities.length ? state.utilities : undefined,
             staffCount:       state.staffCount ?? undefined,
             eventEndDate:     state.isMultiDay ? state.eventEndDate : undefined,
             setupMinutes:     state.setupMinutes,
@@ -1347,6 +1733,12 @@ async function submitBooking() {
             cooloffMinutes:   state.cooloffMinutes,
             cleanupCharge:    state.cleanupCharge,
             lateExitCharge:   state.lateExitCharge,
+            cateringPackageId:     state.cateringPkgId          || undefined,
+            cateringPricePerPlate: state.cateringPricePerPlate  || undefined,
+            cateringTaxAmount:     state.cateringTaxAmount      || undefined,
+            resources: state.resourceAllocations
+                .filter(a => a.quantity > 0)
+                .map(a => ({ resourceId: a.resourceId, quantity: a.quantity })),
         };
         const res = await API.bookings.create(payload);
         const ref = res.data?.booking_ref;
@@ -1367,10 +1759,20 @@ async function loadExistingBooking(id) {
         const b = res.data;
         if (!b) throw new Error('Booking not found');
 
+        // MSSQL TIME columns come back as full datetimes on a 1970-01-01 epoch
+        // (e.g. "1970-01-01T08:00:00.000Z"), not a plain "HH:MM:SS" string —
+        // .slice(0,5) on that gives "1970", not the clock time. Extract the
+        // HH:MM regardless of which shape the API returns.
+        const extractTime = (t, fallback) => {
+            if (!t) return fallback;
+            const m = String(t).match(/(\d{2}):(\d{2})/);
+            return m ? `${m[1]}:${m[2]}` : fallback;
+        };
+
         state.bookingRef      = b.booking_ref || '';
         state.eventDate       = b.event_date  ? String(b.event_date).slice(0, 10) : '';
-        state.startTime       = (b.event_time_start || '08:00').slice(0, 5);
-        state.endTime         = (b.event_time_end   || '23:00').slice(0, 5);
+        state.startTime       = extractTime(b.event_time_start, '08:00');
+        state.endTime         = extractTime(b.event_time_end, '23:00');
         state.guestCount      = b.guest_count || 0;
         state.hallId          = b.hall_id;
         state.hallName        = b.hall_name || '';
@@ -1379,15 +1781,37 @@ async function loadExistingBooking(id) {
         state.customerId      = b.customer_id;
         state.customerName    = b.customer_name || '';
         state.specialRequests = b.notes || '';
+        state.originalGuestCount = b.guest_count || 0;
+        state.isMultiDay      = !!b.event_end_date;
+        state.eventEndDate    = b.event_end_date ? String(b.event_end_date).slice(0, 10) : '';
 
-        // Pre-fill Step 1 (read-only reference fields for context)
+        // Remember the as-loaded schedule so submitBooking() can tell whether the
+        // user actually changed date/time and only call reschedule() when needed.
+        state.originalEventDate    = state.eventDate;
+        state.originalStartTime   = state.startTime;
+        state.originalEndTime     = state.endTime;
+        state.originalEventEndDate = state.eventEndDate;
+
+        // A booking that's cancelled/completed/archived can't be rescheduled
+        // server-side (see booking.service.js reschedule()) — lock the fields
+        // to match instead of letting the user submit changes that will 500.
+        const LOCKED_STATUSES = ['cancelled', 'completed', 'archived'];
+        state.scheduleLocked = LOCKED_STATUSES.includes(b.status);
+        state.lockedStatus = b.status;
+
+        // Pre-fill Step 1 — editable unless the booking's status locks scheduling.
         document.getElementById('eventDate').value  = state.eventDate;
         document.getElementById('guestCount').value = state.guestCount;
         document.getElementById('startTime').value  = state.startTime;
         document.getElementById('endTime').value    = state.endTime;
-        document.getElementById('eventDate').disabled  = true;
-        document.getElementById('startTime').disabled  = true;
-        document.getElementById('endTime').disabled    = true;
+        document.getElementById('multiDayEvent').checked = state.isMultiDay;
+        document.getElementById('eventEndDate').value = state.eventEndDate;
+        toggleMultiDay();
+        document.getElementById('eventDate').disabled     = state.scheduleLocked;
+        document.getElementById('startTime').disabled     = state.scheduleLocked;
+        document.getElementById('endTime').disabled       = state.scheduleLocked;
+        document.getElementById('multiDayEvent').disabled = state.scheduleLocked;
+        document.getElementById('eventEndDate').disabled  = state.scheduleLocked;
 
         // Pre-fill Step 4 (Event Info)
         const eventTypeSelect = document.getElementById('eventType');
@@ -1398,21 +1822,81 @@ async function loadExistingBooking(id) {
         document.getElementById('theme').value = b.theme || '';
         selectCustomer(state.customerId, state.customerName);
 
-        // Pre-fill operational fields (Step 7)
+        // Pre-fill operational fields
         document.getElementById('staffCount').value     = b.staff_count      || '';
-        document.getElementById('setupMinutes').value   = b.setup_minutes    || '';
-        document.getElementById('cleanupMinutes').value = b.cleanup_minutes  || '';
-        document.getElementById('cooloffMinutes').value = b.cooloff_minutes  || '';
+        document.getElementById('setupMinutes').value   = b.setup_minutes    || 60;
+        document.getElementById('cleanupMinutes').value = b.cleanup_minutes  || 60;
+        document.getElementById('cooloffMinutes').value = b.cooloff_minutes  || 30;
         document.getElementById('cleanupCharge').value  = b.cleanup_charge   || '';
         document.getElementById('lateExitCharge').value = b.late_exit_charge || '';
-        if (Array.isArray(b.utilities)) {
-            document.querySelectorAll('.util-check').forEach(c => { c.checked = b.utilities.includes(c.value); });
-        }
+        recalcOperationalSchedule();
+        renderSteps(); // picks up the edit-mode step-1 description now that state is populated
 
-        document.getElementById('stepDescription').textContent = `Editing ${state.bookingRef} — hall and date cannot be changed here`;
+        // Seed the editable inventory list from what's actually allocated today.
+        try {
+            const allocRes = await API.bookings.resources(id);
+            state.resourceAllocations = (allocRes.data || []).map(a => ({
+                resourceId:   a.resource_id,
+                resourceName: a.resource_name,
+                category:     a.category || '',
+                quantity:     a.quantity_allocated,
+                available:    null,
+            }));
+        } catch (_) { /* non-fatal — inventory section will just start empty */ }
     } catch (err) {
         Utils.toast(getErrorMessage(err, 'Unable to load booking for editing.'), 'error');
     }
+}
+
+/* Recalculates recommended inventory when the guest count changed since the
+   booking was created, merging with whatever is already allocated so a
+   manually-added item isn't silently dropped. */
+async function syncEditInventoryAllocations() {
+    const wrap = document.getElementById('editInventoryAllocList');
+    document.getElementById('editInventorySection').style.display = '';
+    const guestCountChanged = parseInt(document.getElementById('guestCount').value, 10) !== state.originalGuestCount;
+    state.guestCount = parseInt(document.getElementById('guestCount').value, 10) || state.guestCount;
+
+    if (!guestCountChanged) {
+        renderEditInventoryAllocations();
+        return;
+    }
+    try {
+        const res = await API.resources.recommendations({ guest_count: state.guestCount, event_date: state.eventDate });
+        const recommended = res.data || [];
+        const byId = new Map(state.resourceAllocations.map(a => [a.resourceId, a]));
+        recommended.forEach(r => {
+            byId.set(r.resource_id, {
+                resourceId: r.resource_id, resourceName: r.resource_name, category: r.category,
+                quantity: r.recommended_quantity, available: r.available,
+            });
+        });
+        state.resourceAllocations = Array.from(byId.values());
+        renderEditInventoryAllocations();
+    } catch (err) {
+        wrap.innerHTML = `<div class="form-text text-danger">Could not recalculate inventory: ${getErrorMessage(err, 'unknown error')}</div>`;
+    }
+}
+
+function renderEditInventoryAllocations() {
+    const wrap = document.getElementById('editInventoryAllocList');
+    if (!state.resourceAllocations.length) {
+        wrap.innerHTML = '<div class="form-text">No inventory currently allocated.</div>';
+        return;
+    }
+    wrap.innerHTML = `
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Item</th><th>Category</th><th style="width:140px">Quantity</th></tr></thead>
+            <tbody>
+                ${state.resourceAllocations.map((a, i) => `
+                    <tr>
+                        <td>${a.resourceName}</td>
+                        <td style="text-transform:capitalize;color:var(--text-muted)">${a.category}</td>
+                        <td><input type="number" class="form-control form-control-sm" min="0" value="${a.quantity}"
+                                onchange="state.resourceAllocations[${i}].quantity = Math.max(0, parseInt(this.value,10)||0); renderSummaryPanel();"></td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>`;
 }
 
 /* â”€â”€ Init â”€â”€ */
@@ -1424,7 +1908,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('eventDate').min = tomorrow.toISOString().split('T')[0];
 
     renderServices();
-    renderUtilities();
+    loadCateringPackages();
 
     const params = new URLSearchParams(location.search);
     const id   = params.get('id');
@@ -1434,11 +1918,32 @@ document.addEventListener('DOMContentLoaded', () => {
         editBookingId = parseInt(id, 10);
         document.querySelector('.page-title').textContent = 'Edit Booking';
         document.getElementById('confirmBookingBtn').innerHTML = 'Save Changes';
-        loadExistingBooking(editBookingId);
+        loadExistingBooking(editBookingId); // pre-fills its own saved setup/cleanup/cooloff values
+    } else {
+        loadOperationalDefaults();
     }
 
+    recalcOperationalSchedule();
     renderSteps();
 });
+
+/* Default setup/cleanup/cooloff minutes come from Settings (Booking Rules tab) rather
+   than being hard-coded, so an admin change there propagates to every new booking. */
+async function loadOperationalDefaults() {
+    try {
+        const res = await API.settings.get();
+        const booking = res.data?.booking || {};
+        const billing = res.data?.billing || {};
+        if (booking.default_setup_minutes)   document.getElementById('setupMinutes').value   = booking.default_setup_minutes;
+        if (booking.default_cleanup_minutes) document.getElementById('cleanupMinutes').value = booking.default_cleanup_minutes;
+        if (booking.default_cooloff_minutes) document.getElementById('cooloffMinutes').value = booking.default_cooloff_minutes;
+        if (booking.advance_pct) settingsAdvancePct = parseFloat(booking.advance_pct);
+        const cgst = parseFloat(billing.cgst_rate), sgst = parseFloat(billing.sgst_rate);
+        if (!isNaN(cgst) && !isNaN(sgst)) settingsTaxPct = cgst + sgst;
+        recalcOperationalSchedule();
+        calculatePrice();
+    } catch (_) { /* keep the sensible hard-coded fallback (60/60/30, 50% advance, 18% tax) */ }
+}
 </script>
 </body>
 </html>

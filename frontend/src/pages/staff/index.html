@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staff Management | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.staff-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:10px }
+.staff-avatar { width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary),#4F46E5);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Staff Management</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Staff Management</h1><p class="page-subtitle">View staff, assign them to bookings and track schedules</p></div>
+            <button class="btn-primary-brand" data-require-perm="users:create" onclick="openStaffModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Add Staff</button>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+            <div class="search-input-wrap" style="flex:1;min-width:200px">
+                <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg></span>
+                <input type="text" class="form-control" id="staffSearch" placeholder="Search staff by name…" oninput="renderStaff()">
+            </div>
+            <select class="form-select" id="roleFilter" onchange="renderStaff()" style="width:auto">
+                <option value="">All Roles</option>
+            </select>
+        </div>
+
+        <div id="staffGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+            <div style="grid-column:1/-1;text-align:center;padding:48px"><span class="spinner-border spinner-border-sm me-2"></span>Loading staff…</div>
+        </div>
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<!-- Schedule Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="scheduleModalTitle">Schedule</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead><tr><th>Event</th><th>Hall</th><th>Date</th><th>Time</th><th>Booking Status</th><th>Assignment</th><th></th></tr></thead>
+                        <tbody id="scheduleBody"><tr><td colspan="7" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign to Booking Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Assign <span id="assignStaffName"></span> to a Booking</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="assignUserId">
+                <div style="position:relative">
+                    <label class="form-label">Search Booking (ref, customer, event)</label>
+                    <input type="text" class="form-control" id="assignBookingSearch" autocomplete="off" oninput="searchAssignBookings(this.value)" placeholder="e.g. BKG-2026-00012 or customer name">
+                    <div id="assignBookingSuggest" class="dropdown-menu" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:240px;overflow-y:auto;z-index:1080"></div>
+                </div>
+                <input type="hidden" id="assignBookingId">
+                <div id="assignBookingInfo" style="display:none;margin-top:10px;padding:10px;background:var(--bg-surface-2);border-radius:8px;font-size:12.5px"></div>
+                <div style="margin-top:12px">
+                    <label class="form-label">Role / Note</label>
+                    <input type="text" class="form-control" id="assignRoleNote" placeholder="e.g. Head Waiter, Sound Engineer…">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmAssignBtn" onclick="confirmAssign()">Assign</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Staff Modal -->
+<div class="modal fade" id="staffModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="staffModalTitle">Add Staff</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="staffUserId">
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">First Name *</label><input type="text" class="form-control" id="staffFirstName"></div>
+                    <div class="col-md-6"><label class="form-label">Last Name *</label><input type="text" class="form-control" id="staffLastName"></div>
+                    <div class="col-md-6"><label class="form-label">Email *</label><input type="email" class="form-control" id="staffEmail"></div>
+                    <div class="col-md-6"><label class="form-label">Phone (Contact Details)</label><input type="tel" class="form-control" id="staffPhone" placeholder="+91 98765 43210"></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Role(s) * <span style="font-weight:400;color:var(--text-muted)">(ctrl/cmd-click for multiple)</span></label>
+                        <select class="form-select" id="staffRole" multiple size="4"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Branch (Availability/Assignment)</label>
+                        <select class="form-select" id="staffBranch"><option value="">Unassigned</option></select>
+                    </div>
+                    <div class="col-md-6" id="staffPassFieldWrap">
+                        <label class="form-label">Password *</label>
+                        <input type="password" class="form-control" id="staffPassword" placeholder="Min 8 chars, 1 number, 1 special">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="staffStatus">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="saveStaffBtn" onclick="saveStaff()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+let allStaff = [];
+let roles = [];
+
+async function loadRoles() {
+    try {
+        const res = await API.get('/users/roles');
+        roles = res.data || [];
+        const sel = document.getElementById('roleFilter');
+        roles.forEach(r => {
+            const o = document.createElement('option');
+            o.value = r.role_id; o.textContent = r.role_name;
+            sel.appendChild(o);
+        });
+        const modalSel = document.getElementById('staffRole');
+        roles.filter(r => r.role_slug !== 'super_admin').forEach(r => {
+            const o = document.createElement('option');
+            o.value = r.role_id; o.textContent = r.role_name;
+            modalSel.appendChild(o);
+        });
+    } catch (_) { /* filter still works without role names populated */ }
+    try {
+        const res = await API.branches.list();
+        const sel = document.getElementById('staffBranch');
+        (res.data || []).forEach(b => {
+            const o = document.createElement('option');
+            o.value = b.branch_id; o.textContent = b.branch_name;
+            sel.appendChild(o);
+        });
+    } catch (_) { /* branch assignment stays optional if this fails */ }
+}
+
+async function loadStaff() {
+    const grid = document.getElementById('staffGrid');
+    try {
+        const res = await API.users.list({ limit: 200 });
+        allStaff = res.data?.users || [];
+        renderStaff();
+    } catch (err) {
+        grid.innerHTML = `<div style="grid-column:1/-1"><div class="empty-state">Could not load staff: ${err.message || 'unknown error'}</div></div>`;
+    }
+}
+
+function renderStaff() {
+    const grid = document.getElementById('staffGrid');
+    const q = document.getElementById('staffSearch').value.toLowerCase();
+    const roleId = document.getElementById('roleFilter').value;
+    const filtered = allStaff.filter(u => {
+        const name = `${u.first_name} ${u.last_name}`.toLowerCase();
+        if (q && !name.includes(q) && !(u.email||'').toLowerCase().includes(q)) return false;
+        if (roleId && String(u.role_id) !== roleId) return false;
+        return true;
+    });
+    if (!filtered.length) { grid.innerHTML = '<div style="grid-column:1/-1"><div class="empty-state">No staff found</div></div>'; return; }
+    grid.innerHTML = filtered.map(u => {
+        const name = `${u.first_name} ${u.last_name}`;
+        const initials = (u.first_name[0]||'') + (u.last_name[0]||'');
+        return `
+        <div class="staff-card">
+            <div style="display:flex;gap:12px;align-items:center">
+                <div class="staff-avatar">${initials.toUpperCase()}</div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-weight:700;font-size:14px">${name}</div>
+                    <div style="font-size:11.5px;color:var(--text-muted)">${u.role_name || Utils.titleCase(u.role_slug||'')}</div>
+                </div>
+                ${u.is_active ? '<span class="badge-status badge-confirmed">Active</span>' : '<span class="badge-status badge-cancelled">Inactive</span>'}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)">${u.email||''} ${u.phone?(' · '+u.phone):''}</div>
+            <div style="display:flex;gap:8px;margin-top:4px">
+                <button class="btn-ghost" style="flex:1;font-size:12px" onclick="openSchedule(${u.user_id},'${name.replace(/'/g,"\\'")}')">View Schedule</button>
+                <button class="btn-primary-brand" style="flex:1;font-size:12px" onclick="openAssign(${u.user_id},'${name.replace(/'/g,"\\'")}')">Assign</button>
+            </div>
+            <div style="display:flex;gap:8px">
+                <button class="btn-ghost" data-require-perm="users:update" style="flex:1;font-size:12px" onclick='editStaff(${u.user_id})'>Edit</button>
+                <button class="btn-ghost" data-require-perm="users:update" style="flex:1;font-size:12px;color:${u.is_active ? 'var(--color-danger)' : 'var(--color-success)'}" onclick="deleteStaff(${u.user_id}, ${u.is_active})">${u.is_active ? 'Deactivate' : 'Activate'}</button>
+            </div>
+        </div>`;
+    }).join('');
+    Auth.populateUserUI();
+}
+
+/* ── Add/Edit/Delete Staff ── */
+let staffModalInst, editingStaffId = null;
+function openStaffModal(user = null) {
+    editingStaffId = user?.user_id || null;
+    document.getElementById('staffModalTitle').textContent = user ? 'Edit Staff' : 'Add Staff';
+    document.getElementById('staffUserId').value = user?.user_id || '';
+    document.getElementById('staffFirstName').value = user?.first_name || '';
+    document.getElementById('staffLastName').value = user?.last_name || '';
+    document.getElementById('staffEmail').value = user?.email || '';
+    document.getElementById('staffPhone').value = user?.phone || '';
+    document.getElementById('staffBranch').value = user?.branch_id || '';
+    document.getElementById('staffStatus').value = user?.status || 'active';
+    const roleIds = (user?.role_ids && user.role_ids.length) ? user.role_ids : (user?.role_id ? [user.role_id] : []);
+    [...document.getElementById('staffRole').options].forEach(o => { o.selected = roleIds.includes(parseInt(o.value, 10)); });
+    document.getElementById('staffPassFieldWrap').style.display = user ? 'none' : '';
+    staffModalInst = staffModalInst || new bootstrap.Modal(document.getElementById('staffModal'));
+    staffModalInst.show();
+}
+
+async function editStaff(id) {
+    try {
+        const res = await API.users.get(id);
+        openStaffModal(res.data);
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to load staff details', 'error');
+    }
+}
+
+async function saveStaff() {
+    const btn = document.getElementById('saveStaffBtn');
+    const roleIds = [...document.getElementById('staffRole').selectedOptions].map(o => parseInt(o.value, 10));
+    const data = {
+        first_name: document.getElementById('staffFirstName').value.trim(),
+        last_name:  document.getElementById('staffLastName').value.trim(),
+        email:      document.getElementById('staffEmail').value.trim(),
+        phone:      document.getElementById('staffPhone').value.trim(),
+        role_id:    roleIds[0],
+        role_ids:   roleIds,
+        branch_id:  document.getElementById('staffBranch').value ? parseInt(document.getElementById('staffBranch').value) : null,
+        status:     document.getElementById('staffStatus').value,
+        password:   document.getElementById('staffPassword')?.value || undefined,
+    };
+    if (!data.first_name || !data.last_name || !data.email) { Utils.toast('First name, last name and email are required', 'error'); return; }
+    if (!roleIds.length) { Utils.toast('Select at least one role', 'error'); return; }
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        if (editingStaffId) await API.users.update(editingStaffId, data);
+        else await API.users.create(data);
+        Utils.hideLoader(btn);
+        staffModalInst.hide();
+        Utils.toast(editingStaffId ? 'Staff updated!' : 'Staff added!', 'success');
+        loadStaff();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || (editingStaffId ? 'Failed to update staff' : 'Failed to add staff'), 'error');
+    }
+}
+
+async function deleteStaff(id, isActive) {
+    const label = isActive ? 'deactivate' : 'activate';
+    const ok = await Utils.confirm(`${Utils.titleCase(label)} this staff member?`, { danger: isActive });
+    if (!ok) return;
+    try {
+        await API.users.toggle(id);
+        Utils.toast(`Staff ${label}d`, isActive ? 'warning' : 'success');
+        loadStaff();
+    } catch (err) {
+        Utils.toast(err.message || `Failed to ${label} staff`, 'error');
+    }
+}
+
+/* ── Schedule ── */
+let scheduleModalInst;
+async function openSchedule(userId, name) {
+    document.getElementById('scheduleModalTitle').textContent = `${name}'s Schedule`;
+    const body = document.getElementById('scheduleBody');
+    body.innerHTML = '<tr><td colspan="7" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>';
+    scheduleModalInst = scheduleModalInst || new bootstrap.Modal(document.getElementById('scheduleModal'));
+    scheduleModalInst.show();
+    try {
+        const res = await API.users.schedule(userId);
+        const rows = res.data || [];
+        if (!rows.length) { body.innerHTML = '<tr><td colspan="7"><div class="empty-state" style="padding:24px">No assignments yet</div></td></tr>'; return; }
+        body.innerHTML = rows.map(r => `
+            <tr>
+                <td style="font-weight:600">${r.event_name||'—'}</td>
+                <td>${r.hall_name||'—'}</td>
+                <td>${Utils.formatDate(r.event_date)}</td>
+                <td>${Utils.formatTime ? Utils.formatTime(r.event_time_start) : ''}</td>
+                <td>${Utils.statusBadge(r.booking_status)}</td>
+                <td>${Utils.statusBadge(r.status)} ${r.role_note ? `<div style="font-size:11px;color:var(--text-muted)">${r.role_note}</div>` : ''}</td>
+                <td><button class="btn-icon danger" title="Remove assignment" onclick="removeAssignment(${r.booking_id},${r.assignment_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></td>
+            </tr>`).join('');
+    } catch (err) {
+        body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${err.message||'Failed to load schedule'}</div></td></tr>`;
+    }
+}
+
+async function removeAssignment(bookingId, assignmentId) {
+    const ok = await Utils.confirm('Remove this staff assignment?', { title: 'Remove Assignment', danger: true });
+    if (!ok) return;
+    try {
+        await API.bookings.removeStaff(bookingId, assignmentId);
+        Utils.toast('Assignment removed', 'success');
+        const title = document.getElementById('scheduleModalTitle').textContent;
+        const userRow = allStaff.find(u => title.startsWith(`${u.first_name} ${u.last_name}`));
+        if (userRow) openSchedule(userRow.user_id, `${userRow.first_name} ${userRow.last_name}`);
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to remove assignment', 'error');
+    }
+}
+
+/* ── Assign to booking ── */
+let assignModalInst;
+function openAssign(userId, name) {
+    document.getElementById('assignStaffName').textContent = name;
+    document.getElementById('assignUserId').value = userId;
+    document.getElementById('assignBookingSearch').value = '';
+    document.getElementById('assignBookingId').value = '';
+    document.getElementById('assignBookingInfo').style.display = 'none';
+    document.getElementById('assignRoleNote').value = '';
+    assignModalInst = assignModalInst || new bootstrap.Modal(document.getElementById('assignModal'));
+    assignModalInst.show();
+}
+
+const searchAssignBookings = Utils.debounce(async (q) => {
+    const box = document.getElementById('assignBookingSuggest');
+    if (!q || q.length < 2) { box.style.display = 'none'; return; }
+    try {
+        const res = await API.bookings.list({ search: q, limit: 8 });
+        const rows = res.data?.bookings || [];
+        if (!rows.length) { box.innerHTML = '<span class="dropdown-item-text text-muted">No matches</span>'; box.style.display = 'block'; return; }
+        box.innerHTML = rows.map(b => `<a class="dropdown-item" href="#" onclick="selectAssignBooking(${b.booking_id},'${(b.booking_ref||'').replace(/'/g,"\\'")}','${(b.event_name||'').replace(/'/g,"\\'")}','${(b.customer_name||'').replace(/'/g,"\\'")}','${(b.hall_name||'').replace(/'/g,"\\'")}');return false">
+            <strong>${b.booking_ref}</strong> — ${b.event_name||''} · ${b.customer_name||''}
+        </a>`).join('');
+        box.style.display = 'block';
+    } catch (_) { box.style.display = 'none'; }
+}, 300);
+
+function selectAssignBooking(id, ref, eventName, customer, hall) {
+    document.getElementById('assignBookingId').value = id;
+    document.getElementById('assignBookingSearch').value = ref;
+    document.getElementById('assignBookingSuggest').style.display = 'none';
+    const info = document.getElementById('assignBookingInfo');
+    info.style.display = '';
+    info.innerHTML = `<strong>${eventName||'Event'}</strong><br>${customer||''} · ${hall||''}`;
+}
+
+async function confirmAssign() {
+    const btn = document.getElementById('confirmAssignBtn');
+    const userId = document.getElementById('assignUserId').value;
+    const bookingId = document.getElementById('assignBookingId').value;
+    if (!bookingId) { Utils.toast('Please select a booking first', 'warning'); return; }
+    Utils.showLoader(btn, 'Assigning…');
+    try {
+        await API.bookings.assignStaff(bookingId, { userId: parseInt(userId,10), roleNote: document.getElementById('assignRoleNote').value || undefined });
+        Utils.hideLoader(btn);
+        assignModalInst?.hide();
+        Utils.toast('Staff assigned to booking', 'success');
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to assign staff', 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => { loadRoles(); loadStaff(); });
+</script>
+</body>
+</html>

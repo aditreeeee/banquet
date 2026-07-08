@@ -12,9 +12,11 @@ const router = Router();
 
 router.get('/',                           requirePermission(PERMISSIONS.PAYMENTS_READ),   ctrl.getAll);
 router.get('/pending',                    requirePermission(PERMISSIONS.PAYMENTS_READ),   ctrl.getPending);
+router.get('/refunds',                    requirePermission(PERMISSIONS.PAYMENTS_READ),   ctrl.getAllRefunds);
 router.get('/booking/:bookingId',         requirePermission(PERMISSIONS.PAYMENTS_READ),   ctrl.getByBooking);
 router.post('/',                          requirePermission(PERMISSIONS.PAYMENTS_CREATE), ctrl.create);
 router.get('/:id',                        requirePermission(PERMISSIONS.PAYMENTS_READ),   ctrl.getById);
 router.post('/:id/refund',               requirePermission(PERMISSIONS.PAYMENTS_REFUND), ctrl.refund);
+router.get('/:id/refunds',               requirePermission(PERMISSIONS.PAYMENTS_READ),   ctrl.getRefunds);
 
 module.exports = router;

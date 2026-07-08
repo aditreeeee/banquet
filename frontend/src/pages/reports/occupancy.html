@@ -9,7 +9,7 @@
 <link href="../../../public/assets/css/theme.css" rel="stylesheet">
 <link href="../../../public/assets/css/app.css"   rel="stylesheet">
 <style>
-.occ-cell { display:flex;align-items:center;justify-content:center;height:100%;border-radius:4px;font-size:11.5px;font-weight:700;cursor:default }
+.occ-cell { display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;border-radius:4px;font-size:11.5px;font-weight:700;cursor:default;gap:1px }
 .occ-high  { background:#D1FAE5;color:#065F46 }
 .occ-mid   { background:#FEF3C7;color:#92400E }
 .occ-low   { background:#FEE2E2;color:#991B1B }
@@ -19,22 +19,7 @@
 </head>
 <body>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
-<aside class="sidebar" id="sidebar">
-    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
-    <nav class="sidebar-nav">
-        <div class="nav-section-label">Dashboard</div>
-        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
-        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
-<div class="nav-section-label">Inventory</div>
-        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
-        <a href="../inventory/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
-                <div class="nav-section-label">Reports</div>
-        <a href="revenue.html"   class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path></svg></span><span class="sidebar-text">Revenue</span></a>
-        <a href="bookings.html"  class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg></span><span class="sidebar-text">Bookings</span></a>
-        <a href="occupancy.html" class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></span><span class="sidebar-text">Occupancy</span></a>
-    </nav>
-    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
-</aside>
+<aside class="sidebar" id="sidebar"></aside>
 
 <div class="main-content" id="mainContent">
     <header class="topbar">
@@ -64,15 +49,6 @@
             <input type="month" id="monthPicker" onchange="loadReport()" class="form-control" style="width:160px">
             <select class="form-select" id="branchFilter" onchange="loadReport()" style="width:auto">
                 <option value="">All Branches</option>
-                <option value="1">Main Branch</option>
-                <option value="2">North Branch</option>
-            </select>
-            <select class="form-select" id="hallFilter" onchange="loadReport()" style="width:auto">
-                <option value="">All Halls</option>
-                <option value="1">Grand Ballroom</option>
-                <option value="2">Emerald Hall</option>
-                <option value="3">Royal Suite</option>
-                <option value="4">Silver Terrace</option>
             </select>
         </div>
 
@@ -80,32 +56,24 @@
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
             <div class="kpi-card"><div class="kpi-label">Avg Occupancy</div><div class="kpi-value" id="kpiAvg" style="color:var(--color-success)">—</div></div>
             <div class="kpi-card"><div class="kpi-label">Peak Day</div><div class="kpi-value" id="kpiPeak" style="font-size:16px">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">Total Booked Days</div><div class="kpi-value" id="kpiBooked">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">Available Days</div><div class="kpi-value" id="kpiAvail">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Total Booked Hall-Days</div><div class="kpi-value" id="kpiBooked">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Available Hall-Days</div><div class="kpi-value" id="kpiAvail">—</div></div>
         </div>
 
-        <!-- Charts + heatmap grid -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-            <!-- Occupancy by hall bar chart -->
-            <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px">
-                <h6 style="font-size:13px;font-weight:700;margin-bottom:14px">Occupancy by Hall</h6>
-                <div style="height:240px"><canvas id="hallChart"></canvas></div>
-            </div>
-            <!-- Weekday distribution -->
-            <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px">
-                <h6 style="font-size:13px;font-weight:700;margin-bottom:14px">Bookings by Day of Week</h6>
-                <div style="height:240px"><canvas id="weekChart"></canvas></div>
-            </div>
+        <!-- Occupancy by hall bar chart -->
+        <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px;margin-bottom:20px">
+            <h6 style="font-size:13px;font-weight:700;margin-bottom:14px">Occupancy by Hall</h6>
+            <div style="height:260px"><canvas id="hallChart"></canvas></div>
         </div>
 
         <!-- Calendar heatmap -->
         <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:18px;margin-bottom:20px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-                <h6 style="font-size:13px;font-weight:700;margin:0">Monthly Heatmap</h6>
+                <h6 style="font-size:13px;font-weight:700;margin:0">Daily Occupancy Heatmap</h6>
                 <div style="display:flex;gap:10px;font-size:12px;align-items:center">
-                    <span><span class="legend-dot" style="background:#D1FAE5"></span>High (â‰¥80%)</span>
-                    <span><span class="legend-dot" style="background:#FEF3C7"></span>Mid (â‰¥50%)</span>
-                    <span><span class="legend-dot" style="background:#FEE2E2"></span>Low (<50%)</span>
+                    <span><span class="legend-dot" style="background:#D1FAE5"></span>High (≥80%)</span>
+                    <span><span class="legend-dot" style="background:#FEF3C7"></span>Mid (≥50%)</span>
+                    <span><span class="legend-dot" style="background:#FEE2E2"></span>Low (&lt;50%)</span>
                     <span><span class="legend-dot" style="background:var(--bg-surface-2)"></span>No bookings</span>
                 </div>
             </div>
@@ -117,7 +85,7 @@
             <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);font-weight:700;font-size:13px">Hall Summary</div>
             <div class="table-responsive">
                 <table class="table" style="font-size:12.5px">
-                    <thead><tr><th>Hall</th><th>Capacity</th><th>Booked Days</th><th>Available Days</th><th>Occupancy %</th><th>Revenue</th><th>Avg Rating</th></tr></thead>
+                    <thead><tr><th>Hall</th><th>Banquet</th><th>Capacity</th><th>Booked Days</th><th>Available Days</th><th>Occupancy %</th><th>Revenue</th></tr></thead>
                     <tbody id="hallTableBody"><tr><td colspan="7" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
                 </table>
             </div>
@@ -136,31 +104,22 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
 <script>
 Auth.requireAuth('../auth/login.html');
-let hallChart, weekChart;
+let hallChart;
 
-const HALLS = ['Grand Ballroom','Emerald Hall','Royal Suite','Silver Terrace','Diamond Hall'];
-const HALL_OCC = [84, 71, 67, 58, 43];
-
-function getDemoData(year, month) {
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const calData = Array.from({length:daysInMonth},(_,i)=>{
-        const day = i+1;
-        const dow = new Date(year,month-1,day).getDay();
-        const isWeekend = dow===0||dow===6;
-        const base = isWeekend ? 0.85 : 0.55;
-        const occ  = Math.min(1, base + (Math.random()-.4)*.5);
-        return { day, occ: parseFloat(occ.toFixed(2)) };
-    });
-    return {
-        kpi: { avg_occ: 67, peak_day: 'Saturday', booked_days: 136, avail_days: 64 },
-        by_hall: { labels: HALLS, data: HALL_OCC },
-        by_weekday: { labels:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], data:[45,22,18,24,28,38,72] },
-        cal: calData,
-        table: HALLS.map((h,i)=>({ hall_name:h, capacity:[500,350,200,400,600][i], booked:[22,18,16,12,8][i], avail:[8,12,14,18,22][i], occ:HALL_OCC[i], revenue:[2140000,1380000,950000,780000,480000][i], avg_rating:[4.7,4.5,4.3,4.1,3.9][i] })),
-    };
+function showReportError(message) {
+    document.getElementById('kpiAvg').textContent = '—';
+    document.getElementById('kpiPeak').textContent = '—';
+    document.getElementById('kpiBooked').textContent = '—';
+    document.getElementById('kpiAvail').textContent = '—';
+    if (hallChart) { hallChart.destroy(); hallChart = null; }
+    document.getElementById('calHeatmap').innerHTML = `<div class="text-center py-4" style="color:var(--text-muted)">${message}</div>`;
+    document.getElementById('hallTableBody').innerHTML = `<tr><td colspan="7" class="text-center py-3" style="color:var(--text-muted)">${message}</td></tr>`;
+    Utils.toast(message, 'error');
 }
 
 function monthRange() {
@@ -169,6 +128,20 @@ function monthRange() {
     const from = `${year}-${String(month).padStart(2, '0')}-01`;
     const to   = new Date(year, month, 0).toISOString().slice(0, 10);
     return { from, to };
+}
+
+async function loadBranchOptions() {
+    try {
+        const res = await API.branches.list();
+        const sel = document.getElementById('branchFilter');
+        (res.data || []).forEach(b => {
+            const o = document.createElement('option');
+            o.value = b.branch_id; o.textContent = b.branch_name;
+            sel.appendChild(o);
+        });
+    } catch (err) {
+        // Filter convenience only — keep "All Branches" if the user lacks branches:read.
+    }
 }
 
 async function exportReport(format) {
@@ -183,45 +156,53 @@ async function exportReport(format) {
 }
 
 async function loadReport() {
-    const monthVal = document.getElementById('monthPicker').value;
-    const [year, month] = monthVal.split('-').map(Number);
+    const { from, to } = monthRange();
     let data;
     try {
-        const res = await API.reports.occupancy({ month: monthVal, branch_id: document.getElementById('branchFilter').value || undefined });
+        const res = await API.reports.occupancy({ from_date: from, to_date: to, branch_id: document.getElementById('branchFilter').value || undefined });
         data = res.data;
-    } catch { data = getDemoData(year, month); }
+    } catch (err) {
+        showReportError(err.message || 'Failed to load occupancy report');
+        return;
+    }
+    if (!data || !data.kpi || !Array.isArray(data.by_hall) || data.by_hall.length === 0) {
+        showReportError('No occupancy data available for this period');
+        return;
+    }
     const isDark = document.documentElement.getAttribute('data-theme')==='dark';
     const grid   = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.06)';
     const txt    = isDark ? '#9CA3AF' : '#6B7280';
-    document.getElementById('kpiAvg').textContent    = data.kpi.avg_occ + '%';
-    document.getElementById('kpiPeak').textContent   = data.kpi.peak_day;
-    document.getElementById('kpiBooked').textContent = data.kpi.booked_days;
-    document.getElementById('kpiAvail').textContent  = data.kpi.avail_days;
+    document.getElementById('kpiAvg').textContent    = data.kpi.avg_occupancy_pct + '%';
+    document.getElementById('kpiPeak').textContent   = data.kpi.peak_day ? `${Utils.formatDate(data.kpi.peak_day)} (${data.kpi.peak_day_pct}%)` : '—';
+    document.getElementById('kpiBooked').textContent = data.kpi.total_booked_hall_days;
+    document.getElementById('kpiAvail').textContent  = data.kpi.total_available_hall_days;
+
     if (hallChart) hallChart.destroy();
-    if (weekChart) weekChart.destroy();
+    const hallLabels = data.by_hall.map(h => h.hall_name);
+    const hallPct    = data.by_hall.map(h => Number(h.occupancy_pct) || 0);
     hallChart = new Chart(document.getElementById('hallChart').getContext('2d'), {
         type:'bar',
-        data:{ labels: data.by_hall.labels, datasets:[{ data: data.by_hall.data, backgroundColor: data.by_hall.data.map(v=>v>=80?'#10B981':v>=50?'#F59E0B':'#EF4444'), borderRadius:5 }] },
+        data:{ labels: hallLabels, datasets:[{ data: hallPct, backgroundColor: hallPct.map(v=>v>=80?'#10B981':v>=50?'#F59E0B':'#EF4444'), borderRadius:5 }] },
         options:{ responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{ x:{grid:{color:grid},ticks:{color:txt,callback:v=>v+'%'},min:0,max:100}, y:{grid:{color:'transparent'},ticks:{color:txt,font:{size:11}}} } }
     });
-    weekChart = new Chart(document.getElementById('weekChart').getContext('2d'), {
-        type:'bar',
-        data:{ labels: data.by_weekday.labels, datasets:[{ data: data.by_weekday.data, backgroundColor:'rgba(124,58,237,.7)', borderRadius:4 }] },
-        options:{ responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{ x:{grid:{color:grid},ticks:{color:txt}}, y:{grid:{color:grid},ticks:{color:txt}} } }
-    });
-    renderHeatmap(data.cal, year, month);
-    renderHallTable(data.table);
+
+    renderHeatmap(data.daily);
+    renderHallTable(data.by_hall);
 }
 
-function renderHeatmap(calData, year, month) {
-    const firstDow = new Date(year, month-1, 1).getDay();
+function renderHeatmap(daily) {
+    if (!daily.length) { document.getElementById('calHeatmap').innerHTML = ''; return; }
+    const firstDate = new Date(daily[0].occ_date);
+    const firstDow = firstDate.getUTCDay();
     const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">`;
     days.forEach(d=>{ html+=`<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:4px;font-weight:600">${d}</div>`; });
     for(let i=0;i<firstDow;i++) html+=`<div></div>`;
-    calData.forEach(({day,occ})=>{
-        const cls = occ===0?'occ-zero':occ>=.8?'occ-high':occ>=.5?'occ-mid':'occ-low';
-        html+=`<div style="height:52px;padding:2px"><div class="occ-cell ${cls}" title="Day ${day}: ${Math.round(occ*100)}% occupied"><div style="font-size:13px;font-weight:700">${day}</div><div style="font-size:10px">${occ>0?Math.round(occ*100)+'%':''}</div></div></div>`;
+    daily.forEach(({occ_date, occupancy_pct}) => {
+        const day = new Date(occ_date).getUTCDate();
+        const pct = Number(occupancy_pct) || 0;
+        const cls = pct===0?'occ-zero':pct>=80?'occ-high':pct>=50?'occ-mid':'occ-low';
+        html+=`<div style="height:52px;padding:2px"><div class="occ-cell ${cls}" title="Day ${day}: ${pct}% occupied"><div style="font-size:13px;font-weight:700">${day}</div><div style="font-size:10px">${pct>0?pct+'%':''}</div></div></div>`;
     });
     html+=`</div>`;
     document.getElementById('calHeatmap').innerHTML = html;
@@ -231,12 +212,12 @@ function renderHallTable(halls) {
     document.getElementById('hallTableBody').innerHTML = halls.map(h=>`
     <tr>
         <td style="font-weight:600">${h.hall_name}</td>
+        <td>${h.banquet_name || '—'}</td>
         <td>${h.capacity}</td>
-        <td>${h.booked}</td>
-        <td>${h.avail}</td>
-        <td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:7px;background:var(--bg-surface-2);border-radius:4px"><div style="height:100%;border-radius:4px;background:${h.occ>=80?'#10B981':h.occ>=50?'#F59E0B':'#EF4444'};width:${h.occ}%"></div></div><span style="font-weight:700;min-width:36px">${h.occ}%</span></div></td>
-        <td style="font-weight:700">${Utils.formatCurrency(h.revenue)}</td>
-        <td><span style="display:inline-flex;align-items:center;gap:4px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="m12 2 3.2 6.5 7.2.8-5.4 5.1 1.5 7-6.5-3.6-6.5 3.6 1.5-7-5.4-5.1 7.2-.8z"></path></svg><span>${h.avg_rating?.toFixed(1)}</span></span></td>
+        <td>${h.occupied_days}</td>
+        <td>${h.total_days}</td>
+        <td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:7px;background:var(--bg-surface-2);border-radius:4px"><div style="height:100%;border-radius:4px;background:${h.occupancy_pct>=80?'#10B981':h.occupancy_pct>=50?'#F59E0B':'#EF4444'};width:${h.occupancy_pct}%"></div></div><span style="font-weight:700;min-width:36px">${h.occupancy_pct}%</span></div></td>
+        <td style="font-weight:700">${Utils.formatCurrency(h.total_revenue)}</td>
     </tr>`).join('');
 }
 
@@ -244,6 +225,7 @@ new MutationObserver(loadReport).observe(document.documentElement,{attributes:tr
 document.addEventListener('DOMContentLoaded',()=>{
     const now=new Date();
     document.getElementById('monthPicker').value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    loadBranchOptions();
     loadReport();
 });
 </script>

@@ -25,7 +25,11 @@ const LOCK_MINUTES         = parseInt(process.env.ACCOUNT_LOCK_MINUTES, 10) || 3
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Build the JWT payload from a user row
+ * Build the JWT payload from a user row.
+ * roleId/roleSlug reflect the user's primary/default role (Users.role_id) for
+ * display purposes only — every request re-derives the user's full role set
+ * and permissions from UserRoles via the `authenticate` middleware, so these
+ * claims are never used for authorization decisions.
  */
 const buildTokenPayload = (user) => ({
     userId:    user.user_id,
@@ -80,6 +84,12 @@ const login = async ({ email, password, remember_me = false }, meta = {}) => {
     }
 
     // 2 — Check account status
+    if (user.approval_status === 'pending') {
+        throw new AuthError('Your account is awaiting administrator approval.');
+    }
+    if (user.approval_status === 'rejected') {
+        throw new AuthError('Your registration was not approved. Contact support.');
+    }
     if (!user.is_active) {
         throw new AuthError('Your account has been deactivated. Contact support.');
     }
@@ -115,7 +125,47 @@ const login = async ({ email, password, remember_me = false }, meta = {}) => {
     // Strip sensitive fields before returning
     const { password_hash, ...safeUser } = user;
     const permissions = await authRepo.findPermissions(user.user_id);
-    return { user: safeUser, accessToken, refreshToken, permissions };
+    const roles = await authRepo.findRoles(user.user_id);
+    return { user: safeUser, accessToken, refreshToken, permissions, roles: roles.map(r => r.role_slug) };
+};
+
+// ─── Registration ─────────────────────────────────────────────────────────────
+
+/**
+ * Self-service registration. The account is created in a locked-out
+ * ('pending') state — see auth.repository.js register() — so it cannot log
+ * in until an admin approves it via userService.approve/reject.
+ */
+const register = async ({ first_name, last_name, email, phone, password }) => {
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await authRepo.findByEmail(normalizedEmail);
+    if (existing) {
+        throw new ValidationError('An account with this email already exists', [
+            { field: 'email', message: 'Email already registered' },
+        ]);
+    }
+
+    const roleId = await authRepo.findRoleIdBySlug('customer');
+    if (!roleId) {
+        throw new Error('Customer role is not configured');
+    }
+
+    const passwordHash = await hashPassword(password);
+    const user = await authRepo.register({
+        firstName: first_name,
+        lastName:  last_name,
+        email:     normalizedEmail,
+        phone,
+        passwordHash,
+        roleId,
+        // Self-registration has no tenant-selection UI yet; new accounts join
+        // the default/primary company (company_id 1). Revisit if/when the app
+        // exposes multi-company signup (e.g. a tenant subdomain or invite code).
+        companyId: 1,
+    });
+
+    logger.info('New user registered — pending approval', { userId: user.user_id, email: normalizedEmail });
+    return user;
 };
 
 // ─── Refresh ──────────────────────────────────────────────────────────────────
@@ -193,7 +243,8 @@ const me = async (userId) => {
     const user = await authRepo.findById(userId);
     if (!user) throw new AuthError('User not found');
     const permissions = await authRepo.findPermissions(userId);
-    return { user, permissions };
+    const roles = await authRepo.findRoles(userId);
+    return { user, permissions, roles: roles.map(r => r.role_slug) };
 };
 
 // ─── Forgot Password ──────────────────────────────────────────────────────────
@@ -277,6 +328,7 @@ const changePassword = async (userId, { current_password, new_password }) => {
 
 module.exports = {
     login,
+    register,
     logout,
     logoutAll,
     refreshTokens,

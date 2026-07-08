@@ -14,6 +14,7 @@ const router = Router();
 router.get('/',                requirePermission(PERMISSIONS.RESOURCES_READ),   ctrl.list);
 router.post('/',               requirePermission(PERMISSIONS.RESOURCES_CREATE), ctrl.create);
 router.get('/snapshot',         requirePermission(PERMISSIONS.RESOURCES_READ),   ctrl.getSnapshot);
+router.get('/recommendations',  requirePermission(PERMISSIONS.RESOURCES_READ),   ctrl.getRecommendations);
 router.get('/:id',              requirePermission(PERMISSIONS.RESOURCES_READ),   ctrl.getById);
 router.get('/:id/availability', requirePermission(PERMISSIONS.RESOURCES_READ),   ctrl.getAvailability);
 router.put('/:id',              requirePermission(PERMISSIONS.RESOURCES_UPDATE), ctrl.update);

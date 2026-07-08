@@ -19,5 +19,6 @@ router.get('/packages/:id/bill',           requirePermission(PERMISSIONS.CATERIN
 router.post('/packages/:id/items',         requirePermission(PERMISSIONS.CATERING_UPDATE), ctrl.addItem);
 router.delete('/packages/:id/items/:itemId', requirePermission(PERMISSIONS.CATERING_UPDATE), ctrl.removeItem);
 router.post('/packages/:id/sync-price',    requirePermission(PERMISSIONS.CATERING_UPDATE), ctrl.syncPrice);
+router.delete('/packages/:id',             requirePermission(PERMISSIONS.CATERING_UPDATE), ctrl.deletePackage);
 
 module.exports = router;

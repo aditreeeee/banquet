@@ -91,7 +91,14 @@ const syncPackagePriceFromMenu = async (packageId, companyId) => {
     return cateringRepo.updatePackagePrice(packageId, companyId, pricing.computed_price_per_plate);
 };
 
+/** Soft-delete — packages already booked can't be hard-deleted without breaking
+    historical bookings/invoices that reference them. */
+const deletePackage = async (packageId, companyId) => {
+    await getPackage(packageId, companyId);
+    return cateringRepo.setPackageActive(packageId, companyId, false);
+};
+
 module.exports = {
     listPackages, getPackage, createPackage, getPackagePricing, calculateBillForGuests,
-    addItemToPackage, removeItemFromPackage, syncPackagePriceFromMenu,
+    addItemToPackage, removeItemFromPackage, syncPackagePriceFromMenu, deletePackage,
 };

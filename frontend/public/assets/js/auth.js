@@ -6,23 +6,13 @@
 const Auth = (() => {
     'use strict';
 
-    // Set true only for UI prototyping; false enforces real JWT auth
-    const SKIP_AUTH = false;
-
     const USER_KEY  = 'bnq_user';
     const THEME_KEY = 'bnq_theme';
 
     /* ── Storage ── */
-    // NOTE: DEMO_USER is defined later in populateUserUI scope; forward-ref resolved at call time
     function getUser() {
         try {
-            const stored = JSON.parse(localStorage.getItem(USER_KEY));
-            if (stored) return stored;
-            // In demo mode return a Super Admin stub so role checks pass everywhere
-            if (SKIP_AUTH) {
-                return { user_id:1, first_name:'Suresh', last_name:'Mehta', email:'suresh@banquetpro.in', role_id:1, role_slug:'super_admin', company_id:1, branch_id:null, permissions:[] };
-            }
-            return null;
+            return JSON.parse(localStorage.getItem(USER_KEY)) || null;
         } catch { return null; }
     }
     function setUser(user)    { localStorage.setItem(USER_KEY, JSON.stringify(user)); }
@@ -56,7 +46,6 @@ const Auth = (() => {
 
     /* ── Navigation guard ── */
     function requireAuth(redirectTo = null) {
-        if (SKIP_AUTH) return true;
         if (!isLoggedIn()) {
             const loginPath = redirectTo || resolvePage('auth/login.html');
             const next = encodeURIComponent(window.location.href);
@@ -83,6 +72,21 @@ const Auth = (() => {
         if (!requireAuth()) return false;
         const user = getUser();
         if (!roleIds.includes(user?.role_id)) {
+            Utils.toast('You do not have permission to view this page.', 'error');
+            setTimeout(() => { window.location.href = redirectTo; }, 1200);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Require the user to hold a given permission key to view this page.
+     * Direct-URL protection: pages that gate a whole section (e.g. Users,
+     * Settings) should call this instead of/alongside requireAuth().
+     */
+    function requirePermission(permKey, redirectTo = '../dashboard/index.html') {
+        if (!requireAuth()) return false;
+        if (!hasPermission(permKey)) {
             Utils.toast('You do not have permission to view this page.', 'error');
             setTimeout(() => { window.location.href = redirectTo; }, 1200);
             return false;
@@ -132,6 +136,7 @@ const Auth = (() => {
             branch_id:   data.user.branch_id,
             avatar_url:  data.user.avatar_url,
             permissions: data.permissions || [],
+            roles:       data.roles || [],
         });
         return data;
     }
@@ -150,7 +155,7 @@ const Auth = (() => {
             const res  = await API.auth.me();
             const data = res.data;
             const cur  = getUser() || {};
-            setUser({ ...cur, ...data.user, permissions: data.permissions });
+            setUser({ ...cur, ...data.user, permissions: data.permissions, roles: data.roles || [] });
         } catch (_) { /* silently fail */ }
     }
 
@@ -169,16 +174,8 @@ const Auth = (() => {
     function applyTheme()  { setTheme(getTheme()); }
 
     /* ── Populate UI with user info ── */
-    const DEMO_USER = {
-        user_id: 1, first_name: 'Suresh', last_name: 'Mehta',
-        email: 'suresh@banquetpro.in', role_id: 1, role_slug: 'super_admin',
-        company_id: 1, branch_id: null, avatar_url: null,
-        permissions: [],
-    };
-
     function populateUserUI() {
-        // In demo mode fall back to the demo user so UI renders correctly
-        const user = getUser() || (SKIP_AUTH ? DEMO_USER : null);
+        const user = getUser();
         if (!user) return;
         const name = `${user.first_name} ${user.last_name}`;
 
@@ -203,6 +200,79 @@ const Auth = (() => {
         });
     }
 
+    /* ── Session manager: proactive refresh + inactivity timeout ──
+       Access tokens live 15 min (JWT_ACCESS_EXPIRES). Previously the token
+       would silently die and the *next* click after that would 401, trigger
+       a refresh, and hard-redirect to login the instant that refresh failed
+       for any reason — reading as a "sudden" logout with no warning.
+       This keeps active users refreshed ahead of expiry and only ends the
+       session after real inactivity, with a warning first. */
+    const IDLE_TIMEOUT_MS      = 30 * 60 * 1000; // log out after 30 min with no activity
+    const IDLE_WARNING_MS      = 60 * 1000;      // show a warning 60s before that
+    const PROACTIVE_REFRESH_MS = 12 * 60 * 1000; // refresh token every 12 min (< 15 min expiry) while active
+
+    let lastActivity   = Date.now();
+    let warningShown   = false;
+    let warningEl      = null;
+
+    function markActivity() {
+        lastActivity = Date.now();
+        if (warningShown) dismissIdleWarning();
+    }
+
+    function showIdleWarning(secondsLeft) {
+        warningShown = true;
+        if (!warningEl) {
+            warningEl = document.createElement('div');
+            warningEl.setAttribute('role', 'alertdialog');
+            warningEl.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;background:#1A2B4A;color:#fff;'
+                + 'padding:14px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);font:13px/1.4 Inter,sans-serif;max-width:300px;';
+            document.body.appendChild(warningEl);
+        }
+        warningEl.innerHTML = `<b>Session ending soon</b><br>You'll be logged out due to inactivity in ${secondsLeft}s.`
+            + `<div style="margin-top:8px"><button id="bnqStaySignedIn" style="background:#C5A059;border:none;color:#1A2B4A;font-weight:600;`
+            + `padding:5px 12px;border-radius:6px;cursor:pointer;">Stay signed in</button></div>`;
+        document.getElementById('bnqStaySignedIn')?.addEventListener('click', markActivity);
+    }
+
+    function dismissIdleWarning() {
+        warningShown = false;
+        if (warningEl) { warningEl.remove(); warningEl = null; }
+    }
+
+    function initSessionManager() {
+        if (!isLoggedIn()) return;
+
+        ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach(evt =>
+            window.addEventListener(evt, markActivity, { passive: true })
+        );
+
+        // Proactive refresh — keeps the access token alive for as long as the user is active,
+        // so it never silently expires mid-session.
+        setInterval(() => {
+            if (!isLoggedIn()) return;
+            const idleFor = Date.now() - lastActivity;
+            if (idleFor < IDLE_TIMEOUT_MS) {
+                API.auth.refresh({ silent: true }).catch(() => { /* try again next cycle */ });
+            }
+        }, PROACTIVE_REFRESH_MS);
+
+        // Inactivity watchdog
+        setInterval(() => {
+            if (!isLoggedIn()) return;
+            const idleFor = Date.now() - lastActivity;
+            if (idleFor >= IDLE_TIMEOUT_MS) {
+                dismissIdleWarning();
+                Utils?.toast?.('You have been logged out due to inactivity.', 'info');
+                logout();
+            } else if (idleFor >= IDLE_TIMEOUT_MS - IDLE_WARNING_MS) {
+                showIdleWarning(Math.ceil((IDLE_TIMEOUT_MS - idleFor) / 1000));
+            }
+        }, 1000);
+    }
+
+    initSessionManager();
+
     /* ── Active nav link ── */
     function highlightNav() {
         const path = window.location.pathname;
@@ -218,7 +288,7 @@ const Auth = (() => {
         getUser, setUser, clearUser,
         isLoggedIn, getRole, hasRole, hasPermission,
         isSuperAdmin, isCustomer, isAdmin, isManager,
-        requireAuth, requireGuest, requireRole, redirectToLogin, getDefaultPage,
+        requireAuth, requireGuest, requireRole, requirePermission, redirectToLogin, getDefaultPage,
         login, logout, refreshUser,
         getTheme, setTheme, toggleTheme, applyTheme,
         populateUserUI, highlightNav,

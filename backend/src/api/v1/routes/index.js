@@ -30,6 +30,7 @@ router.use('/catering',     require('./catering.routes'));
 router.use('/menu-items',   require('./menuItem.routes'));
 router.use('/leads',       require('./lead.routes'));
 router.use('/marketing',   require('./marketing.routes'));
+router.use('/reviews',     require('./review.routes'));
 router.use('/users',        require('./user.routes'));
 router.use('/notifications', require('./notification.routes'));
 router.use('/settings',     require('./settings.routes'));

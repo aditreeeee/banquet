@@ -17,10 +17,10 @@ const getById = async (resourceId, companyId) => {
     return resource;
 };
 
-const create = async ({ resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable }, companyId) => {
+const create = async ({ resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable }, companyId) => {
     if (!resourceName) throw new ValidationError('resourceName is required');
     if (category && !CATEGORIES.includes(category)) throw new ValidationError(`category must be one of: ${CATEGORIES.join(', ')}`);
-    return resourceRepo.create({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable });
+    return resourceRepo.create({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable });
 };
 
 const update = async (resourceId, data, companyId) => {

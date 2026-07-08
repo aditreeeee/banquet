@@ -7,14 +7,14 @@
 
 'use strict';
 
-const { executeQuery } = require('../config/database');
+const { executeQuery, withTransaction } = require('../config/database');
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
 const list = async (companyId) => {
     return executeQuery(
         `SELECT resource_id, resource_name, resource_type, category, supplier,
-                unit_price, cost_price, quantity_available, is_active
+                unit_price, cost_price, quantity_available, is_active, is_billable
          FROM Resources WHERE company_id = @companyId AND is_active = 1 ORDER BY category, resource_name`,
         { companyId }
     );
@@ -23,18 +23,18 @@ const list = async (companyId) => {
 const findById = async (resourceId, companyId) => {
     const rows = await executeQuery(
         `SELECT resource_id, company_id, resource_name, resource_type, category, supplier,
-                unit_price, cost_price, quantity_available, is_active
+                unit_price, cost_price, quantity_available, is_active, is_billable
          FROM Resources WHERE resource_id = @resourceId AND company_id = @companyId`,
         { resourceId, companyId }
     );
     return rows[0] || null;
 };
 
-const create = async ({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable }) => {
+const create = async ({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable }) => {
     const result = await executeQuery(
-        `INSERT INTO Resources (company_id, resource_name, resource_type, category, supplier, unit_price, cost_price, quantity_available, is_active, created_at, updated_at)
+        `INSERT INTO Resources (company_id, resource_name, resource_type, category, supplier, unit_price, cost_price, quantity_available, is_active, is_billable, created_at, updated_at)
          OUTPUT INSERTED.resource_id AS id
-         VALUES (@companyId, @name, @type, @category, @supplier, @price, @cost, @qty, 1, SYSUTCDATETIME(), SYSUTCDATETIME())`,
+         VALUES (@companyId, @name, @type, @category, @supplier, @price, @cost, @qty, 1, @isBillable, SYSUTCDATETIME(), SYSUTCDATETIME())`,
         {
             companyId,
             name: resourceName,
@@ -44,12 +44,13 @@ const create = async ({ companyId, resourceName, resourceType, category, supplie
             price: unitPrice || 0,
             cost: costPrice || 0,
             qty: quantityAvailable || 0,
+            isBillable: !!isBillable,
         }
     );
     return findById(result[0].id, companyId);
 };
 
-const update = async (resourceId, companyId, { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive }) => {
+const update = async (resourceId, companyId, { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable }) => {
     await executeQuery(
         `UPDATE Resources
          SET resource_name      = ISNULL(@name,     resource_name),
@@ -59,6 +60,7 @@ const update = async (resourceId, companyId, { resourceName, category, supplier,
              cost_price         = ISNULL(@cost,     cost_price),
              quantity_available = ISNULL(@qty,      quantity_available),
              is_active          = ISNULL(@isActive, is_active),
+             is_billable        = ISNULL(@isBillable, is_billable),
              updated_at         = SYSUTCDATETIME()
          WHERE resource_id = @resourceId AND company_id = @companyId`,
         {
@@ -71,6 +73,7 @@ const update = async (resourceId, companyId, { resourceName, category, supplier,
             cost:     costPrice         || null,
             qty:      quantityAvailable || null,
             isActive: isActive != null ? isActive : null,
+            isBillable: isBillable != null ? isBillable : null,
         }
     );
     return findById(resourceId, companyId);
@@ -159,6 +162,25 @@ const allocateInTx = async (tx, { bookingId, companyId, resources, eventDate }) 
 };
 
 /**
+ * Reallocate a booking's resources to a new set of quantities — used when a
+ * booking's guest count/hall/catering changes after creation. Replaces the
+ * booking's existing BookingResources rows and re-runs the same
+ * overallocation check as allocateInTx; because the old rows are deleted
+ * first (inside the same transaction), the check naturally excludes the
+ * booking's own prior allocation instead of double-counting it.
+ * @param {number} bookingId
+ * @param {number} companyId
+ * @param {Array<{resourceId:number, quantity:number}>} resources
+ * @param {string|Date} eventDate
+ */
+const reallocateForBooking = async (bookingId, companyId, resources, eventDate) => {
+    return withTransaction(async (tx) => {
+        await tx.execute(`DELETE FROM BookingResources WHERE booking_id = @bookingId`, { bookingId });
+        await allocateInTx(tx, { bookingId, companyId, resources, eventDate });
+    });
+};
+
+/**
  * Public (non-locked) availability check for UI — "warn owner before shortage".
  */
 const getAvailability = async ({ resourceId, eventDate, companyId }) => {
@@ -187,8 +209,8 @@ const getAvailability = async ({ resourceId, eventDate, companyId }) => {
 
 const getAllocationsForBooking = async (bookingId, companyId) => {
     return executeQuery(
-        `SELECT br.allocation_id, br.resource_id, r.resource_name, r.resource_type,
-                br.quantity_allocated, r.unit_price
+        `SELECT br.allocation_id, br.resource_id, r.resource_name, r.resource_type, r.category,
+                br.quantity_allocated, r.unit_price, r.quantity_available, r.is_active, r.is_billable
          FROM BookingResources br
          JOIN Resources r ON r.resource_id = br.resource_id
          JOIN Bookings b  ON b.booking_id  = br.booking_id
@@ -227,6 +249,7 @@ module.exports = {
     create,
     update,
     allocateInTx,
+    reallocateForBooking,
     getAllocatedInTx,
     getAvailability,
     getAllocationsForBooking,

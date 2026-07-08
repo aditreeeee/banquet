@@ -17,5 +17,7 @@ const getById     = async (req, res) => response.success(res, await svc.getById(
 const getByBooking = async (req, res) => response.success(res, await svc.getByBooking(parseInt(req.params.bookingId, 10), req.companyId));
 const create      = async (req, res) => response.created(res, await svc.create(req.body, actor(req)), 'Payment recorded');
 const refund      = async (req, res) => response.success(res, await svc.refund(parseInt(req.params.id, 10), req.body, actor(req)), 'Refund processed');
+const getRefunds  = async (req, res) => response.success(res, await svc.getRefundsForPayment(parseInt(req.params.id, 10), req.companyId));
+const getAllRefunds = async (req, res) => response.success(res, await svc.getAllRefunds(actor(req)));
 
-module.exports = { getAll, getPending, getById, getByBooking, create, refund };
+module.exports = { getAll, getPending, getById, getByBooking, create, refund, getRefunds, getAllRefunds };

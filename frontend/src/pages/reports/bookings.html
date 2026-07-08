@@ -11,22 +11,7 @@
 </head>
 <body>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
-<aside class="sidebar" id="sidebar">
-    <a href="../dashboard/index.html" class="sidebar-brand"><div class="sidebar-brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div><span class="sidebar-brand-text">BanquetPro</span></a>
-    <nav class="sidebar-nav">
-        <div class="nav-section-label">Dashboard</div>
-        <a href="../dashboard/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 19V10"></path><path d="M12 19V5"></path><path d="M20 19v-7"></path></svg></span><span class="sidebar-text">Dashboard</span></a>
-        <a href="../dashboard/command_center.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path><path d="M9 21v-6h6v6"></path></svg></span><span class="sidebar-text">Command Center</span></a>
-<div class="nav-section-label">Inventory</div>
-        <a href="../catering/menu.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg></span><span class="sidebar-text">Master Menu</span></a>
-        <a href="../inventory/index.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg></span><span class="sidebar-text">Inventory</span></a>
-                <div class="nav-section-label">Reports</div>
-        <a href="revenue.html"   class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path></svg></span><span class="sidebar-text">Revenue</span></a>
-        <a href="bookings.html"  class="sidebar-link active"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg></span><span class="sidebar-text">Bookings</span></a>
-        <a href="occupancy.html" class="sidebar-link"><span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></span><span class="sidebar-text">Occupancy</span></a>
-    </nav>
-    <div class="sidebar-footer"><div style="display:flex;align-items:center;gap:10px;padding:8px"><div class="avatar" data-user-avatar style="width:34px;height:34px;font-size:12px"></div><div class="sidebar-text"><div style="color:white;font-size:13px;font-weight:600" data-user-name></div></div></div></div>
-</aside>
+<aside class="sidebar" id="sidebar"></aside>
 
 <div class="main-content" id="mainContent">
     <header class="topbar">
@@ -67,9 +52,12 @@
                 </select>
                 <select class="form-select" id="statusFilter" style="width:auto">
                     <option value="">All Statuses</option>
+                    <option value="tentative">Tentative</option>
                     <option value="confirmed">Confirmed</option>
                     <option value="advance_paid">Advance Paid</option>
                     <option value="fully_paid">Fully Paid</option>
+                    <option value="completed">Completed</option>
+                    <option value="no_show">No Show</option>
                     <option value="cancelled">Cancelled</option>
                 </select>
                 <select class="form-select" id="sortField" style="width:auto">
@@ -89,11 +77,12 @@
         </div>
 
         <!-- KPIs -->
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px">
             <div class="kpi-card"><div class="kpi-label">Total Bookings</div><div class="kpi-value" id="kpiTotal">—</div></div>
             <div class="kpi-card"><div class="kpi-label">Confirmed</div><div class="kpi-value" id="kpiConf" style="color:var(--color-success)">—</div></div>
             <div class="kpi-card"><div class="kpi-label">Advance Paid</div><div class="kpi-value" id="kpiAdv" style="color:var(--brand-primary)">—</div></div>
             <div class="kpi-card"><div class="kpi-label">Fully Paid</div><div class="kpi-value" id="kpiFull" style="color:var(--kpi-2)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Completed</div><div class="kpi-value" id="kpiDone" style="color:var(--color-info)">—</div></div>
             <div class="kpi-card"><div class="kpi-label">Cancelled</div><div class="kpi-value" id="kpiCancel" style="color:var(--color-danger)">—</div></div>
         </div>
 
@@ -147,103 +136,12 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
 <script>
 Auth.requireAuth('../auth/login.html');
 let trendChart, statusChart, eventChart;
-
-const demoBookings = [
-    { id:'BK-1042', customer:'Aisha Khan', hall:'Grand Ballroom', eventType:'Wedding', status:'confirmed', bookingDate:'2026-06-18', branchId:1, amount:42000 },
-    { id:'BK-1038', customer:'Rohan Shah', hall:'Emerald Hall', eventType:'Corporate', status:'advance_paid', bookingDate:'2026-05-29', branchId:2, amount:28500 },
-    { id:'BK-1034', customer:'Nadia Ali', hall:'Royal Pavilion', eventType:'Birthday', status:'fully_paid', bookingDate:'2026-05-12', branchId:1, amount:36800 },
-    { id:'BK-1029', customer:'Mina Patel', hall:'Grand Ballroom', eventType:'Reception', status:'cancelled', bookingDate:'2026-04-22', branchId:1, amount:52000 },
-    { id:'BK-1025', customer:'Jamil Noor', hall:'Crystal Terrace', eventType:'Engagement', status:'confirmed', bookingDate:'2026-03-31', branchId:2, amount:31200 },
-    { id:'BK-1017', customer:'Sara Thomas', hall:'Emerald Hall', eventType:'Wedding', status:'fully_paid', bookingDate:'2026-02-14', branchId:1, amount:45500 },
-    { id:'BK-1012', customer:'Dev Menon', hall:'Royal Pavilion', eventType:'Corporate', status:'advance_paid', bookingDate:'2026-01-09', branchId:2, amount:23900 },
-    { id:'BK-1008', customer:'Lina Gomez', hall:'Crystal Terrace', eventType:'Birthday', status:'confirmed', bookingDate:'2026-01-04', branchId:1, amount:29800 }
-];
-
-function getDemoData() {
-    const searchInput = document.getElementById('searchInput').value.trim().toLowerCase();
-    const fromDate = document.getElementById('fromDate').value;
-    const toDate = document.getElementById('toDate').value;
-    const branchId = document.getElementById('branchFilter').value;
-    const statusFilter = document.getElementById('statusFilter').value;
-    const sortField = document.getElementById('sortField').value;
-    const sortDirection = document.getElementById('sortDirection').value;
-
-    const filtered = demoBookings.filter(booking => {
-        const bookingDate = booking.bookingDate;
-        const matchesSearch = !searchInput || [booking.id, booking.customer, booking.hall, booking.eventType].some(value => value.toLowerCase().includes(searchInput));
-        const matchesFrom = !fromDate || bookingDate >= fromDate;
-        const matchesTo = !toDate || bookingDate <= toDate;
-        const matchesBranch = !branchId || String(booking.branchId) === branchId;
-        const matchesStatus = !statusFilter || booking.status === statusFilter;
-        return matchesSearch && matchesFrom && matchesTo && matchesBranch && matchesStatus;
-    });
-
-    const sorted = [...filtered].sort((a, b) => {
-        const direction = sortDirection === 'asc' ? 1 : -1;
-        if (sortField === 'amount') return (a.amount - b.amount) * direction;
-        if (sortField === 'customer') return a.customer.localeCompare(b.customer) * direction;
-        if (sortField === 'status') return a.status.localeCompare(b.status) * direction;
-        return (new Date(a.bookingDate) - new Date(b.bookingDate)) * direction;
-    });
-
-    const monthEntries = {};
-    sorted.forEach(booking => {
-        const month = new Date(booking.bookingDate).toLocaleString('en', { month: 'short', year: 'numeric' });
-        if (!monthEntries[month]) monthEntries[month] = { total: 0, cancelled: 0 };
-        monthEntries[month].total += 1;
-        if (booking.status === 'cancelled') monthEntries[month].cancelled += 1;
-    });
-
-    const monthLabels = Object.keys(monthEntries);
-    const trendData = monthLabels.map(month => monthEntries[month].total);
-    const cancelledData = monthLabels.map(month => monthEntries[month].cancelled);
-
-    const statusCounts = ['confirmed', 'advance_paid', 'fully_paid', 'cancelled'].map(status => sorted.filter(item => item.status === status).length);
-    const eventCounts = ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Engagement'].map(type => sorted.filter(item => item.eventType === type).length);
-
-    return {
-        kpi: {
-            total: sorted.length,
-            confirmed: statusCounts[0],
-            advance_paid: statusCounts[1],
-            fully_paid: statusCounts[2],
-            cancelled: statusCounts[3]
-        },
-        trend: {
-            labels: monthLabels,
-            datasets: [
-                { label: 'Total', data: trendData, borderColor: '#7C3AED', backgroundColor: 'rgba(124,58,237,.08)', fill: true, tension: .35, borderWidth: 2.5 },
-                { label: 'Cancelled', data: cancelledData, borderColor: '#EF4444', borderDash: [4, 2], fill: false, tension: .35, borderWidth: 1.5 }
-            ]
-        },
-        by_status: {
-            labels: ['Confirmed', 'Advance Paid', 'Fully Paid', 'Cancelled'],
-            data: statusCounts
-        },
-        by_event: {
-            labels: ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Engagement'],
-            data: eventCounts
-        },
-        table: sorted.map(booking => ({
-            booking_id: booking.id,
-            customer: booking.customer,
-            hall: booking.hall,
-            event_type: booking.eventType,
-            status: booking.status,
-            amount: booking.amount,
-            branch: booking.branchId === 2 ? 'North Branch' : 'Main Branch',
-            booking_date: booking.bookingDate
-        }))
-    };
-}
-
-function formatStatusLabel(status) {
-    return status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-}
 
 /* Map the report-page sort field names to the API's sort_by values */
 const SORT_FIELD_MAP = { date: 'event_date', amount: 'total_amount', customer: 'customer_name', status: 'status' };
@@ -254,7 +152,7 @@ function normalizeApiReport(res) {
         booking_id:   r.booking_ref,
         customer:     r.customer_name,
         hall:         r.hall_name,
-        event_type:   r.event_type,
+        event_type:   r.event_type ? Utils.titleCase(r.event_type) : r.event_type,
         status:       r.status,
         amount:       r.total_amount,
         branch:       r.banquet_name || '—',
@@ -278,6 +176,7 @@ function normalizeApiReport(res) {
             confirmed: statusOf('confirmed'),
             advance_paid: statusOf('advance_paid'),
             fully_paid: statusOf('fully_paid'),
+            completed: statusOf('completed'),
             cancelled: statusOf('cancelled'),
         },
         trend: {
@@ -288,8 +187,8 @@ function normalizeApiReport(res) {
             ],
         },
         by_status: {
-            labels: ['Confirmed', 'Advance Paid', 'Fully Paid', 'Cancelled'],
-            data: ['confirmed', 'advance_paid', 'fully_paid', 'cancelled'].map(statusOf),
+            labels: ['Tentative', 'Confirmed', 'Advance Paid', 'Fully Paid', 'Completed', 'No Show', 'Cancelled'],
+            data: ['tentative', 'confirmed', 'advance_paid', 'fully_paid', 'completed', 'no_show', 'cancelled'].map(statusOf),
         },
         by_event: (() => {
             const types = [...new Set(table.map(r => r.event_type).filter(Boolean))];
@@ -329,13 +228,10 @@ async function loadReport() {
             page: 1,
             limit: 100,
         });
-        data = res ? normalizeApiReport(res) : getDemoData();
-        if (!data.table.length && !document.getElementById('searchInput').value && !document.getElementById('statusFilter').value) {
-            // No live rows and no filters applied — likely no data/backend yet, fall back to demo so the page isn't blank.
-            data = getDemoData();
-        }
-    } catch {
-        data = getDemoData();
+        data = normalizeApiReport(res);
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to load bookings report', 'error');
+        data = { kpi: {}, trend: { labels: [], datasets: [] }, by_status: { labels: [], data: [] }, by_event: { labels: [], data: [] }, table: [] };
     }
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -346,6 +242,7 @@ async function loadReport() {
     document.getElementById('kpiConf').textContent = k.confirmed ?? 0;
     document.getElementById('kpiAdv').textContent = k.advance_paid ?? 0;
     document.getElementById('kpiFull').textContent = k.fully_paid ?? 0;
+    document.getElementById('kpiDone').textContent = k.completed ?? 0;
     document.getElementById('kpiCancel').textContent = k.cancelled ?? 0;
 
     if (trendChart) { trendChart.destroy(); trendChart = null; }
@@ -357,7 +254,7 @@ async function loadReport() {
     const eventPayload = data.by_event || { labels: [], data: [] };
 
     trendChart = new Chart(document.getElementById('trendChart').getContext('2d'), { type: 'line', data: trendPayload, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: txt, font: { size: 11 } } } }, scales: { x: { grid: { color: grid }, ticks: { color: txt, font: { size: 10 } } }, y: { grid: { color: grid }, ticks: { color: txt, font: { size: 10 } } } } } });
-    statusChart = new Chart(document.getElementById('statusChart').getContext('2d'), { type: 'doughnut', data: { labels: statusPayload.labels, datasets: [{ data: statusPayload.data, backgroundColor: ['#10B981', '#7C3AED', '#2563EB', '#EF4444'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: txt, font: { size: 11 }, boxWidth: 10 } } } } });
+    statusChart = new Chart(document.getElementById('statusChart').getContext('2d'), { type: 'doughnut', data: { labels: statusPayload.labels, datasets: [{ data: statusPayload.data, backgroundColor: ['#94A3B8', '#10B981', '#7C3AED', '#2563EB', '#0D9488', '#F59E0B', '#EF4444'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: txt, font: { size: 11 }, boxWidth: 10 } } } } });
     eventChart = new Chart(document.getElementById('eventChart').getContext('2d'), { type: 'bar', data: { labels: eventPayload.labels, datasets: [{ data: eventPayload.data, backgroundColor: 'rgba(124,58,237,.7)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: grid }, ticks: { color: txt, font: { size: 10 } } }, y: { grid: { color: 'transparent' }, ticks: { color: txt, font: { size: 10 } } } } } });
 
     const rows = Array.isArray(data.table) ? data.table : [];
@@ -368,7 +265,7 @@ async function loadReport() {
             <td>${row.customer}</td>
             <td>${row.hall}</td>
             <td>${row.event_type}</td>
-            <td><span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${row.status === 'cancelled' ? 'rgba(239,68,68,.14)' : row.status === 'confirmed' ? 'rgba(16,185,129,.14)' : 'rgba(124,58,237,.14)'};color:${row.status === 'cancelled' ? 'var(--color-danger)' : row.status === 'confirmed' ? 'var(--color-success)' : 'var(--brand-primary)'}">${formatStatusLabel(row.status)}</span></td>
+            <td>${Utils.statusBadge(row.status)}</td>
             <td>${Utils.formatCurrency(row.amount)}</td>
             <td>${row.branch}</td>
         </tr>`).join('') : '<tr><td colspan="7" class="text-center py-4">No bookings match the current filters.</td></tr>';

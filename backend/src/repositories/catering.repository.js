@@ -50,6 +50,14 @@ const updatePackagePrice = async (packageId, companyId, pricePerPlate) => {
     return findPackageById(packageId, companyId);
 };
 
+const setPackageActive = async (packageId, companyId, isActive) => {
+    await executeQuery(
+        `UPDATE CateringPackages SET is_active = @isActive WHERE package_id = @packageId AND company_id = @companyId`,
+        { packageId, companyId, isActive }
+    );
+    return findPackageById(packageId, companyId);
+};
+
 /**
  * The Master Menu items linked to a package, with each item's tax/margin
  * computed from MenuItems (the single source of truth) — never duplicated
@@ -85,6 +93,6 @@ const removePackageItem = async (packageId, itemId) => {
 };
 
 module.exports = {
-    listPackages, findPackageById, createPackage, updatePackagePrice,
+    listPackages, findPackageById, createPackage, updatePackagePrice, setPackageActive,
     getPackageItems, addPackageItem, removePackageItem,
 };

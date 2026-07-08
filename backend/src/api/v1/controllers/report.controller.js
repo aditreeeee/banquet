@@ -76,7 +76,7 @@ const getOccupancy = async (req, res) => {
     const data = await svc.getOccupancyReport(req.query, actor(req));
     if (req.query.format) {
         const sent = await sendExport(res, req.query.format, {
-            title: 'Occupancy Report', columns: OCCUPANCY_COLUMNS, rows: data, filename: 'occupancy-report',
+            title: 'Occupancy Report', columns: OCCUPANCY_COLUMNS, rows: data.by_hall, filename: 'occupancy-report',
         });
         if (sent) return;
     }

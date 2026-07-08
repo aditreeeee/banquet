@@ -22,9 +22,14 @@ const API = (() => {
         return h;
     }
 
-    /* ── Refresh access token using HttpOnly refresh cookie ── */
+    /* ── Refresh access token using HttpOnly refresh cookie ──
+       `silent: true` is used for the proactive background refresh (see auth.js
+       session manager) — a failure there just means "try again next cycle",
+       not "the session is dead", so it must NOT force a redirect. Only a
+       refresh triggered by an actual 401 (a real invalid/expired session)
+       should hard-redirect to login. */
     let refreshPromise = null;
-    async function refreshAccessToken() {
+    async function refreshAccessToken({ silent = false } = {}) {
         if (refreshPromise) return refreshPromise;
         refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
             method: 'POST',
@@ -42,8 +47,10 @@ const API = (() => {
         })
         .catch(err => {
             refreshPromise = null;
-            clearToken();
-            Auth.redirectToLogin();
+            if (!silent) {
+                clearToken();
+                Auth.redirectToLogin();
+            }
             throw err;
         });
         return refreshPromise;
@@ -130,8 +137,9 @@ const API = (() => {
         /* ─ Auth endpoints ─ */
         auth: {
             login:         (email, password) => request('POST', '/auth/login',          { body: { email, password } }),
+            register:      (d)               => request('POST', '/auth/register',       { body: d }),
             logout:        ()                => request('POST', '/auth/logout',         {}),
-            refresh:       ()                => refreshAccessToken(),
+            refresh:       (opts)            => refreshAccessToken(opts),
             forgotPassword:(email)           => request('POST', '/auth/forgot-password',{ body: { email } }),
             resetPassword: (token, password) => request('POST', '/auth/reset-password', { body: { token, password } }),
             verifyEmail:   (token)           => request('GET',  `/auth/verify-email/${token}`),
@@ -154,6 +162,11 @@ const API = (() => {
             delete: (id)=> request('DELETE', `/banquets/${id}`),
         },
 
+        /* ─ Branches ─ */
+        branches: {
+            list: (p) => request('GET', '/branches', { params: p }),
+        },
+
         /* ─ Halls ─ */
         halls: {
             list:         (p)    => request('GET',  '/halls',               { params: p }),
@@ -162,6 +175,8 @@ const API = (() => {
             update:       (id,d) => request('PUT',  `/halls/${id}`,         { body: d }),
             availability: (id,p) => request('GET',  `/halls/${id}/availability`, { params: p }),
             block:        (id,d) => request('POST', `/halls/${id}/block`,   { body: d }),
+            activate:     (id)   => request('PATCH', `/halls/${id}/activate`),
+            deactivate:   (id)   => request('PATCH', `/halls/${id}/deactivate`),
         },
 
         /* ─ Bookings ─ */
@@ -170,12 +185,14 @@ const API = (() => {
             get:      (id)   => request('GET',   `/bookings/${id}`),
             create:   (d)    => request('POST',  '/bookings',          { body: d }),
             update:   (id,d) => request('PUT',   `/bookings/${id}`,    { body: d }),
-            cancel:   (id,r) => request('POST',  `/bookings/${id}/cancel`, { body: { reason: r } }),
+            reschedule: (id,d) => request('PATCH', `/bookings/${id}/reschedule`, { body: d }),
+            cancel:   (id,r,extra) => request('POST',  `/bookings/${id}/cancel`, { body: { reason: r, ...extra } }),
             status:   (id,s) => request('PATCH', `/bookings/${id}/status`, { body: { status: s } }),
             price:    (d)    => request('POST',  '/bookings/calculate-price', { body: d }),
             checkAvail:(d)   => request('POST',  '/bookings/check-availability', { body: d }),
             activities: (id)    => request('GET',  `/bookings/${id}/activities`),
             resources:  (id)    => request('GET',  `/bookings/${id}/resources`),
+            updateResources: (id, resources) => request('PUT', `/bookings/${id}/resources`, { body: { resources } }),
             contacts:   (id)    => request('GET',  `/bookings/${id}/contacts`),
             addContact: (id,d)  => request('POST', `/bookings/${id}/contacts`, { body: d }),
             removeContact: (id,contactId) => request('DELETE', `/bookings/${id}/contacts/${contactId}`),
@@ -190,6 +207,7 @@ const API = (() => {
             get:    (id)   => request('GET',  `/customers/${id}`),
             create: (d)    => request('POST', '/customers',        { body: d }),
             update: (id,d) => request('PUT',  `/customers/${id}`,  { body: d }),
+            delete: (id)   => request('DELETE', `/customers/${id}`),
             bookingHistory: (id,p) => request('GET', `/customers/${id}/booking-history`, { params: p }),
         },
 
@@ -199,6 +217,8 @@ const API = (() => {
             get:      (id)   => request('GET',  `/payments/${id}`),
             record:   (d)    => request('POST', '/payments',          { body: d }),
             refund:   (id,d) => request('POST', `/payments/${id}/refund`, { body: d }),
+            getRefunds: (id) => request('GET',  `/payments/${id}/refunds`),
+            allRefunds: ()   => request('GET',  '/payments/refunds'),
             history:  (bid)  => request('GET',  `/payments/booking/${bid}`),
             pending:  (p)    => request('GET',  '/payments/pending',  { params: p }),
         },
@@ -218,6 +238,7 @@ const API = (() => {
             update: (id,d)=>request('PUT', `/resources/${id}`,  { body: d }),
             delete: (id)=> request('DELETE',`/resources/${id}`),
             snapshot: (p) => request('GET', '/resources/snapshot', { params: p }),
+            recommendations: (p) => request('GET', '/resources/recommendations', { params: p }),
         },
 
         /* ─ Catering (Master Menu packages) ─ */
@@ -230,6 +251,7 @@ const API = (() => {
             addItem:     (id,d)  => request('POST', `/catering/packages/${id}/items`, { body: d }),
             removeItem:  (id,itemId) => request('DELETE', `/catering/packages/${id}/items/${itemId}`),
             syncPrice:   (id)    => request('POST', `/catering/packages/${id}/sync-price`),
+            deletePackage: (id)  => request('DELETE', `/catering/packages/${id}`),
         },
 
         /* ─ Master Menu (menu items) ─ */
@@ -268,7 +290,7 @@ const API = (() => {
         /* ─ Settings ─ */
         settings: {
             get:    ()   => request('GET',  '/settings'),
-            update: (d)  => request('PUT',  '/settings', { body: d }),
+            update: (key, value, group) => request('PATCH', `/settings/${key}`, { body: { value, group } }),
         },
 
         /* ─ Users ─ */
@@ -278,6 +300,10 @@ const API = (() => {
             create: (d)    => request('POST', '/users',        { body: d }),
             update: (id,d) => request('PUT',  `/users/${id}`,  { body: d }),
             toggle: (id)   => request('PATCH',`/users/${id}/toggle-status`),
+            schedule: (id) => request('GET',  `/users/${id}/schedule`),
+            pending:  ()   => request('GET',  '/users/pending'),
+            approve:  (id) => request('PATCH',`/users/${id}/approve`),
+            reject:   (id) => request('PATCH',`/users/${id}/reject`),
         },
 
         /* ─ Audit logs ─ */
@@ -299,6 +325,13 @@ const API = (() => {
         marketing: {
             send:    (d) => request('POST', '/marketing/send', { body: d }),
             history: (p) => request('GET',  '/marketing/history', { params: p }),
+            upload:  (file) => { const fd = new FormData(); fd.append('file', file); return request('POST', '/marketing/upload', { body: fd, rawForm: true }); },
+        },
+
+        /* ─ Reviews ─ */
+        reviews: {
+            forBanquet: (banquetId, p) => request('GET', `/reviews/banquet/${banquetId}`, { params: p }),
+            create:     (d) => request('POST', '/reviews', { body: d }),
         },
 
         getToken,

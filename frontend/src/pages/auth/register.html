@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account | Banquet Hall Booking System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css"  rel="stylesheet">
+<link href="../../../public/assets/css/app.css"    rel="stylesheet">
+<style>
+    body { background: var(--bg-body); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+
+    .auth-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 100vh;
+        width: 100%;
+    }
+
+    .auth-brand-panel {
+        background: linear-gradient(150deg, #060D18 0%, #0D1929 30%, #1A2B4A 65%, #1E3254 100%);
+        display: flex; flex-direction: column; justify-content: space-between;
+        padding: 48px;
+        position: relative; overflow: hidden;
+    }
+    .auth-brand-panel::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24 2 L46 24 L24 46 L2 24 Z' fill='none' stroke='rgba(197,160,89,0.07)' stroke-width='0.6'/%3E%3C/svg%3E");
+        pointer-events: none;
+    }
+    .auth-brand-panel::after {
+        content: '';
+        position: absolute;
+        right: 0; top: 0; bottom: 0;
+        width: 1px;
+        background: linear-gradient(180deg,
+            transparent 0%,
+            rgba(197,160,89,.4) 25%,
+            rgba(197,160,89,.7) 50%,
+            rgba(197,160,89,.4) 75%,
+            transparent 100%);
+    }
+    .auth-brand-glow {
+        position: absolute;
+        width: 450px; height: 450px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(197,160,89,.1) 0%, transparent 65%);
+        top: -140px; left: -120px; pointer-events: none;
+    }
+    .auth-brand-glow-2 {
+        position: absolute;
+        width: 320px; height: 320px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(197,160,89,.07) 0%, transparent 65%);
+        bottom: 40px; right: -80px; pointer-events: none;
+    }
+
+    .brand-logo { display: flex; align-items: center; gap: 14px; position: relative; z-index: 1; }
+    .brand-icon {
+        width: 52px; height: 52px;
+        background: rgba(197,160,89,.15);
+        border-radius: 16px; display: flex; align-items: center; justify-content: center;
+        color: #C5A059;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(197,160,89,.35);
+        box-shadow: 0 4px 20px rgba(197,160,89,.2), inset 0 1px 0 rgba(255,255,255,.1);
+    }
+    .brand-name {
+        color: white; font-size: 22px; font-weight: 700;
+        font-family: 'Playfair Display', serif;
+        letter-spacing: -.01em;
+    }
+    .brand-sub  { color: rgba(197,160,89,.7); font-size: 11px; margin-top: 3px; letter-spacing: .08em; text-transform: uppercase; }
+
+    .brand-copy { position: relative; z-index: 1; }
+    .brand-eyebrow {
+        display: inline-flex; align-items: center; gap: 10px;
+        font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+        color: #C5A059; margin-bottom: 16px;
+    }
+    .brand-eyebrow::before, .brand-eyebrow::after {
+        content: ''; display: inline-block;
+        width: 22px; height: 1px; background: rgba(197,160,89,.6);
+    }
+    .brand-headline {
+        color: white;
+        font-size: 38px; font-weight: 700;
+        font-family: 'Playfair Display', serif;
+        line-height: 1.15; margin-bottom: 18px;
+        letter-spacing: -.01em;
+    }
+    .brand-desc { color: rgba(255,255,255,.5); font-size: 14px; line-height: 1.78; max-width: 360px; }
+
+    .brand-stats {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 12px; position: relative; z-index: 1;
+    }
+    .stat-card {
+        background: rgba(255,255,255,.06);
+        backdrop-filter: blur(14px) saturate(180%);
+        border: 1px solid rgba(197,160,89,.2);
+        border-radius: 14px; padding: 16px;
+    }
+    .stat-num  { color: #C5A059; font-size: 22px; font-weight: 700; font-family: 'Playfair Display', serif; }
+    .stat-label{ color: rgba(255,255,255,.45); font-size: 11px; margin-top: 4px; letter-spacing: .04em; }
+
+    .auth-form-panel {
+        background: var(--bg-surface);
+        display: flex; align-items: center; justify-content: center;
+        padding: 48px;
+        position: relative;
+        overflow-y: auto;
+    }
+    .auth-form-panel::before {
+        content: '';
+        position: absolute; inset: 0;
+        background:
+            radial-gradient(ellipse 60% 40% at 20% 5%, rgba(197,160,89,.045) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 85% 95%, rgba(26,43,74,.04) 0%, transparent 60%);
+        pointer-events: none;
+    }
+
+    .auth-card { width: 100%; max-width: 440px; position: relative; z-index: 1; }
+
+    .auth-eyebrow {
+        font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+        color: var(--brand-gold, #C5A059); margin-bottom: 8px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .auth-eyebrow::before {
+        content: ''; display: inline-block;
+        width: 18px; height: 1px; background: var(--brand-gold, #C5A059);
+    }
+    .auth-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 28px; font-weight: 700;
+        color: var(--text-primary); margin-bottom: 6px;
+        letter-spacing: -.01em;
+    }
+    .auth-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .input-group-auth { position: relative; }
+    .input-group-auth .input-icon {
+        position: absolute; left: 14px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted); pointer-events: none;
+    }
+    .input-group-auth:focus-within .input-icon { color: var(--brand-gold, #C5A059); }
+    .input-group-auth .form-control {
+        padding-left: 42px;
+        background: rgba(255,255,255,.6);
+        backdrop-filter: blur(8px);
+        border: 1.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .input-group-auth .form-control:focus {
+        background: rgba(255,255,255,.85);
+        border-color: var(--brand-gold, #C5A059);
+        box-shadow: 0 0 0 3px rgba(197,160,89,.14);
+    }
+    .input-group-auth .password-toggle {
+        position: absolute; right: 12px; top: 50%;
+        transform: translateY(-50%);
+        background: none; border: none; cursor: pointer;
+        color: var(--text-muted); font-size: 16px;
+        padding: 4px;
+    }
+
+    .btn-auth {
+        width: 100%; padding: 13px;
+        background: linear-gradient(135deg, #C5A059 0%, #D4B478 50%, #C5A059 100%);
+        color: white; border: none; border-radius: var(--radius-md);
+        font-size: 15px; font-weight: 600; letter-spacing: .01em;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        box-shadow: 0 4px 20px rgba(197,160,89,.3);
+    }
+    .btn-auth:disabled { opacity: .7; cursor: not-allowed; }
+
+    .auth-footer { text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 24px; }
+    .auth-footer a { color: var(--brand-gold, #C5A059); text-decoration: none; font-weight: 500; }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    .alert-auth {
+        padding: 12px 16px; border-radius: var(--radius-md);
+        font-size: 13px; margin-bottom: 20px; display: none; border: 1px solid;
+    }
+    .alert-auth.error   { background: var(--color-danger-bg);  border-color: var(--color-danger);  color: var(--color-danger); }
+    .alert-auth.success { background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success); }
+
+    @media (max-width: 900px) {
+        .auth-wrapper { grid-template-columns: 1fr; }
+        .auth-brand-panel { display: none; }
+        .auth-form-panel { padding: 32px 24px; min-height: 100vh; }
+    }
+</style>
+</head>
+<body>
+
+<div class="auth-wrapper">
+    <div class="auth-brand-panel">
+        <div class="auth-brand-glow"></div>
+        <div class="auth-brand-glow-2"></div>
+        <div class="brand-logo">
+            <div class="brand-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg></div>
+            <div>
+                <div class="brand-name">BanquetPro</div>
+                <div class="brand-sub">Enterprise Booking Platform</div>
+            </div>
+        </div>
+
+        <div class="brand-copy">
+            <div class="brand-eyebrow">Join The Platform</div>
+            <div class="brand-headline">Create Your<br>Account</div>
+            <div class="brand-desc">
+                Register to book banquet halls, track your events, and manage payments —
+                your account will be reviewed by an administrator before activation.
+            </div>
+        </div>
+
+        <div class="brand-stats">
+            <div class="stat-card">
+                <div class="stat-num">1000+</div>
+                <div class="stat-label">Banquet Halls</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num">Secure</div>
+                <div class="stat-label">Admin Approved</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num">GST Ready</div>
+                <div class="stat-label">Tax Compliance</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="auth-form-panel">
+        <div class="auth-card">
+            <div class="auth-eyebrow">BanquetPro · Hospitality Suite</div>
+            <div class="auth-title">Create your account</div>
+            <div class="auth-sub">New accounts require administrator approval before you can sign in.</div>
+
+            <div class="alert-auth" id="registerAlert"></div>
+
+            <form id="registerForm" novalidate>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">First name</label>
+                        <input type="text" class="form-control" id="firstName" required>
+                        <div class="invalid-feedback" id="firstName_error"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last name</label>
+                        <input type="text" class="form-control" id="lastName" required>
+                        <div class="invalid-feedback" id="lastName_error"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email address</label>
+                    <div class="input-group-auth">
+                        <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle></svg></span>
+                        <input type="email" class="form-control" id="email" placeholder="you@company.com" autocomplete="email" required>
+                    </div>
+                    <div class="invalid-feedback" id="email_error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Phone <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+                    <input type="tel" class="form-control" id="phone" placeholder="+91 98765 43210">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="input-group-auth">
+                        <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path></svg></span>
+                        <input type="password" class="form-control" id="password" placeholder="At least 8 characters" autocomplete="new-password" required>
+                    </div>
+                    <div class="invalid-feedback" id="password_error"></div>
+                    <div style="font-size:11.5px;color:var(--text-muted);margin-top:5px">Must contain uppercase, lowercase, and a number.</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Confirm password</label>
+                    <div class="input-group-auth">
+                        <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path></svg></span>
+                        <input type="password" class="form-control" id="confirmPassword" placeholder="Re-enter your password" autocomplete="new-password" required>
+                    </div>
+                    <div class="invalid-feedback" id="confirmPassword_error"></div>
+                </div>
+
+                <button type="submit" class="btn-auth" id="registerBtn" style="margin-top:8px">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="login.html">Sign in</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script>
+    Auth.applyTheme();
+    Auth.requireGuest();
+
+    document.getElementById('registerForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const firstName = document.getElementById('firstName').value.trim();
+        const lastName  = document.getElementById('lastName').value.trim();
+        const email     = document.getElementById('email').value.trim();
+        const phone     = document.getElementById('phone').value.trim();
+        const password  = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const alert = document.getElementById('registerAlert');
+        const btn   = document.getElementById('registerBtn');
+
+        let valid = true;
+        Utils.clearAllErrors(this);
+        alert.style.display = 'none';
+
+        if (!firstName) { Utils.setFieldError('firstName', 'First name is required'); valid = false; }
+        if (!lastName)  { Utils.setFieldError('lastName', 'Last name is required'); valid = false; }
+        if (!email || !Utils.Validators.email(email)) { Utils.setFieldError('email', 'Please enter a valid email address'); valid = false; }
+        if (!password || password.length < 8 || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+            Utils.setFieldError('password', 'Password must be 8+ characters with uppercase, lowercase, and a number');
+            valid = false;
+        }
+        if (confirmPassword !== password) { Utils.setFieldError('confirmPassword', 'Passwords do not match'); valid = false; }
+
+        if (!valid) return;
+
+        Utils.showLoader(btn, 'Creating account…');
+
+        try {
+            await API.auth.register({
+                first_name: firstName,
+                last_name:  lastName,
+                email,
+                phone: phone || undefined,
+                password,
+                confirm_password: confirmPassword,
+            });
+            alert.textContent  = 'Account created! It is now awaiting administrator approval — you will be able to sign in once approved.';
+            alert.className    = 'alert-auth success';
+            alert.style.display = 'block';
+            this.reset();
+            Utils.hideLoader(btn);
+            btn.disabled = true;
+        } catch (err) {
+            Utils.hideLoader(btn);
+            alert.textContent  = err.message || 'Registration failed. Please try again.';
+            alert.className    = 'alert-auth error';
+            alert.style.display = 'block';
+        }
+    });
+</script>
+</body>
+</html>

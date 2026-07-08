@@ -8,6 +8,14 @@ const { executeQuery, withTransaction } = require('../config/database');
 
 // ─── User Lookups ─────────────────────────────────────────────────────────────
 
+const findRoleIdBySlug = async (roleSlug) => {
+    const rows = await executeQuery(
+        `SELECT role_id FROM Roles WHERE role_slug = @roleSlug`,
+        { roleSlug }
+    );
+    return rows[0]?.role_id || null;
+};
+
 const findByEmail = async (email) => {
     const rows = await executeQuery(
         `SELECT
@@ -15,7 +23,7 @@ const findByEmail = async (email) => {
             u.first_name, u.last_name, u.phone,
             u.role_id, r.role_slug, r.role_name,
             u.company_id, u.branch_id,
-            u.is_active, u.is_email_verified,
+            u.is_active, u.is_email_verified, u.approval_status,
             u.failed_login_attempts, u.account_locked_until,
             u.last_login_at, u.last_login_ip,
             u.avatar_url, u.timezone, u.created_at
@@ -25,6 +33,35 @@ const findByEmail = async (email) => {
         { email }
     );
     return rows[0] || null;
+};
+
+/**
+ * Self-registration — the account starts locked out (approval_status='pending')
+ * until an admin approves it via userService.approve/reject. Assigns the
+ * seeded 'customer' role and writes the matching UserRoles row (multi-role
+ * system — see auth.js middleware) so permission lookups work immediately
+ * once approved.
+ */
+const register = async ({ firstName, lastName, email, phone, passwordHash, roleId, companyId }) => {
+    const result = await withTransaction(async (tx) => {
+        const inserted = await tx.execute(
+            `INSERT INTO Users
+                (first_name, last_name, email, phone, password_hash, role_id, company_id,
+                 is_active, is_email_verified, approval_status, created_at, updated_at)
+             OUTPUT INSERTED.user_id AS id
+             VALUES
+                (@firstName, @lastName, @email, @phone, @passwordHash, @roleId, @companyId,
+                 1, 0, 'pending', GETUTCDATE(), GETUTCDATE())`,
+            { firstName, lastName, email, phone: phone || null, passwordHash, roleId, companyId }
+        );
+        const userId = inserted[0].id;
+        await tx.execute(
+            `INSERT INTO UserRoles (user_id, role_id, assigned_at) VALUES (@userId, @roleId, GETUTCDATE())`,
+            { userId, roleId }
+        );
+        return userId;
+    });
+    return findById(result);
 };
 
 const findById = async (userId) => {
@@ -189,19 +226,33 @@ const getPasswordHash = async (userId) => {
 
 const findPermissions = async (userId) => {
     const rows = await executeQuery(
-        `SELECT p.permission_key
+        `SELECT DISTINCT p.permission_key
          FROM Permissions p
          JOIN RolePermissions rp ON rp.permission_id = p.permission_id
-         JOIN Users u ON u.role_id = rp.role_id
+         JOIN UserRoles ur ON ur.role_id = rp.role_id
+         JOIN Users u ON u.user_id = ur.user_id
          WHERE u.user_id = @userId AND u.is_active = 1`,
         { userId }
     );
     return rows.map(r => r.permission_key);
 };
 
+const findRoles = async (userId) => {
+    const rows = await executeQuery(
+        `SELECT r.role_id, r.role_slug, r.role_name
+         FROM UserRoles ur
+         JOIN Roles r ON r.role_id = ur.role_id
+         WHERE ur.user_id = @userId AND r.is_active = 1`,
+        { userId }
+    );
+    return rows;
+};
+
 module.exports = {
     findByEmail,
     findById,
+    findRoleIdBySlug,
+    register,
     recordSuccessfulLogin,
     recordFailedLogin,
     saveRefreshToken,
@@ -214,4 +265,5 @@ module.exports = {
     updatePassword,
     getPasswordHash,
     findPermissions,
+    findRoles,
 };

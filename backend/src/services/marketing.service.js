@@ -24,7 +24,7 @@ const CAMPAIGN_TYPES = {
     birthday_package:     { label: 'Birthday Package',     defaultSubject: 'Make this birthday unforgettable' },
 };
 
-const send = async ({ leadId, customerId, campaignType, subject, message }, actor) => {
+const send = async ({ leadId, customerId, campaignType, subject, message, attachmentUrl, attachmentName, websiteUrl, socialLinks }, actor) => {
     if (!leadId && !customerId) throw new ValidationError('leadId or customerId is required');
     if (!CAMPAIGN_TYPES[campaignType]) {
         throw new ValidationError(`campaignType must be one of: ${Object.keys(CAMPAIGN_TYPES).join(', ')}`);
@@ -72,6 +72,7 @@ const send = async ({ leadId, customerId, campaignType, subject, message }, acto
         sentToEmail: recipientEmail,
         deliveryStatus,
         sentBy: actor.userId,
+        attachmentUrl, attachmentName, websiteUrl, socialLinks,
     });
 
     await auditLogRepo.log({

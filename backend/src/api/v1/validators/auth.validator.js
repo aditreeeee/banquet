@@ -21,6 +21,16 @@ const schemas = {
         remember_me: Joi.boolean().default(false),
     }),
 
+    register: Joi.object({
+        first_name:       Joi.string().max(100).required(),
+        last_name:        Joi.string().max(100).required(),
+        email:            Joi.string().email().lowercase().trim().required(),
+        phone:            Joi.string().max(20).optional(),
+        password:         password.required(),
+        confirm_password: Joi.any().valid(Joi.ref('password')).required()
+            .messages({ 'any.only': 'Passwords do not match' }),
+    }),
+
     forgotPassword: Joi.object({
         email: Joi.string().email().lowercase().trim().required(),
     }),

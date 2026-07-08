@@ -7,6 +7,8 @@
 
 const { executeQuery, withTransaction } = require('../config/database');
 const resourceRepo = require('./resource.repository');
+const hallRepo = require('./hall.repository');
+const { balanceDueExpr } = require('./sqlExpressions');
 
 // ─── Availability Check ───────────────────────────────────────────────────────
 
@@ -143,8 +145,9 @@ const create = async (data) => {
                 event_name, event_type, guest_count,
                 total_amount, advance_paid, amount_paid,
                 notes, status, is_priority, priority_surcharge, parent_booking_id,
-                theme, decoration_notes, utilities, staff_count, event_end_date,
+                theme, decoration_notes, staff_count, event_end_date,
                 setup_minutes, cleanup_minutes, cooloff_minutes, cleanup_charge, late_exit_charge,
+                catering_package_id, catering_price_per_plate, catering_tax_amount,
                 created_by, created_at, updated_at
             )
             OUTPUT INSERTED.booking_id AS id
@@ -154,8 +157,9 @@ const create = async (data) => {
                 @eventName, @eventType, @guestCount,
                 @totalAmount, @advancePaid, @amountPaid,
                 @notes, @status, @isPriority, @prioritySurcharge, @parentBookingId,
-                @theme, @decorationNotes, @utilities, @staffCount, @eventEndDate,
+                @theme, @decorationNotes, @staffCount, @eventEndDate,
                 @setupMinutes, @cleanupMinutes, @cooloffMinutes, @cleanupCharge, @lateExitCharge,
+                @cateringPackageId, @cateringPricePerPlate, @cateringTaxAmount,
                 @createdBy, GETUTCDATE(), GETUTCDATE()
             )`,
             {
@@ -180,7 +184,6 @@ const create = async (data) => {
                 parentBookingId:    data.parentBookingId || null,
                 theme:              data.theme || null,
                 decorationNotes:    data.decorationNotes || null,
-                utilities:          Array.isArray(data.utilities) ? JSON.stringify(data.utilities) : null,
                 staffCount:         data.staffCount != null ? data.staffCount : null,
                 eventEndDate:       data.eventEndDate ? new Date(data.eventEndDate) : null,
                 setupMinutes:       data.setupMinutes    || 0,
@@ -188,6 +191,9 @@ const create = async (data) => {
                 cooloffMinutes:     data.cooloffMinutes  || 0,
                 cleanupCharge:      data.cleanupCharge   || 0,
                 lateExitCharge:     data.lateExitCharge  || 0,
+                cateringPackageId:     data.cateringPackageId     || null,
+                cateringPricePerPlate: data.cateringPricePerPlate || null,
+                cateringTaxAmount:     data.cateringTaxAmount     || null,
                 createdBy:      data.createdBy,
             }
         );
@@ -214,7 +220,7 @@ const findById = async (bookingId, companyId = null) => {
         `SELECT
             b.*,
             h.hall_name, h.capacity, h.floor_number,
-            bq.banquet_name,
+            bq.banquet_id, bq.banquet_name,
             CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
             c.email AS customer_email, c.phone AS customer_phone,
             CONCAT(u.first_name, ' ', u.last_name) AS created_by_name,
@@ -228,11 +234,7 @@ const findById = async (bookingId, companyId = null) => {
            AND (@companyId IS NULL OR b.company_id = @companyId)`,
         { bookingId, companyId: companyId || null }
     );
-    const booking = rows[0] || null;
-    if (booking && typeof booking.utilities === 'string') {
-        try { booking.utilities = JSON.parse(booking.utilities); } catch { booking.utilities = []; }
-    }
-    return booking;
+    return rows[0] || null;
 };
 
 /**
@@ -271,10 +273,11 @@ const findAll = async ({ companyId, branchId, status, hallId, customerId, fromDa
     const [rows, countRows, statusCountRows] = await Promise.all([
         executeQuery(
             `SELECT
-                b.booking_id, b.booking_ref, b.event_date, b.event_time_start, b.event_time_end,
+                b.booking_id, b.booking_ref, b.hall_id, b.event_date, b.event_time_start, b.event_time_end,
                 b.event_name, b.event_type, b.guest_count, b.status,
                 b.total_amount, b.advance_paid, b.amount_paid,
                 b.is_priority, b.created_at,
+                b.setup_minutes, b.cleanup_minutes, b.cooloff_minutes,
                 h.hall_name,
                 CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
                 c.phone AS customer_phone
@@ -325,7 +328,6 @@ const update = async (bookingId, companyId, data) => {
              notes             = ISNULL(@notes,      notes),
              theme             = ISNULL(@theme,            theme),
              decoration_notes  = ISNULL(@decorationNotes,  decoration_notes),
-             utilities         = ISNULL(@utilities,        utilities),
              staff_count       = ISNULL(@staffCount,       staff_count),
              event_end_date    = ISNULL(@eventEndDate,     event_end_date),
              setup_minutes     = ISNULL(@setupMinutes,     setup_minutes),
@@ -333,6 +335,9 @@ const update = async (bookingId, companyId, data) => {
              cooloff_minutes   = ISNULL(@cooloffMinutes,   cooloff_minutes),
              cleanup_charge    = ISNULL(@cleanupCharge,    cleanup_charge),
              late_exit_charge  = ISNULL(@lateExitCharge,   late_exit_charge),
+             catering_package_id      = ISNULL(@cateringPackageId,     catering_package_id),
+             catering_price_per_plate = ISNULL(@cateringPricePerPlate, catering_price_per_plate),
+             catering_tax_amount      = ISNULL(@cateringTaxAmount,     catering_tax_amount),
              updated_at        = GETUTCDATE()
          WHERE booking_id = @bookingId AND company_id = @companyId`,
         {
@@ -344,7 +349,6 @@ const update = async (bookingId, companyId, data) => {
             notes:      data.notes      || null,
             theme:             data.theme || null,
             decorationNotes:   data.decorationNotes || null,
-            utilities:         Array.isArray(data.utilities) ? JSON.stringify(data.utilities) : null,
             staffCount:        data.staffCount != null ? data.staffCount : null,
             eventEndDate:      data.eventEndDate ? new Date(data.eventEndDate) : null,
             setupMinutes:      data.setupMinutes   != null ? data.setupMinutes   : null,
@@ -352,6 +356,9 @@ const update = async (bookingId, companyId, data) => {
             cooloffMinutes:    data.cooloffMinutes != null ? data.cooloffMinutes : null,
             cleanupCharge:     data.cleanupCharge  != null ? data.cleanupCharge  : null,
             lateExitCharge:    data.lateExitCharge != null ? data.lateExitCharge : null,
+            cateringPackageId:     data.cateringPackageId     != null ? data.cateringPackageId     : null,
+            cateringPricePerPlate: data.cateringPricePerPlate != null ? data.cateringPricePerPlate : null,
+            cateringTaxAmount:     data.cateringTaxAmount     != null ? data.cateringTaxAmount     : null,
         }
     );
     return findById(bookingId, companyId);
@@ -360,13 +367,35 @@ const update = async (bookingId, companyId, data) => {
 /**
  * Reschedule — checks availability in transaction then updates date/time
  */
-const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eventTimeEnd }) => {
+const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eventTimeEnd, eventEndDate, hallId }) => {
     await withTransaction(async (tx) => {
         const booking  = await findById(bookingId, companyId);
+        // eventEndDate defaults to the booking's current value when the caller
+        // doesn't supply one (single-day bookings never send it).
+        const resolvedEndDate = eventEndDate || booking?.event_end_date;
+        // A hall move (e.g. drag-and-drop in the Command Center) targets a
+        // different hall_id than the booking currently has — default to the
+        // existing hall when no move is requested (plain date/time reschedule).
+        const targetHallId = hallId || booking?.hall_id;
+
+        if (hallId && hallId !== booking?.hall_id) {
+            const targetHall = await hallRepo.findById(hallId, companyId);
+            if (!targetHall) {
+                const { NotFoundError } = require('../api/v1/middleware/errorHandler');
+                throw new NotFoundError('Hall');
+            }
+            if (booking?.guest_count > (targetHall.capacity_seated || targetHall.capacity || 0)) {
+                const { ValidationError } = require('../api/v1/middleware/errorHandler');
+                throw new ValidationError(
+                    `Target hall capacity (${targetHall.capacity_seated || targetHall.capacity}) is below the booking's guest count (${booking.guest_count})`
+                );
+            }
+        }
+
         const isAvail  = await checkAvailabilityInTx(tx, {
-            hallId: booking?.hall_id,
+            hallId: targetHallId,
             eventDate,
-            eventEndDate:   booking?.event_end_date,
+            eventEndDate:   resolvedEndDate,
             startTime: eventTimeStart,
             endTime:   eventTimeEnd,
             setupMinutes:   booking?.setup_minutes,
@@ -385,9 +414,16 @@ const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eve
              SET event_date       = @eventDate,
                  event_time_start = @eventTimeStart,
                  event_time_end   = @eventTimeEnd,
+                 event_end_date   = @eventEndDate,
+                 hall_id          = @hallId,
                  updated_at       = GETUTCDATE()
              WHERE booking_id = @bookingId AND company_id = @companyId`,
-            { bookingId, companyId, eventDate: new Date(eventDate), eventTimeStart, eventTimeEnd }
+            {
+                bookingId, companyId, eventTimeStart, eventTimeEnd,
+                eventDate: new Date(eventDate),
+                eventEndDate: resolvedEndDate ? new Date(resolvedEndDate) : null,
+                hallId: targetHallId,
+            }
         );
     });
 
@@ -412,17 +448,18 @@ const updateStatus = async (bookingId, companyId, status, updatedBy) => {
 /**
  * Cancel a booking (soft — sets status to 'cancelled')
  */
-const cancel = async (bookingId, companyId, reason, cancelledBy) => {
+const cancel = async (bookingId, companyId, reason, cancelledBy, cancellationCharge) => {
     await executeQuery(
         `UPDATE Bookings
          SET status              = 'cancelled',
              cancellation_reason = @reason,
+             cancellation_charge = @cancellationCharge,
              cancelled_at        = GETUTCDATE(),
              cancelled_by        = @cancelledBy,
              updated_at          = GETUTCDATE()
          WHERE booking_id = @bookingId AND company_id = @companyId
            AND status NOT IN ('cancelled', 'completed', 'archived')`,
-        { bookingId, companyId, reason: reason || null, cancelledBy }
+        { bookingId, companyId, reason: reason || null, cancelledBy, cancellationCharge: cancellationCharge ?? null }
     );
     return findById(bookingId, companyId);
 };
@@ -452,7 +489,7 @@ const findByRef = async (bookingRef, companyId) => {
             h.hall_name,
             CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
             c.email AS customer_email, c.phone AS customer_phone,
-            ISNULL(b.total_amount - b.amount_paid, 0) AS balance_due
+            ${balanceDueExpr('b')} AS balance_due
          FROM Bookings b
          JOIN Halls     h ON h.hall_id     = b.hall_id
          JOIN Customers c ON c.customer_id = b.customer_id

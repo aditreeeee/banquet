@@ -17,5 +17,8 @@ router.patch('/:id',             requirePermission(PERMISSIONS.BANQUETS_UPDATE),
 router.put('/:id',               requirePermission(PERMISSIONS.BANQUETS_UPDATE), ctrl.update);
 router.patch('/:id/activate',    requirePermission(PERMISSIONS.BANQUETS_UPDATE), ctrl.activate);
 router.patch('/:id/deactivate',  requirePermission(PERMISSIONS.BANQUETS_UPDATE), ctrl.deactivate);
+// Soft delete — a hard DELETE would orphan/cascade into Halls and Bookings, so
+// "delete" here deactivates instead, same pattern as Halls' toggle-active.
+router.delete('/:id',            requirePermission(PERMISSIONS.BANQUETS_UPDATE), ctrl.deactivate);
 
 module.exports = router;

@@ -7,15 +7,9 @@ const Joi = require('joi');
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-const UTILITY_OPTIONS = [
-    'microphones', 'speakers', 'stage', 'projector', 'led', 'lighting',
-    'generator', 'photography', 'security', 'parking', 'power_backup', 'cleaning', 'kitchen',
-];
-
 const eventDetailFields = {
     theme:            Joi.string().max(200).optional(),
     decorationNotes:  Joi.string().max(1000).optional(),
-    utilities:        Joi.array().items(Joi.string().valid(...UTILITY_OPTIONS)).optional(),
     staffCount:       Joi.number().integer().min(0).optional(),
     eventEndDate:     Joi.date().iso().optional(),
     setupMinutes:     Joi.number().integer().min(0).max(1440).optional(),
@@ -23,6 +17,9 @@ const eventDetailFields = {
     cooloffMinutes:   Joi.number().integer().min(0).max(1440).optional(),
     cleanupCharge:    Joi.number().precision(2).min(0).optional(),
     lateExitCharge:   Joi.number().precision(2).min(0).optional(),
+    cateringPackageId:     Joi.number().integer().positive().allow(null).optional(),
+    cateringPricePerPlate: Joi.number().precision(2).min(0).optional(),
+    cateringTaxAmount:     Joi.number().precision(2).min(0).optional(),
 };
 
 const validate = (schema) => (req, res, next) => {
@@ -71,6 +68,8 @@ const rescheduleSchema = Joi.object({
     eventDate:      Joi.date().iso().min('now').required(),
     eventTimeStart: Joi.string().pattern(TIME_PATTERN).required(),
     eventTimeEnd:   Joi.string().pattern(TIME_PATTERN).required(),
+    eventEndDate:   Joi.date().iso().min(Joi.ref('eventDate')).optional(), // multi-day bookings only
+    hallId:         Joi.number().integer().positive().optional(), // hall move (e.g. Command Center drag-and-drop)
 });
 
 const statusSchema = Joi.object({
@@ -79,6 +78,9 @@ const statusSchema = Joi.object({
 
 const cancelSchema = Joi.object({
     reason: Joi.string().max(500).optional(),
+    cancellationCharge: Joi.number().precision(2).min(0).optional(),
+    refundAmount:       Joi.number().precision(2).min(0).optional(),
+    paymentId:          Joi.number().integer().positive().optional(),
 });
 
 const slotSchema = Joi.object({
@@ -111,6 +113,15 @@ const contactSchema = Joi.object({
     notes:        Joi.string().max(500).optional(),
 });
 
+const resourcesSchema = Joi.object({
+    resources: Joi.array().items(
+        Joi.object({
+            resourceId: Joi.number().integer().positive().required(),
+            quantity:   Joi.number().integer().positive().required(),
+        })
+    ).required(),
+});
+
 const availabilitySchema = Joi.object({
     hallId:    Joi.number().integer().positive().required(),
     eventDate: Joi.date().iso().required(),
@@ -128,4 +139,5 @@ module.exports = {
     validateContact:      validate(contactSchema),
     validateClone:        validate(cloneSchema),
     validateSlot:         validate(slotSchema),
+    validateResources:    validate(resourcesSchema),
 };

@@ -624,6 +624,53 @@ const seedExtendedDemoData = async (pool) => {
     `);
     ok('BookingResources table ensured.');
 
+    // ── 3b2. Add UserRoles table (multi-role support) + backfill from Users.role_id ──
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'UserRoles')
+        BEGIN
+            CREATE TABLE UserRoles (
+                user_id     INT             NOT NULL,
+                role_id     INT             NOT NULL,
+                assigned_by INT             NULL,
+                assigned_at DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_user_roles PRIMARY KEY (user_id, role_id),
+                CONSTRAINT FK_ur_user FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+                CONSTRAINT FK_ur_role FOREIGN KEY (role_id) REFERENCES Roles(role_id)
+            );
+        END
+    `);
+    await pool.request().batch(`
+        INSERT INTO UserRoles (user_id, role_id)
+        SELECT u.user_id, u.role_id FROM Users u
+        WHERE NOT EXISTS (SELECT 1 FROM UserRoles ur WHERE ur.user_id = u.user_id AND ur.role_id = u.role_id);
+    `);
+    ok('UserRoles table ensured and backfilled from Users.role_id.');
+
+    // ── 3b3. Add RolePermissionScopes table (branch/hall scoped grants) ──────
+    // Foundation for future multi-location deployments: a role+permission grant
+    // is tenant-wide unless scope rows exist here, in which case it's restricted
+    // to the listed branches/halls. No rows = unrestricted (non-breaking).
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'RolePermissionScopes')
+        BEGIN
+            CREATE TABLE RolePermissionScopes (
+                scope_id      INT             NOT NULL IDENTITY(1,1),
+                role_id       INT             NOT NULL,
+                permission_id INT             NOT NULL,
+                branch_id     INT             NULL,
+                hall_id       INT             NULL,
+                created_at    DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_role_permission_scopes PRIMARY KEY (scope_id),
+                CONSTRAINT FK_rps_role FOREIGN KEY (role_id) REFERENCES Roles(role_id) ON DELETE CASCADE,
+                CONSTRAINT FK_rps_permission FOREIGN KEY (permission_id) REFERENCES Permissions(permission_id) ON DELETE CASCADE,
+                CONSTRAINT FK_rps_branch FOREIGN KEY (branch_id) REFERENCES Branches(branch_id),
+                CONSTRAINT FK_rps_hall FOREIGN KEY (hall_id) REFERENCES Halls(hall_id)
+            );
+            CREATE INDEX IX_rps_lookup ON RolePermissionScopes(role_id, permission_id);
+        END
+    `);
+    ok('RolePermissionScopes table ensured.');
+
     // ── 3c. Add BookingContacts table (Alternative Contacts) ────────────────
     await pool.request().batch(`
         IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'BookingContacts')
@@ -1009,6 +1056,11 @@ const seedExtendedDemoData = async (pool) => {
             ALTER TABLE Resources ADD supplier NVARCHAR(150) NULL;
         IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'cost_price')
             ALTER TABLE Resources ADD cost_price DECIMAL(12,2) NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'is_billable')
+            -- Inventory pricing strategy: OFF by default (internal operational cost, matching
+            -- current/prior behavior for every existing item). A manager can opt individual
+            -- premium/consumable items into being billed to the customer — see inventory/index.html.
+            ALTER TABLE Resources ADD is_billable BIT NOT NULL DEFAULT 0;
     `);
     await pool.request().batch(`
         IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_resource_category')
@@ -1018,6 +1070,23 @@ const seedExtendedDemoData = async (pool) => {
         END
     `);
     ok('Structured inventory columns ensured.');
+
+    // ── 3q2. User registration approval workflow ──────────────────────────────
+    // Separate from is_active (which stays the "disabled" toggle for already-
+    // approved accounts) — default 'approved' so every existing user is
+    // unaffected; self-registered users are inserted with 'pending' explicitly.
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'approval_status')
+            ALTER TABLE Users ADD approval_status NVARCHAR(20) NOT NULL DEFAULT 'approved';
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_user_approval_status')
+        BEGIN
+            ALTER TABLE Users ADD CONSTRAINT CHK_user_approval_status
+                CHECK (approval_status IN ('pending','approved','rejected'));
+        END
+    `);
+    ok('User registration approval_status column ensured.');
 
     // ── 3r. Configurable Operational Charges ──────────────────────────────────
     await pool.request().batch(`

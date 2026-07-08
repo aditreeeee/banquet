@@ -4,6 +4,7 @@
 'use strict';
 
 const resourceService = require('../../../services/resource.service');
+const recommendationService = require('../../../services/inventoryRecommendation.service');
 const response         = require('../../../utils/response');
 
 const list = async (req, res) => {
@@ -17,19 +18,19 @@ const getById = async (req, res) => {
 };
 
 const create = async (req, res) => {
-    const { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable } = req.body;
+    const { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable } = req.body;
     const resource = await resourceService.create(
-        { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable },
+        { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable },
         req.companyId
     );
     return response.created(res, resource, 'Resource created');
 };
 
 const update = async (req, res) => {
-    const { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive } = req.body;
+    const { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable } = req.body;
     const resource = await resourceService.update(
         parseInt(req.params.id, 10),
-        { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive },
+        { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable },
         req.companyId
     );
     return response.success(res, resource, 'Resource updated');
@@ -51,4 +52,14 @@ const getSnapshot = async (req, res) => {
     return response.success(res, snapshot);
 };
 
-module.exports = { list, getById, create, update, getAvailability, getSnapshot };
+const getRecommendations = async (req, res) => {
+    const { guest_count, event_date } = req.query;
+    const recommendations = await recommendationService.recommendForBooking({
+        companyId:  req.companyId,
+        guestCount: guest_count,
+        eventDate:  event_date || new Date().toISOString().slice(0, 10),
+    });
+    return response.success(res, recommendations);
+};
+
+module.exports = { list, getById, create, update, getAvailability, getSnapshot, getRecommendations };

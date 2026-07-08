@@ -14,6 +14,8 @@ const bookingContactRepo = require('../repositories/bookingContact.repository');
 const bookingStaffRepo = require('../repositories/bookingStaff.repository');
 const notificationRepo = require('../repositories/notification.repository');
 const operationalChargeService = require('./operationalCharge.service');
+const paymentService = require('./payment.service');
+const settingsService = require('./settings.service');
 const dashService  = require('./dashboard.service');
 const notif        = require('./notification.service');
 const logger       = require('../utils/logger');
@@ -50,18 +52,14 @@ const calculatePrioritySurcharge = (baseAmount, isPriority) =>
 
 // ─── Advance payment auto-calculation ──────────────────────────────────────────
 /**
- * Bookings made less than a month out require a larger deposit since there's
- * less time to recover the slot if the customer defaults; otherwise a lighter
- * 20% deposit applies.
+ * Required deposit percentage — configurable per company via Settings
+ * (booking.advance_pct, Billing & Tax tab), not hardcoded, so changing it
+ * takes effect for every new booking without a code change.
  */
-const calculateAdvanceAmount = (eventDate, totalAmount) => {
-    const daysUntilEvent = Math.ceil((new Date(eventDate) - new Date()) / (1000 * 60 * 60 * 24));
-    const percentage = daysUntilEvent < 30 ? 50 : 20;
-    return {
-        percentage,
-        amount: Math.round((parseFloat(totalAmount) || 0) * (percentage / 100)),
-    };
-};
+const calculateAdvanceAmount = (totalAmount, advancePct) => ({
+    percentage: advancePct,
+    amount: Math.round((parseFloat(totalAmount) || 0) * (advancePct / 100)),
+});
 
 // ─── Check Availability (public — no lock) ────────────────────────────────────
 
@@ -110,14 +108,23 @@ const create = async (data, actor) => {
     const branchId = actor.branchId || hall.branch_id;
     if (!branchId) throw new ValidationError('Cannot determine branch for this booking. Please assign the hall to a branch first.');
 
+    const bookingDefaults = await settingsService.getBookingDefaults(companyId);
+
     const prioritySurcharge = calculatePrioritySurcharge(data.totalAmount, data.isPriority);
     // Owner can override the auto-calculated deposit by passing advancePaid explicitly.
     const advancePaid = data.advancePaid != null
         ? data.advancePaid
-        : calculateAdvanceAmount(data.eventDate, data.totalAmount).amount;
+        : calculateAdvanceAmount(data.totalAmount, bookingDefaults.advancePct).amount;
 
+    // Fall back to the company's configured setup/cleanup/cool-off durations
+    // when the client omits them, instead of silently defaulting to zero —
+    // a missing cool-off buffer would otherwise let back-to-back bookings
+    // overlap with no turnaround time.
     const booking = await bookingRepo.create({
         ...data,
+        setupMinutes:   data.setupMinutes   != null ? data.setupMinutes   : bookingDefaults.setupMinutes,
+        cleanupMinutes: data.cleanupMinutes != null ? data.cleanupMinutes : bookingDefaults.cleanupMinutes,
+        cooloffMinutes: data.cooloffMinutes != null ? data.cooloffMinutes : bookingDefaults.cooloffMinutes,
         companyId,
         branchId,
         createdBy: userId,
@@ -392,7 +399,20 @@ const updateStatus = async (bookingId, newStatus, actor) => {
 
 // ─── Cancel ───────────────────────────────────────────────────────────────────
 
-const cancel = async (bookingId, reason, actor) => {
+/**
+ * Cancels a booking, optionally applying a cancellation charge and/or
+ * processing a refund against a specific prior payment.
+ *
+ * Hall occupancy and resource/inventory availability do NOT need an explicit
+ * "release" step here — every availability/occupancy query in this codebase
+ * (bookingRepo.checkAvailability, resourceRepo.allocateInTx/getAvailability,
+ * dashboard/report occupancy queries) already excludes status='cancelled'
+ * bookings from its sums, so the hall and its allocated resources become
+ * available to other bookings the instant the status flips, with no
+ * separate release/restore logic required.
+ */
+const cancel = async (bookingId, reason, actor, options = {}) => {
+    const { cancellationCharge, refundAmount, paymentId } = options;
     const existing = await bookingRepo.findById(bookingId, actor.companyId);
     if (!existing) throw new NotFoundError('Booking');
 
@@ -402,10 +422,18 @@ const cancel = async (bookingId, reason, actor) => {
     if (existing.status === 'completed' || existing.status === 'archived') {
         throw new ValidationError(`${existing.status === 'completed' ? 'Completed' : 'Archived'} bookings cannot be cancelled`);
     }
+    if (refundAmount > 0 && !paymentId) {
+        throw new ValidationError('paymentId is required to process a refund');
+    }
 
-    const booking = await bookingRepo.cancel(bookingId, actor.companyId, reason, actor.userId);
+    const booking = await bookingRepo.cancel(bookingId, actor.companyId, reason, actor.userId, cancellationCharge);
     dashService.invalidateDashboardCache(actor.companyId);
     logger.info('Booking cancelled', { bookingId, companyId: actor.companyId, reason });
+
+    let refund = null;
+    if (refundAmount > 0 && paymentId) {
+        refund = await paymentService.refund(paymentId, { refundAmount, reason: reason || 'Booking cancellation refund' }, actor);
+    }
 
     await auditLogRepo.log({
         companyId:  actor.companyId,
@@ -413,9 +441,11 @@ const cancel = async (bookingId, reason, actor) => {
         action:     'booking.cancelled',
         entityType: 'booking',
         entityId:   bookingId,
-        description: `Booking ${existing.booking_ref} cancelled${reason ? `: ${reason}` : ''}`,
+        description: `Booking ${existing.booking_ref} cancelled${reason ? `: ${reason}` : ''}`
+            + (cancellationCharge ? ` — charge ${cancellationCharge}` : '')
+            + (refund ? ` — refunded ${refundAmount}` : ''),
         oldValues:  { status: existing.status },
-        newValues:  { status: 'cancelled', reason: reason || null },
+        newValues:  { status: 'cancelled', reason: reason || null, cancellationCharge: cancellationCharge || 0, refundAmount: refundAmount || 0 },
     });
 
     notificationRepo.notifyManagers({
@@ -428,7 +458,7 @@ const cancel = async (bookingId, reason, actor) => {
         excludeUserId: actor.userId,
     }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
 
-    return booking;
+    return { ...booking, refund };
 };
 
 // ─── Activity Timeline ─────────────────────────────────────────────────────────
@@ -442,6 +472,34 @@ const getActivityTimeline = async (bookingId, companyId) => {
 const getResourceAllocations = async (bookingId, companyId) => {
     const booking = await bookingRepo.findById(bookingId, companyId);
     if (!booking) throw new NotFoundError('Booking');
+    return resourceRepo.getAllocationsForBooking(bookingId, companyId);
+};
+
+/**
+ * Reallocate a booking's inventory to a new set of quantities — used when
+ * guest count/hall/catering changes after creation and the recommended
+ * allocation needs to be recalculated (dynamic sync, not just at creation).
+ */
+const updateResourceAllocations = async (bookingId, companyId, resources, actor) => {
+    const booking = await bookingRepo.findById(bookingId, companyId);
+    if (!booking) throw new NotFoundError('Booking');
+    if (['cancelled', 'completed', 'archived'].includes(booking.status)) {
+        throw new ValidationError(`Cannot reallocate inventory for a ${booking.status} booking`);
+    }
+
+    await resourceRepo.reallocateForBooking(bookingId, companyId, resources, booking.event_date);
+    dashService.invalidateDashboardCache(companyId);
+
+    await auditLogRepo.log({
+        companyId,
+        userId:     actor.userId,
+        action:     'booking.resources_updated',
+        entityType: 'booking',
+        entityId:   bookingId,
+        description: `Inventory allocation updated for booking ${booking.booking_ref}`,
+        newValues:  { resources },
+    });
+
     return resourceRepo.getAllocationsForBooking(bookingId, companyId);
 };
 
@@ -521,13 +579,17 @@ const calculatePrice = async ({ hallId, eventDate, startTime, endTime, guestCoun
     const priceBeforePriority = Math.round(basePrice);
     const prioritySurcharge = calculatePrioritySurcharge(priceBeforePriority, isPriority);
     const totalPrice = priceBeforePriority + prioritySurcharge;
-    const advance = calculateAdvanceAmount(eventDate, totalPrice);
+    const bookingDefaults = await settingsService.getBookingDefaults(companyId);
+    const advance = calculateAdvanceAmount(totalPrice, bookingDefaults.advancePct);
 
     // Configurable operational charges (Setup/Decoration/Cleanup/Cleaning/
     // Late Exit/Extended Usage/Cool-Off) — same calculation the quotation,
     // invoice, and payment breakdown all read from, so they never drift.
     const operationalCharges = await operationalChargeService.calculateBookingCharges(companyId, {
-        setupMinutes, cleanupMinutes, cooloffMinutes, lateExitHours, extendedUsageHours,
+        setupMinutes:   setupMinutes   != null ? setupMinutes   : bookingDefaults.setupMinutes,
+        cleanupMinutes: cleanupMinutes != null ? cleanupMinutes : bookingDefaults.cleanupMinutes,
+        cooloffMinutes: cooloffMinutes != null ? cooloffMinutes : bookingDefaults.cooloffMinutes,
+        lateExitHours, extendedUsageHours,
         totalAmount: totalPrice,
     });
 
@@ -563,6 +625,7 @@ module.exports = {
     cancel,
     getActivityTimeline,
     getResourceAllocations,
+    updateResourceAllocations,
     getContacts,
     addContact,
     removeContact,

@@ -9,15 +9,19 @@ const { parsePagination, buildMeta } = require('../utils/pagination');
 
 const getAll = async (query, actor) => {
     const p = parsePagination(query, ['created_at', 'first_name', 'total_bookings', 'total_spend']);
-    const { rows, total } = await repo.findAll({
-        companyId: actor.companyId,
-        branchId:  actor.branchId || query.branch_id || null,
-        search:    query.search   || null,
-        source:    query.source   || null,
-        isActive:  query.is_active != null ? query.is_active === 'true' : null,
-        ...p,
-    });
-    return { rows, meta: buildMeta(total, p) };
+    const branchId = actor.branchId || query.branch_id || null;
+    const [{ rows, total }, stats] = await Promise.all([
+        repo.findAll({
+            companyId: actor.companyId,
+            branchId,
+            search:    query.search   || null,
+            source:    query.source   || null,
+            isActive:  query.is_active != null ? query.is_active === 'true' : null,
+            ...p,
+        }),
+        repo.getStats({ companyId: actor.companyId, branchId }),
+    ]);
+    return { rows, meta: buildMeta(total, p), stats };
 };
 
 const getById = async (id, companyId) => {
@@ -41,6 +45,7 @@ const normalize = (data) => ({
     notes:          data.notes                                   || null,
     source:         data.source                                  || null,
     branchId:       data.branchId       || data.branch_id        || null,
+    isActive:       data.isActive != null ? data.isActive : (data.is_active != null ? data.is_active : null),
 });
 
 const create = async (data, actor) => {

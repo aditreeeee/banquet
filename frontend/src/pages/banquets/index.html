@@ -435,7 +435,7 @@ function renderGrid(banquets) {
         </div>
         <div class="banquet-card-body">
             <div class="banquet-card-name">${b.name}</div>
-            <div class="banquet-card-sub"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> ${b.city}, ${b.state} &nbsp;·&nbsp; ${b.branch_name}</div>
+            <div class="banquet-card-sub"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> ${b.city}, ${b.state} &nbsp;·&nbsp; ${b.branch_name}${Auth.isSuperAdmin() && b.company_name ? ` &nbsp;·&nbsp; <span style="color:var(--brand-primary);font-weight:600">${b.company_name}</span>` : ''}</div>
             <div class="banquet-stat"><span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg></span><span>${b.total_halls} halls</span><span style="margin:0 8px;color:var(--border-color)">|</span><span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg></span><span class="banquet-stat-val">${Utils.formatNumber(b.total_capacity)} seats</span></div>
             <div class="banquet-stat"><span><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></span><span>${b.total_bookings} bookings</span><span style="margin:0 8px;color:var(--border-color)">|</span><span class="stars">${'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>'.repeat(Math.round(b.avg_rating))}${'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg>'.repeat(5-Math.round(b.avg_rating))}</span><span style="font-size:11.5px;color:var(--text-muted)">${b.avg_rating?.toFixed(1)} (${b.total_reviews})</span></div>
             <div style="margin-top:10px;display:flex;flex-wrap:wrap">
@@ -465,7 +465,7 @@ function renderList(banquets) {
                 </div>
             </div>
         </td>
-        <td style="font-size:12.5px">${b.branch_name}</td>
+        <td style="font-size:12.5px">${b.branch_name}${Auth.isSuperAdmin() && b.company_name ? `<div style="color:var(--brand-primary);font-weight:600">${b.company_name}</div>` : ''}</td>
         <td style="font-size:12.5px">${b.city}</td>
         <td style="font-weight:700">${b.total_halls}</td>
         <td>${Utils.formatNumber(b.total_capacity)}</td>
@@ -475,7 +475,8 @@ function renderList(banquets) {
             <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
                 <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="openModal(${b.banquet_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
                 <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="location.href='../halls/index.html?banquet=${b.banquet_id}'"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg></button>
-                <button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--color-danger)" onclick="deleteBanquet(${b.banquet_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
+                <button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:${b.status==='active' ? 'var(--color-danger)' : 'var(--color-success)'}" title="${b.status==='active' ? 'Deactivate' : 'Activate'}" onclick="toggleBanquetStatus(${b.banquet_id}, ${b.status==='active'})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></button>
+                <button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--color-danger)" title="Delete" onclick="deleteBanquet(${b.banquet_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="6" x2="21" y2="6"></line><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
             </div>
         </td>
     </tr>`).join('');
@@ -681,15 +682,34 @@ async function saveBanquet() {
     }
 }
 
+async function toggleBanquetStatus(id, isActive) {
+    const action = isActive ? 'deactivate' : 'activate';
+    const ok = await Utils.confirm(
+        isActive ? 'Deactivate this banquet? Its halls and bookings are unaffected, but it will no longer be bookable.' : 'Activate this banquet so it can be booked again?',
+        { title: isActive ? 'Deactivate Banquet' : 'Activate Banquet', danger: isActive }
+    );
+    if (!ok) return;
+    try {
+        await (isActive ? API.banquets.deactivate(id) : API.banquets.activate(id));
+        Utils.toast(`Banquet ${action}d`, isActive ? 'warning' : 'success');
+        loadBanquets();
+    } catch (err) {
+        Utils.toast(err.message || `Failed to ${action} banquet`, 'error');
+    }
+}
+
 async function deleteBanquet(id) {
-    const ok = await Utils.confirm('Deactivate this banquet? Its halls and bookings are unaffected, but it will no longer be bookable.', { title: 'Deactivate Banquet', danger: true });
+    const ok = await Utils.confirm(
+        'Permanently delete this banquet? This cannot be undone from here. It will be blocked if any halls still exist under it — delete or reassign them first.',
+        { title: 'Delete Banquet', danger: true }
+    );
     if (!ok) return;
     try {
         await API.banquets.delete(id);
-        Utils.toast('Banquet deactivated', 'success');
+        Utils.toast('Banquet deleted', 'success');
         loadBanquets();
     } catch (err) {
-        Utils.toast(err.message || 'Failed to deactivate banquet', 'error');
+        Utils.toast(err.message || 'Failed to delete banquet', 'error');
     }
 }
 

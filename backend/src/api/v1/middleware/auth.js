@@ -224,10 +224,16 @@ const scopeToCompany = (req, res, next) => {
     if (!req.user) return next(new AuthError());
 
     if (req.user.isSuperAdmin) {
-        // Super admin can switch company via ?company_id= (query) or body field.
-        // Falls back to company_id=1 so writes never fail with null.
-        const override = req.query.company_id || req.body?.company_id;
+        // Super admin can switch company via ?company_id= (query), a body
+        // field, or the X-Impersonate-Company-Id header — the header is what
+        // the frontend's persistent "view as tenant" mode uses (see api.js),
+        // so every existing tenant-scoped endpoint works unmodified once a
+        // super admin starts impersonating, without appending a query param
+        // to every single call. Falls back to company_id=1 so writes never
+        // fail with null when no tenant context is selected at all.
+        const override = req.query.company_id || req.body?.company_id || req.headers['x-impersonate-company-id'];
         req.companyId = override ? parseInt(override, 10) : 1;
+        req.isImpersonating = !!override;
     } else {
         if (!req.user.company_id) {
             return next(new AuthError('User account has no company assigned. Contact your administrator.'));

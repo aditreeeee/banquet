@@ -12,6 +12,8 @@ const auditLogRepo = require('../repositories/auditLog.repository');
 const resourceRepo = require('../repositories/resource.repository');
 const bookingContactRepo = require('../repositories/bookingContact.repository');
 const bookingStaffRepo = require('../repositories/bookingStaff.repository');
+const bookingCateringRepo = require('../repositories/bookingCatering.repository');
+const bookingPackageRepo = require('../repositories/bookingPackage.repository');
 const notificationRepo = require('../repositories/notification.repository');
 const operationalChargeService = require('./operationalCharge.service');
 const paymentService = require('./payment.service');
@@ -49,6 +51,49 @@ const PRIORITY_SURCHARGE_PCT = 20;
 
 const calculatePrioritySurcharge = (baseAmount, isPriority) =>
     isPriority ? Math.round((parseFloat(baseAmount) || 0) * (PRIORITY_SURCHARGE_PCT / 100)) : 0;
+
+// ─── Package pricing/timing (factors in the specific hall's own rate) ─────────
+const STANDARD_DAY_HOURS = 8;
+
+/**
+ * A duration package's price is derived from the hall actually being booked,
+ * not a flat company-wide figure — a "Full Day" at a ₹150,000 hall must cost
+ * more than the same package at a ₹45,000 hall. Only 'fixed_session'
+ * packages (Breakfast Event, High Tea, Wedding Ceremony, etc.) keep their own
+ * flat admin-set price, since those are catering-style events, not a
+ * fraction of the hall's own day rate. The result is computed once here (at
+ * booking create/edit time) and stored as the snapshot package_base_price —
+ * recalculateBookingTotal() just reads that stored figure unchanged, so this
+ * is the only place the hall-rate logic needs to live.
+ */
+const computePackagePrice = (pkg, hall) => {
+    const hallRate = parseFloat(hall.base_price) || 0;
+    switch (pkg.calc_type) {
+        case 'full_day': return Math.round(hallRate);
+        case 'half_day': return Math.round(hallRate * 0.5);
+        case 'hourly':    return Math.round((hallRate / STANDARD_DAY_HOURS) * (pkg.included_hours || 1));
+        default:          return Math.round(parseFloat(pkg.base_price) || 0); // fixed_session
+    }
+};
+
+/**
+ * Duration packages (hourly/half_day/full_day) price a specific span of
+ * time — the booking's actual timings must match what was priced, so the
+ * event end time is derived from the package rather than left to drift out
+ * of sync with it. Fixed-session packages have no included_hours and are
+ * left alone (their own start/end times are the whole point).
+ */
+const addHours = (timeStr, hours) => {
+    const [h, m] = timeStr.split(':').map(Number);
+    const totalMin = h * 60 + m + Math.round(hours * 60);
+    const wrapped = ((totalMin % 1440) + 1440) % 1440;
+    return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
+};
+
+const applyPackageTiming = (data, pkg) => {
+    if (!pkg || pkg.included_hours == null || !data.eventTimeStart) return data;
+    return { ...data, eventTimeEnd: addHours(data.eventTimeStart, pkg.included_hours) };
+};
 
 // ─── Advance payment auto-calculation ──────────────────────────────────────────
 /**
@@ -93,6 +138,7 @@ const create = async (data, actor) => {
     const hall = await hallRepo.findById(data.hallId, companyId);
     if (!hall) throw new NotFoundError('Hall');
     if (!hall.is_active) throw new ValidationError('Hall is not accepting bookings');
+    if (hall.is_under_maintenance) throw new ValidationError(`Hall is under maintenance${hall.maintenance_note ? `: ${hall.maintenance_note}` : ''}`);
 
     // Validate capacity
     if (data.guestCount && data.guestCount > hall.capacity) {
@@ -110,21 +156,39 @@ const create = async (data, actor) => {
 
     const bookingDefaults = await settingsService.getBookingDefaults(companyId);
 
+    // A selected rental package snapshots its own setup/cleanup/cooloff
+    // defaults and overtime rate/allowance onto the booking (not a live FK
+    // read later) — a later edit to the package's rate never retroactively
+    // changes an already-created booking, same principle as every other
+    // snapshot-pricing decision in this codebase (operational charges,
+    // catering line items).
+    let bookingPackage = null;
+    if (data.packageId) {
+        bookingPackage = await bookingPackageRepo.findPackageById(data.packageId, companyId);
+        if (!bookingPackage) throw new NotFoundError('Booking package');
+        if (!bookingPackage.is_active) throw new ValidationError('This booking package is no longer available');
+        data = applyPackageTiming(data, bookingPackage);
+    }
+
     const prioritySurcharge = calculatePrioritySurcharge(data.totalAmount, data.isPriority);
     // Owner can override the auto-calculated deposit by passing advancePaid explicitly.
     const advancePaid = data.advancePaid != null
         ? data.advancePaid
         : calculateAdvanceAmount(data.totalAmount, bookingDefaults.advancePct).amount;
 
-    // Fall back to the company's configured setup/cleanup/cool-off durations
-    // when the client omits them, instead of silently defaulting to zero —
-    // a missing cool-off buffer would otherwise let back-to-back bookings
-    // overlap with no turnaround time.
+    // Fall back to the selected package's durations, then the company's
+    // configured setup/cleanup/cool-off durations, when the client omits
+    // them — a missing cool-off buffer would otherwise let back-to-back
+    // bookings overlap with no turnaround time.
     const booking = await bookingRepo.create({
         ...data,
-        setupMinutes:   data.setupMinutes   != null ? data.setupMinutes   : bookingDefaults.setupMinutes,
-        cleanupMinutes: data.cleanupMinutes != null ? data.cleanupMinutes : bookingDefaults.cleanupMinutes,
-        cooloffMinutes: data.cooloffMinutes != null ? data.cooloffMinutes : bookingDefaults.cooloffMinutes,
+        setupMinutes:   data.setupMinutes   != null ? data.setupMinutes   : (bookingPackage?.default_setup_minutes   ?? bookingDefaults.setupMinutes),
+        cleanupMinutes: data.cleanupMinutes != null ? data.cleanupMinutes : (bookingPackage?.default_cleanup_minutes ?? bookingDefaults.cleanupMinutes),
+        cooloffMinutes: data.cooloffMinutes != null ? data.cooloffMinutes : (bookingPackage?.default_cooloff_minutes ?? bookingDefaults.cooloffMinutes),
+        packageId:                 bookingPackage?.package_id || null,
+        packageOvertimeRate:       bookingPackage?.overtime_rate_per_hour ?? null,
+        packageMaxExtensionHours:  bookingPackage?.max_extension_hours ?? null,
+        packageBasePrice:          bookingPackage ? computePackagePrice(bookingPackage, hall) : null,
         companyId,
         branchId,
         createdBy: userId,
@@ -248,10 +312,57 @@ const getOccupancySlots = async (masterBookingId, companyId) => {
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Derives the full hall-occupancy timeline from a booking's already-stored
+ * fields (event_date/time, setup/cleanup/cooloff minutes) — no new schema,
+ * this is purely making numbers the availability check and Resource Matrix
+ * already use (see booking.repository.js's OVERLAP_CONDITION) legible as
+ * named checkpoints for Booking Details:
+ *   Setup Start → Guest Entry → Event Start → Event End → Guest Exit →
+ *   Cleaning End → Cool-Off End (= Hall Released)
+ */
+const getOccupancyTimeline = (booking) => {
+    // event_time_start/end come back as full datetimes on a 1970-01-01 epoch
+    // (or plain 'HH:MM:SS' strings) — extract just the clock time, same
+    // parsing the frontend already does for display (see dashboard's fmtTime).
+    const parseClock = (t) => {
+        const m = String(t).match(/(\d{2}):(\d{2})/);
+        return m ? { h: parseInt(m[1], 10), m: parseInt(m[2], 10) } : { h: 0, m: 0 };
+    };
+    const eventDateOnly = new Date(booking.event_date).toISOString().slice(0, 10);
+    const startClock = parseClock(booking.event_time_start);
+    const endClock = parseClock(booking.event_time_end);
+
+    const eventStart = new Date(`${eventDateOnly}T00:00:00.000Z`);
+    eventStart.setUTCHours(startClock.h, startClock.m, 0, 0);
+    const eventEnd = new Date(`${eventDateOnly}T00:00:00.000Z`);
+    eventEnd.setUTCHours(endClock.h, endClock.m, 0, 0);
+    if (eventEnd <= eventStart) eventEnd.setUTCDate(eventEnd.getUTCDate() + 1); // overnight event
+
+    const setupMinutes = booking.setup_minutes || 0;
+    const cleanupMinutes = booking.cleanup_minutes || 0;
+    const cooloffMinutes = booking.cooloff_minutes || 0;
+
+    const setupStart = new Date(eventStart.getTime() - setupMinutes * 60000);
+    const cleaningEnd = new Date(eventEnd.getTime() + cleanupMinutes * 60000);
+    const hallReleaseTime = new Date(cleaningEnd.getTime() + cooloffMinutes * 60000);
+
+    return {
+        setupStart: setupStart.toISOString(),
+        guestEntry: eventStart.toISOString(),
+        eventStart: eventStart.toISOString(),
+        eventEnd: eventEnd.toISOString(),
+        guestExit: eventEnd.toISOString(),
+        cleaningEnd: cleaningEnd.toISOString(),
+        hallReleaseTime: hallReleaseTime.toISOString(),
+        setupMinutes, cleanupMinutes, cooloffMinutes,
+    };
+};
+
 const getById = async (bookingId, companyId) => {
     const booking = await bookingRepo.findById(bookingId, companyId);
     if (!booking) throw new NotFoundError('Booking');
-    return booking;
+    return { ...booking, occupancy_timeline: getOccupancyTimeline(booking) };
 };
 
 const getByRef = async (bookingRef, companyId) => {
@@ -311,7 +422,34 @@ const update = async (bookingId, data, actor) => {
         throw new ValidationError(`Cannot edit a ${existing.status} booking`);
     }
 
-    const booking = await bookingRepo.update(bookingId, actor.companyId, data);
+    // Changing the package re-snapshots its overtime rate/allowance onto the
+    // booking (same snapshot principle as create()) — the new package's rate
+    // takes effect immediately, but never retroactively if it's edited again later.
+    let packageFields = {};
+    const packageIdProvided = Object.prototype.hasOwnProperty.call(data, 'packageId');
+    if (packageIdProvided) {
+        if (data.packageId != null) {
+            const pkg = await bookingPackageRepo.findPackageById(data.packageId, actor.companyId);
+            if (!pkg) throw new NotFoundError('Booking package');
+            if (!pkg.is_active) throw new ValidationError('This booking package is no longer available');
+            // update() never carries eventTimeStart/eventTimeEnd (only reschedule() does),
+            // so timing enforcement only applies at creation time; an edit that swaps to a
+            // different duration package here just re-prices against the existing schedule.
+            const hall = await hallRepo.findById(existing.hall_id, actor.companyId);
+            packageFields = { packageOvertimeRate: pkg.overtime_rate_per_hour, packageMaxExtensionHours: pkg.max_extension_hours, packageBasePrice: computePackagePrice(pkg, hall) };
+        } else {
+            // Explicit null clears the package — removes the flat package rate
+            // so recalculateBookingTotal() falls back to hall-price-with-surcharge below.
+            packageFields = { packageOvertimeRate: null, packageMaxExtensionHours: null, packageBasePrice: null };
+        }
+    }
+
+    await bookingRepo.update(bookingId, actor.companyId, { ...data, ...packageFields, packageIdProvided });
+    // Guest count, catering selection, package, and per-booking charge fields
+    // (all editable via this endpoint) all feed the stored total — keep it in
+    // sync rather than letting it go stale until some unrelated edit touches it.
+    await recalculateBookingTotal(bookingId, actor.companyId);
+    const booking = await bookingRepo.findById(bookingId, actor.companyId);
     dashService.invalidateDashboardCache(actor.companyId);
 
     await auditLogRepo.log({
@@ -338,7 +476,12 @@ const reschedule = async (bookingId, scheduleData, actor) => {
         throw new ValidationError(`Cannot reschedule a ${existing.status} booking`);
     }
 
-    const booking = await bookingRepo.reschedule(bookingId, actor.companyId, scheduleData);
+    await bookingRepo.reschedule(bookingId, actor.companyId, scheduleData);
+    // A hall move or date change can shift the weekend surcharge (different
+    // hall's base price, or moving on/off a weekend) — keep total_amount in
+    // sync rather than leaving it priced for the booking's old slot.
+    await recalculateBookingTotal(bookingId, actor.companyId);
+    const booking = await bookingRepo.findById(bookingId, actor.companyId);
     dashService.invalidateDashboardCache(actor.companyId);
     logger.info('Booking rescheduled', { bookingId, companyId: actor.companyId });
 
@@ -488,6 +631,9 @@ const updateResourceAllocations = async (bookingId, companyId, resources, actor)
     }
 
     await resourceRepo.reallocateForBooking(bookingId, companyId, resources, booking.event_date);
+    // Billable resources contribute to total_amount — a reallocation can add,
+    // remove, or resize billable items, so the stored total must follow.
+    await recalculateBookingTotal(bookingId, companyId);
     dashService.invalidateDashboardCache(companyId);
 
     await auditLogRepo.log({
@@ -560,6 +706,91 @@ const removeStaffAssignment = async (bookingId, assignmentId, companyId, actorUs
 };
 
 /**
+ * Recompute and persist total_amount from the booking's current hall,
+ * guest count, priority flag, catering selection, and billable resource
+ * allocations — the single source of truth every edit path below funnels
+ * through so total_amount can never drift from what's actually on the
+ * booking. Payments/balance/outstanding-amount all read total_amount live
+ * (see payment.service.js:withAdvanceInfo, sqlExpressions.balanceDueExpr),
+ * so keeping this one column correct is sufficient to keep those correct too.
+ *
+ * Deliberately NOT included: operational rate-config changes
+ * (operationalCharge.service.js upsert) — those are company-wide settings for
+ * future bookings' wizard preview, not a per-booking snapshot, so changing
+ * them must never retroactively reprice bookings that already exist. All 7
+ * operational-charge components (setup/decoration/cleanup/cleaning/
+ * late_exit/extended_usage/cooloff) are booking-level snapshot columns (set
+ * at creation or explicit edit, see eventDetailFields) and are reused as-is
+ * here, not recomputed from current company rates.
+ */
+const recalculateBookingTotal = async (bookingId, companyId) => {
+    const booking = await bookingRepo.findById(bookingId, companyId);
+    if (!booking) throw new NotFoundError('Booking');
+
+    const hall = await hallRepo.findById(booking.hall_id, companyId);
+    if (!hall) throw new NotFoundError('Hall');
+
+    // A selected rental package has its own fixed price (snapshotted at
+    // booking time — package_base_price), which replaces the hall's
+    // weekend-surcharge pricing entirely rather than stacking with it;
+    // packages are a different pricing model (flat per-package rate), not a
+    // hall-rate modifier. Bookings with no package keep the original
+    // hall-price-with-weekend-surcharge calculation, unchanged.
+    let hallPrice;
+    if (booking.package_id && booking.package_base_price != null) {
+        hallPrice = Math.round(parseFloat(booking.package_base_price) || 0);
+    } else {
+        const dow = new Date(booking.event_date).getDay();
+        const isWeekend = dow === 0 || dow === 6;
+        let basePrice = parseFloat(hall.base_price) || 0;
+        const surchargePct = parseFloat(hall.weekend_surcharge_pct) || 0;
+        if (isWeekend && surchargePct > 0) basePrice *= (1 + surchargePct / 100);
+        hallPrice = Math.round(basePrice);
+    }
+
+    const prioritySurcharge = calculatePrioritySurcharge(hallPrice, booking.is_priority);
+
+    // Prefer the new per-booking, multi-session catering plan when the
+    // booking has any sessions — it supersedes the older single flat
+    // catering_package_id/price_per_plate fields (which stay as a fallback
+    // for bookings created before per-session catering existed, so their
+    // totals don't drop to zero).
+    const cateringSessionItems = await bookingCateringRepo.listItemsForBooking(bookingId, companyId);
+    const cateringCost = cateringSessionItems.length
+        ? Number(cateringSessionItems.reduce((sum, i) =>
+            sum + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0) * (1 + (parseFloat(i.tax_percent) || 0) / 100), 0
+          ).toFixed(2))
+        : (booking.catering_package_id
+            ? Math.round((parseFloat(booking.catering_price_per_plate) || 0) * (booking.guest_count || 0)
+                + (parseFloat(booking.catering_tax_amount) || 0))
+            : 0);
+
+    const allocations = await resourceRepo.getAllocationsForBooking(bookingId, companyId);
+    const resourceCost = allocations.reduce((sum, r) => (
+        r.is_billable ? sum + (parseFloat(r.unit_price) || 0) * (r.quantity_allocated || 0) : sum
+    ), 0);
+
+    const storedCharges = ['setup_charge', 'decoration_charge', 'cleanup_charge', 'cleaning_charge',
+        'late_exit_charge', 'extended_usage_charge', 'cooloff_charge']
+        .reduce((sum, col) => sum + (parseFloat(booking[col]) || 0), 0);
+
+    const newTotal = Number((
+        hallPrice
+        + prioritySurcharge
+        + storedCharges
+        + cateringCost
+        + resourceCost
+    ).toFixed(2));
+
+    if (newTotal !== parseFloat(booking.total_amount)) {
+        await bookingRepo.updateTotalAmount(bookingId, companyId, newTotal);
+        dashService.invalidateDashboardCache(companyId);
+    }
+
+    return newTotal;
+};
+
+/**
  * Calculate price for a hall booking (for wizard preview)
  */
 const calculatePrice = async ({ hallId, eventDate, startTime, endTime, guestCount, companyId, isPriority, setupMinutes, cleanupMinutes, cooloffMinutes, lateExitHours, extendedUsageHours }) => {
@@ -623,6 +854,7 @@ module.exports = {
     reschedule,
     updateStatus,
     cancel,
+    recalculateBookingTotal,
     getActivityTimeline,
     getResourceAllocations,
     updateResourceAllocations,

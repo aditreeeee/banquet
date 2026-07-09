@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booking Packages | Banquet System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.pkg-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:16px }
+.pkg-icon { width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0 }
+.pkg-icon.corporate { background:#DBEAFE;color:#2563EB }
+.pkg-icon.social    { background:#FCE7F3;color:#DB2777 }
+.pkg-icon.inactive  { background:#F1F5F9;color:#64748B }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Booking Packages</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Booking Packages</h1><p class="page-subtitle">Configure hourly/half-day/full-day rental presets for corporate events and fixed-session packages for weddings/social events</p></div>
+            <button class="btn-primary-brand" data-require-perm="bookings:create" onclick="openCreateModal()">+ New Package</button>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+            <select class="form-select" id="categoryFilter" onchange="loadPackages()" style="width:auto">
+                <option value="">All Categories</option>
+                <option value="corporate">Corporate</option>
+                <option value="social">Social</option>
+            </select>
+            <select class="form-select" id="statusFilter" onchange="loadPackages()" style="width:auto">
+                <option value="">All Status</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+            </select>
+        </div>
+
+        <div id="pkgList"><div class="text-center py-5"><span class="spinner-border" style="color:var(--brand-primary)"></span></div></div>
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
+</div>
+
+<!-- Create/Edit Package Modal -->
+<div class="modal fade" id="pkgModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="pkgModalTitle">New Package</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="pId">
+                <div class="row g-3">
+                    <div class="col-12"><label class="form-label">Package Name *</label><input type="text" class="form-control" id="pName" placeholder="e.g. Full Day Corporate, Wedding Ceremony"></div>
+                    <div class="col-6"><label class="form-label">Category *</label>
+                        <select class="form-select" id="pCategory">
+                            <option value="corporate">Corporate</option>
+                            <option value="social">Social (Wedding/Event)</option>
+                        </select>
+                    </div>
+                    <div class="col-6"><label class="form-label">Duration Type *</label>
+                        <select class="form-select" id="pCalcType" onchange="toggleIncludedHours()">
+                            <option value="hourly">Hourly</option>
+                            <option value="half_day">Half Day</option>
+                            <option value="full_day">Full Day</option>
+                            <option value="fixed_session">Fixed Session (e.g. Ceremony)</option>
+                        </select>
+                    </div>
+                    <div class="col-6" id="includedHoursWrap"><label class="form-label">Included Hours</label><input type="number" class="form-control" id="pIncludedHours" min="0" step="0.5"></div>
+                    <div class="col-6"><label class="form-label">Base Price (₹) *</label><input type="number" class="form-control" id="pBasePrice" min="0"></div>
+                    <div class="col-6"><label class="form-label">Overtime Rate (₹/hour)</label><input type="number" class="form-control" id="pOvertimeRate" min="0" value="0"></div>
+                    <div class="col-6"><label class="form-label">Max Extension (hours)</label><input type="number" class="form-control" id="pMaxExtension" min="0" step="0.5" value="0"></div>
+                    <div class="col-4"><label class="form-label">Setup (min)</label><input type="number" class="form-control" id="pSetupMin" min="0" value="0"></div>
+                    <div class="col-4"><label class="form-label">Cleanup (min)</label><input type="number" class="form-control" id="pCleanupMin" min="0" value="0"></div>
+                    <div class="col-4"><label class="form-label">Cool-Off (min)</label><input type="number" class="form-control" id="pCooloffMin" min="0" value="0"></div>
+                    <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" id="pDescription" rows="2"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmPkgBtn" onclick="submitPackage()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+const CALC_TYPE_LABELS = { hourly: 'Hourly', half_day: 'Half Day', full_day: 'Full Day', fixed_session: 'Fixed Session' };
+let allPackages = [];
+
+async function loadPackages() {
+    const wrap = document.getElementById('pkgList');
+    wrap.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></div>';
+    try {
+        const res = await API.bookingPackages.list({
+            category: document.getElementById('categoryFilter').value || undefined,
+            is_active: document.getElementById('statusFilter').value || undefined,
+        });
+        allPackages = res.data || [];
+        renderPackages(allPackages);
+    } catch (err) {
+        Utils.toast(err.message || 'Unable to load booking packages', 'error');
+        wrap.innerHTML = `<div class="empty-state" style="padding:48px">Unable to load booking packages.</div>`;
+    }
+}
+
+function renderPackages(rows) {
+    const wrap = document.getElementById('pkgList');
+    if (!rows.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No booking packages configured yet</div>'; return; }
+    wrap.innerHTML = rows.map(p => `
+    <div class="pkg-card" style="margin-bottom:10px">
+        <div class="pkg-icon ${p.is_active ? p.package_category : 'inactive'}"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+        <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-weight:700;font-size:14px">${p.package_name}</span>
+                <span class="badge-status ${p.is_active ? 'badge-confirmed' : 'badge-cancelled'}">${p.is_active ? 'Active' : 'Inactive'}</span>
+                <span style="font-size:11px;color:var(--text-muted);text-transform:capitalize">${p.package_category} · ${CALC_TYPE_LABELS[p.calc_type]}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)">
+                ${p.included_hours ? p.included_hours + ' hrs included · ' : ''}Overtime ${Utils.formatCurrency(p.overtime_rate_per_hour)}/hr (max ${p.max_extension_hours}hrs)
+                · Setup ${p.default_setup_minutes}m / Cleanup ${p.default_cleanup_minutes}m / Cool-off ${p.default_cooloff_minutes}m
+            </div>
+        </div>
+        <div style="text-align:right;min-width:110px">
+            <div style="font-weight:800;font-size:14px">${Utils.formatCurrency(p.base_price)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+            <a class="btn-ghost" style="font-size:12px;padding:5px 10px" href="../bookings/create.html?package=${p.package_id}" title="Create a booking using this package">+ Booking</a>
+            <button class="btn-ghost" data-require-perm="bookings:update" style="font-size:12px;padding:5px 10px" onclick='openEditModal(${JSON.stringify(p).replace(/'/g,"&apos;")})'>Edit</button>
+            <button class="btn-ghost" data-require-perm="bookings:update" style="font-size:12px;padding:5px 10px;color:${p.is_active ? 'var(--color-danger)' : 'var(--color-success)'}" onclick="togglePackageStatus(${p.package_id}, ${p.is_active})">${p.is_active ? 'Deactivate' : 'Activate'}</button>
+            <button class="btn-ghost" data-require-perm="bookings:update" style="font-size:12px;padding:5px 10px;color:var(--color-danger)" onclick="deletePackage(${p.package_id})">Delete</button>
+        </div>
+    </div>`).join('');
+    Auth.populateUserUI();
+}
+
+function toggleIncludedHours() {
+    const calcType = document.getElementById('pCalcType').value;
+    document.getElementById('includedHoursWrap').style.display = calcType === 'fixed_session' ? 'none' : '';
+}
+
+let pkgModalInst;
+function openCreateModal() {
+    document.getElementById('pkgModalTitle').textContent = 'New Package';
+    document.getElementById('pId').value = '';
+    document.getElementById('pName').value = '';
+    document.getElementById('pCategory').value = 'corporate';
+    document.getElementById('pCalcType').value = 'hourly';
+    document.getElementById('pIncludedHours').value = '';
+    document.getElementById('pBasePrice').value = '';
+    document.getElementById('pOvertimeRate').value = 0;
+    document.getElementById('pMaxExtension').value = 0;
+    document.getElementById('pSetupMin').value = 0;
+    document.getElementById('pCleanupMin').value = 0;
+    document.getElementById('pCooloffMin').value = 0;
+    document.getElementById('pDescription').value = '';
+    toggleIncludedHours();
+    pkgModalInst = new bootstrap.Modal(document.getElementById('pkgModal'));
+    pkgModalInst.show();
+}
+
+function openEditModal(p) {
+    document.getElementById('pkgModalTitle').textContent = 'Edit Package';
+    document.getElementById('pId').value = p.package_id;
+    document.getElementById('pName').value = p.package_name;
+    document.getElementById('pCategory').value = p.package_category;
+    document.getElementById('pCalcType').value = p.calc_type;
+    document.getElementById('pIncludedHours').value = p.included_hours || '';
+    document.getElementById('pBasePrice').value = p.base_price;
+    document.getElementById('pOvertimeRate').value = p.overtime_rate_per_hour;
+    document.getElementById('pMaxExtension').value = p.max_extension_hours;
+    document.getElementById('pSetupMin').value = p.default_setup_minutes;
+    document.getElementById('pCleanupMin').value = p.default_cleanup_minutes;
+    document.getElementById('pCooloffMin').value = p.default_cooloff_minutes;
+    document.getElementById('pDescription').value = p.description || '';
+    toggleIncludedHours();
+    pkgModalInst = new bootstrap.Modal(document.getElementById('pkgModal'));
+    pkgModalInst.show();
+}
+
+async function submitPackage() {
+    const id = document.getElementById('pId').value;
+    const data = {
+        packageName: document.getElementById('pName').value,
+        packageCategory: document.getElementById('pCategory').value,
+        calcType: document.getElementById('pCalcType').value,
+        includedHours: document.getElementById('pIncludedHours').value ? parseFloat(document.getElementById('pIncludedHours').value) : undefined,
+        basePrice: parseFloat(document.getElementById('pBasePrice').value) || 0,
+        overtimeRatePerHour: parseFloat(document.getElementById('pOvertimeRate').value) || 0,
+        maxExtensionHours: parseFloat(document.getElementById('pMaxExtension').value) || 0,
+        defaultSetupMinutes: parseInt(document.getElementById('pSetupMin').value, 10) || 0,
+        defaultCleanupMinutes: parseInt(document.getElementById('pCleanupMin').value, 10) || 0,
+        defaultCooloffMinutes: parseInt(document.getElementById('pCooloffMin').value, 10) || 0,
+        description: document.getElementById('pDescription').value || undefined,
+    };
+    if (!data.packageName) { Utils.toast('Package name is required', 'error'); return; }
+    if (data.calcType !== 'fixed_session' && !data.includedHours) { Utils.toast('Included hours is required for this duration type', 'error'); return; }
+
+    const btn = document.getElementById('confirmPkgBtn');
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        if (id) await API.bookingPackages.update(id, data);
+        else    await API.bookingPackages.create(data);
+        Utils.hideLoader(btn);
+        pkgModalInst?.hide();
+        Utils.toast(id ? 'Package updated' : 'Package created', 'success');
+        loadPackages();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to save package', 'error');
+    }
+}
+
+async function togglePackageStatus(id, isActive) {
+    const action = isActive ? 'deactivate' : 'activate';
+    const ok = await Utils.confirm(isActive ? 'Deactivate this package? It will no longer be selectable for new bookings.' : 'Activate this package?', { danger: isActive });
+    if (!ok) return;
+    try {
+        await API.bookingPackages[action](id);
+        Utils.toast(`Package ${action}d`, isActive ? 'warning' : 'success');
+        loadPackages();
+    } catch (err) {
+        Utils.toast(err.message || `Failed to ${action} package`, 'error');
+    }
+}
+
+async function deletePackage(id) {
+    const ok = await Utils.confirm('Permanently delete this package? Blocked if any active booking still uses it.', { title: 'Delete Package', danger: true });
+    if (!ok) return;
+    try {
+        await API.bookingPackages.delete(id);
+        Utils.toast('Package deleted', 'success');
+        loadPackages();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to delete package', 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => loadPackages());
+</script>
+</body>
+</html>

@@ -222,7 +222,10 @@ function renderStaff() {
             </div>
             <div style="display:flex;gap:8px">
                 <button class="btn-ghost" data-require-perm="users:update" style="flex:1;font-size:12px" onclick='editStaff(${u.user_id})'>Edit</button>
-                <button class="btn-ghost" data-require-perm="users:update" style="flex:1;font-size:12px;color:${u.is_active ? 'var(--color-danger)' : 'var(--color-success)'}" onclick="deleteStaff(${u.user_id}, ${u.is_active})">${u.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button class="btn-ghost" data-require-perm="users:update" style="flex:1;font-size:12px;color:${u.is_active ? 'var(--color-danger)' : 'var(--color-success)'}" onclick="toggleStaffStatus(${u.user_id}, ${u.is_active})">${u.is_active ? 'Deactivate' : 'Activate'}</button>
+            </div>
+            <div style="display:flex;gap:8px">
+                <button class="btn-ghost" data-require-perm="users:delete" style="flex:1;font-size:12px;color:var(--color-danger)" onclick="deleteStaff(${u.user_id}, '${(u.email||'').replace(/'/g,"\\'")}')">Delete</button>
             </div>
         </div>`;
     }).join('');
@@ -287,7 +290,7 @@ async function saveStaff() {
     }
 }
 
-async function deleteStaff(id, isActive) {
+async function toggleStaffStatus(id, isActive) {
     const label = isActive ? 'deactivate' : 'activate';
     const ok = await Utils.confirm(`${Utils.titleCase(label)} this staff member?`, { danger: isActive });
     if (!ok) return;
@@ -297,6 +300,21 @@ async function deleteStaff(id, isActive) {
         loadStaff();
     } catch (err) {
         Utils.toast(err.message || `Failed to ${label} staff`, 'error');
+    }
+}
+
+async function deleteStaff(id, email) {
+    const ok = await Utils.confirm(
+        `Permanently delete this staff member? This cannot be undone from here. It will be blocked if they're still staffed on any active booking.`,
+        { title: 'Delete Staff', danger: true }
+    );
+    if (!ok) return;
+    try {
+        await API.users.delete(id);
+        Utils.toast('Staff deleted', 'success');
+        loadStaff();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to delete staff', 'error');
     }
 }
 

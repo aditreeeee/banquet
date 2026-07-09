@@ -8,17 +8,32 @@ const API = (() => {
 
     const BASE_URL  = window.APP_CONFIG?.apiBase || '/api/v1';
     const TOKEN_KEY = 'bnq_access_token';
+    const IMPERSONATE_KEY = 'bnq_impersonate_company';
 
     /* ── Token helpers ── */
     const getToken  = ()    => localStorage.getItem(TOKEN_KEY);
     const setToken  = (tok) => localStorage.setItem(TOKEN_KEY, tok);
     const clearToken = ()   => localStorage.removeItem(TOKEN_KEY);
 
+    /* ── Super Admin "view as tenant" — purely client-side. The backend's
+       scopeToCompany middleware already honors an X-Impersonate-Company-Id
+       header for super_admin requests (see auth.js middleware), so every
+       existing tenant-scoped endpoint works unmodified once this is set —
+       no server-side session state, just this header attached to every
+       request until Impersonation.clear() is called. */
+    const Impersonation = {
+        get: () => { try { return JSON.parse(sessionStorage.getItem(IMPERSONATE_KEY)); } catch { return null; } },
+        set: (companyId, companyName) => sessionStorage.setItem(IMPERSONATE_KEY, JSON.stringify({ companyId, companyName })),
+        clear: () => sessionStorage.removeItem(IMPERSONATE_KEY),
+    };
+
     /* ── Build headers ── */
     function headers(extra = {}) {
         const h = { 'Content-Type': 'application/json', ...extra };
         const tok = getToken();
         if (tok) h['Authorization'] = `Bearer ${tok}`;
+        const impersonating = Impersonation.get();
+        if (impersonating) h['X-Impersonate-Company-Id'] = String(impersonating.companyId);
         return h;
     }
 
@@ -154,11 +169,34 @@ const API = (() => {
         },
 
         /* ─ Banquets ─ */
+        /* ─ Companies (Tenants) — platform-level, Super Admin ─ */
+        companies: {
+            list:     (p)    => request('GET',  '/companies',      { params: p }),
+            get:      (id)   => request('GET',  `/companies/${id}`),
+            create:   (d)    => request('POST', '/companies',      { body: d }),
+            update:   (id,d) => request('PUT',  `/companies/${id}`, { body: d }),
+            activate: (id)   => request('PATCH',`/companies/${id}/activate`),
+            suspend:  (id)   => request('PATCH',`/companies/${id}/suspend`),
+            delete:   (id)   => request('DELETE', `/companies/${id}`),
+        },
+
+        /* ─ Platform (Super Admin cross-tenant) ─ */
+        platform: {
+            overview: (p)         => request('GET', '/platform/overview', { params: p }),
+            revenue:  (p)         => request('GET', '/platform/revenue',  { params: p }),
+            trends:   (p)         => request('GET', '/platform/trends',   { params: p }),
+            tenantDashboard: (companyId, p) => request('GET', `/platform/tenants/${companyId}/dashboard`, { params: p }),
+            tenantReports:   (companyId, p) => request('GET', `/platform/tenants/${companyId}/reports`,   { params: p }),
+            users:           (p) => request('GET', '/platform/users', { params: p }),
+        },
+
         banquets: {
             list:   (p) => request('GET',    '/banquets',     { params: p }),
             get:    (id)=> request('GET',    `/banquets/${id}`),
             create: (d) => request('POST',   '/banquets',     { body: d }),
             update: (id,d)=> request('PUT',  `/banquets/${id}`,{ body: d }),
+            activate:   (id)=> request('PATCH',  `/banquets/${id}/activate`),
+            deactivate: (id)=> request('PATCH',  `/banquets/${id}/deactivate`),
             delete: (id)=> request('DELETE', `/banquets/${id}`),
         },
 
@@ -177,6 +215,7 @@ const API = (() => {
             block:        (id,d) => request('POST', `/halls/${id}/block`,   { body: d }),
             activate:     (id)   => request('PATCH', `/halls/${id}/activate`),
             deactivate:   (id)   => request('PATCH', `/halls/${id}/deactivate`),
+            delete:       (id)   => request('DELETE', `/halls/${id}`),
         },
 
         /* ─ Bookings ─ */
@@ -199,6 +238,15 @@ const API = (() => {
             staff:      (id)    => request('GET',  `/bookings/${id}/staff`),
             assignStaff:(id,d)  => request('POST', `/bookings/${id}/staff`, { body: d }),
             removeStaff:(id,assignmentId) => request('DELETE', `/bookings/${id}/staff/${assignmentId}`),
+            catering: {
+                sessions:     (bookingId)      => request('GET',    `/bookings/${bookingId}/catering/sessions`),
+                addSession:   (bookingId,d)    => request('POST',   `/bookings/${bookingId}/catering/sessions`, { body: d }),
+                updateSession:(bookingId,sid,d)=> request('PUT',    `/bookings/${bookingId}/catering/sessions/${sid}`, { body: d }),
+                removeSession:(bookingId,sid)  => request('DELETE', `/bookings/${bookingId}/catering/sessions/${sid}`),
+                addItem:      (bookingId,sid,d)=> request('POST',   `/bookings/${bookingId}/catering/sessions/${sid}/items`, { body: d }),
+                removeItem:   (bookingId,sid,itemRowId) => request('DELETE', `/bookings/${bookingId}/catering/sessions/${sid}/items/${itemRowId}`),
+                applyPackage: (bookingId,sid,packageId) => request('POST', `/bookings/${bookingId}/catering/sessions/${sid}/apply-package`, { body: { packageId } }),
+            },
         },
 
         /* ─ Customers ─ */
@@ -231,6 +279,23 @@ const API = (() => {
             cancel:   (id)   => request('DELETE',`/invoices/${id}`),
         },
 
+        /* ─ Quotations ─ */
+        quotations: {
+            list:        (p)    => request('GET',  '/quotations',      { params: p }),
+            get:         (id)   => request('GET',  `/quotations/${id}`),
+            create:      (d)    => request('POST', '/quotations',      { body: d }),
+            update:      (id,d) => request('PUT',  `/quotations/${id}`, { body: d }),
+            addItem:     (id,d) => request('POST', `/quotations/${id}/items`, { body: d }),
+            removeItem:  (id,itemRowId) => request('DELETE', `/quotations/${id}/items/${itemRowId}`),
+            revise:      (id)   => request('POST', `/quotations/${id}/revise`),
+            send:        (id)   => request('PATCH', `/quotations/${id}/send`),
+            reject:      (id)   => request('PATCH', `/quotations/${id}/reject`),
+            expire:      (id)   => request('PATCH', `/quotations/${id}/expire`),
+            accept:      (id)   => request('PATCH', `/quotations/${id}/accept`),
+            convert:     (id,d) => request('POST', `/quotations/${id}/convert`, { body: d }),
+            download:    (id, filename) => API.download(`/quotations/${id}/pdf`, {}, filename || 'quotation.pdf'),
+        },
+
         /* ─ Resources ─ */
         resources: {
             list:   (p) => request('GET',  '/resources',       { params: p }),
@@ -239,6 +304,7 @@ const API = (() => {
             delete: (id)=> request('DELETE',`/resources/${id}`),
             snapshot: (p) => request('GET', '/resources/snapshot', { params: p }),
             recommendations: (p) => request('GET', '/resources/recommendations', { params: p }),
+            importCsv: (file) => { const fd = new FormData(); fd.append('file', file); return request('POST', '/resources/import', { body: fd, rawForm: true }); },
         },
 
         /* ─ Catering (Master Menu packages) ─ */
@@ -261,6 +327,18 @@ const API = (() => {
             create:     (d)    => request('POST', '/menu-items',       { body: d }),
             update:     (id,d) => request('PUT',  `/menu-items/${id}`, { body: d }),
             categories: ()     => request('GET',  '/menu-items/categories'),
+            importCsv: (file) => { const fd = new FormData(); fd.append('file', file); return request('POST', '/menu-items/import', { body: fd, rawForm: true }); },
+        },
+
+        /* ─ Booking Packages (hall/event rental presets) ─ */
+        bookingPackages: {
+            list:       (p)    => request('GET',  '/booking-packages',      { params: p }),
+            get:        (id)   => request('GET',  `/booking-packages/${id}`),
+            create:     (d)    => request('POST', '/booking-packages',       { body: d }),
+            update:     (id,d) => request('PUT',  `/booking-packages/${id}`, { body: d }),
+            activate:   (id)   => request('PATCH', `/booking-packages/${id}/activate`),
+            deactivate: (id)   => request('PATCH', `/booking-packages/${id}/deactivate`),
+            delete:     (id)   => request('DELETE', `/booking-packages/${id}`),
         },
 
         /* ─ Operational Charges ─ */
@@ -300,6 +378,7 @@ const API = (() => {
             create: (d)    => request('POST', '/users',        { body: d }),
             update: (id,d) => request('PUT',  `/users/${id}`,  { body: d }),
             toggle: (id)   => request('PATCH',`/users/${id}/toggle-status`),
+            delete: (id)   => request('DELETE', `/users/${id}`),
             schedule: (id) => request('GET',  `/users/${id}/schedule`),
             pending:  ()   => request('GET',  '/users/pending'),
             approve:  (id) => request('PATCH',`/users/${id}/approve`),
@@ -337,6 +416,7 @@ const API = (() => {
         getToken,
         setToken,
         clearToken,
+        Impersonation,
     };
 })();
 

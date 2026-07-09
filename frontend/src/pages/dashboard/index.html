@@ -250,6 +250,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 #content{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
 
 /* ── Animations ──────────────────────────────────────────────── */
+@keyframes skeletonPulse{0%,100%{opacity:.55}50%{opacity:1}}
+.skel{background:linear-gradient(90deg,rgba(26,43,74,.07) 25%,rgba(26,43,74,.13) 37%,rgba(26,43,74,.07) 63%);
+  background-size:400% 100%;border-radius:8px;animation:skeletonPulse 1.4s ease-in-out infinite}
+
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .fu{animation:fadeUp .4s cubic-bezier(.25,.46,.45,.94) forwards}
 .fu-1{animation-delay:.04s;opacity:0}.fu-2{animation-delay:.08s;opacity:0}
@@ -293,7 +297,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
    SVG icons (Heroicons outline style, 20×20)
    ════════════════════════════════════════════════════════════════ */
 
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useCallback } = React;
 const {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -508,9 +512,19 @@ const TODAY = `${todayDate.getFullYear()}-${String(todayDate.getMonth()+1).padSt
 /* ── Helpers ─────────────────────────────────────────────────── */
 const fmtS = n => n>=10000000?'₹'+(n/10000000).toFixed(1)+'Cr':n>=100000?'₹'+(n/100000).toFixed(1)+'L':n>=1000?'₹'+(n/1000).toFixed(0)+'K':'₹'+n;
 const fmtF = n => '₹'+n.toLocaleString('en-IN');
-const sC   = s => ({confirmed:C.green,advance_paid:C.purple,fully_paid:C.gold,cancelled:C.red,pending:C.amber}[s]||'#6b7280');
-const sL   = s => ({confirmed:'Confirmed',advance_paid:'Advance Paid',fully_paid:'Fully Paid',cancelled:'Cancelled',pending:'Pending'}[s]||s);
+const sC   = s => ({draft:C.slate,tentative:C.amber,confirmed:C.green,advance_paid:C.purple,fully_paid:C.gold,completed:C.teal,cancelled:C.red,archived:'#9ca3af',no_show:'#7c2d12'}[s]||'#6b7280');
+const sL   = s => ({draft:'Draft',tentative:'Tentative',confirmed:'Confirmed',advance_paid:'Advance Paid',fully_paid:'Fully Paid',completed:'Completed',cancelled:'Cancelled',archived:'Archived',no_show:'No Show'}[s]||s);
 const occC = v => v>=80?C.green:v>=55?C.amber:C.red;
+/* Deterministic per-hall colour (distinct from booking-status colour) so the
+   calendar can show "which hall" at a glance, not just "what status" —
+   same hall name always maps to the same hue across renders/sessions. */
+const HALL_PALETTE = [C.blue, C.teal, C.purple, C.amber, C.green, '#EC4899', C.slate, '#8B5CF6'];
+const hallColor = name => {
+  if (!name) return '#9ca3af';
+  let hash = 0;
+  for (let i=0;i<name.length;i++) hash = (hash*31 + name.charCodeAt(i)) & 0xffffffff;
+  return HALL_PALETTE[Math.abs(hash) % HALL_PALETTE.length];
+};
 const ini  = n => n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
 const dL   = d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 /* MSSQL TIME columns come back as full datetimes on a 1970-01-01 epoch (or plain 'HH:MM:SS') — extract just the clock time */
@@ -618,6 +632,12 @@ const Card = ({ children, className='', hover=false, style={}, onClick }) => (
   <div className={`g-card${hover?' hoverable':''} ${className}`} style={style} onClick={onClick}>
     {children}
   </div>
+);
+
+/* Shimmer placeholder block — used in place of real content while a widget's
+   data is still loading, so nothing ever flashes fabricated zero values. */
+const Skeleton = ({ width='100%', height=14, radius=8, style={} }) => (
+  <div className="skel" style={{ width, height, borderRadius:radius, ...style }}/>
 );
 
 /* ════════════════════════════════════════════════════════════════
@@ -786,9 +806,22 @@ const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMo
 /* ════════════════════════════════════════════════════════════════
    KPI CARD
    ════════════════════════════════════════════════════════════════ */
-const KPICard = ({ IconEl, label, value, delta, color, anim, href, desc, blurb, trend='auto' }) => {
+const KPICard = ({ IconEl, label, value, delta, color, anim, href, desc, blurb, trend='auto', loading=false }) => {
   const up = delta>=0;
   const showTrend = trend!=='none' && delta!=null;
+  if (loading) {
+    return (
+      <Card className={`fu ${anim}`} style={{padding:'12px 14px', height:128, display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+          <Skeleton width={34} height={34} radius={13}/>
+        </div>
+        <div>
+          <Skeleton width="60%" height={22} style={{marginBottom:8}}/>
+          <Skeleton width="80%" height={11}/>
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card hover className={`fu ${anim}`} style={{padding:'12px 14px', cursor: href ? 'pointer' : 'default', height:128, display:'flex', flexDirection:'column', justifyContent:'space-between'}} onClick={href ? () => window.location.assign(href) : undefined}>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
@@ -981,25 +1014,48 @@ const MiniCalendar = ({ selected, onSelect, eventsByDate }) => {
           const s=ds(d), isT=s===TODAY, isSel=s===selected;
           const dayEvents = eventsByDate[s]||[];
           const statusSet = [...new Set(dayEvents.map(b=>b.status))].slice(0,3);
+          const hallSet = [...new Set(dayEvents.map(b=>b.hall).filter(Boolean))].slice(0,4);
           const hasEvents = dayEvents.length>0;
+          // Aggregate occupancy for the day — average of guests/hall-capacity
+          // across every hall booked that day, using the live Halls data
+          // already loaded for the Hall Occupancy widget (hallCapacity()).
+          const occPcts = dayEvents.map(b=>{
+            const cap = hallCapacity(b.hall);
+            return cap ? Math.min(100,(b.guests/cap)*100) : null;
+          }).filter(v=>v!=null);
+          const dayOccPct = occPcts.length ? Math.round(occPcts.reduce((s,v)=>s+v,0)/occPcts.length) : null;
           return (
             <button key={i} className={`cal-day${isT&&!isSel?' today':''}${isSel?' selected':''}`}
               style={hasEvents && !isT && !isSel ? {background:`${sC(statusSet[0])}12`,border:`1px solid ${sC(statusSet[0])}30`} : undefined}
               onClick={()=>onSelect(isSel?null:s)}
               onMouseEnter={(e)=>handleEnter(e,s)}
               onMouseLeave={()=>setHoverDate(null)}>
+              {/* Hall colour coding — one 3px-wide tick per distinct hall booked that day */}
+              {hallSet.length>0 && (
+                <span style={{position:'absolute',top:2,left:3,display:'flex',gap:2}}>
+                  {hallSet.map(h=>(
+                    <span key={h} title={h} style={{width:3,height:7,borderRadius:1,background:hallColor(h)}}/>
+                  ))}
+                </span>
+              )}
               {dayEvents.length>1 && (
                 <span style={{position:'absolute',top:2,right:3,fontSize:9,fontWeight:800,lineHeight:1,
                   color:isT||isSel?'white':C.gold}}>{dayEvents.length}</span>
               )}
               {d}
               {statusSet.length>0 && (
-                <span style={{position:'absolute',bottom:2,display:'flex',gap:3}}>
+                <span style={{position:'absolute',bottom:9,display:'flex',gap:3}}>
                   {statusSet.map((st,k)=>(
                     <span key={k} style={{width:7,height:7,borderRadius:'50%',background:isT||isSel?'white':sC(st),
                       boxShadow:`0 0 5px ${sC(st)}a0`,border:isT||isSel?'none':`1px solid ${sC(st)}`}}/>
                   ))}
                   {dayEvents.length>3 && <span style={{fontSize:9,color:isT||isSel?'white':C.gold,fontWeight:700,marginLeft:1}}>+</span>}
+                </span>
+              )}
+              {/* Occupancy indicator — thin fill bar along the cell's bottom edge */}
+              {dayOccPct!=null && (
+                <span style={{position:'absolute',bottom:0,left:2,right:2,height:2,borderRadius:1,background:'rgba(0,0,0,.08)'}} title={`${dayOccPct}% occupancy`}>
+                  <span style={{display:'block',width:`${dayOccPct}%`,height:'100%',borderRadius:1,background:isT||isSel?'white':occC(dayOccPct)}}/>
                 </span>
               )}
             </button>
@@ -1163,6 +1219,7 @@ const DashboardView = ({ period, searchQuery }) => {
   const [now, setNow] = useState(() => new Date());
   const [liveData, setLiveData] = useState(null);
   const [halls, setHalls] = useState(HALLS_D);
+  const [isLoading, setIsLoading] = useState(true);
   const kpi = liveData?.kpi || KPI_D[period];
   const rev = liveData?.rev || REV_D[period];
   const sts = liveData?.sts || STS_D[period];
@@ -1174,47 +1231,37 @@ const DashboardView = ({ period, searchQuery }) => {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(()=>{
-    let dead=false;
-    (async()=>{
-      try{
-        if(typeof API==='undefined') return;
-        const r = await API.dashboard.kpis({ period });
-        const mapped = mapDashboardData(r?.data);
-        if(!dead && mapped) setLiveData(mapped);
-      }catch(_){ if(!dead) setLiveData(null); }
-    })();
-    return()=>{dead=true};
-  },[period]);
+  // Single coordinated fetch for every widget on this page — all requests fire
+  // in parallel and the page flips out of the loading/skeleton state only once
+  // every source has settled, so KPI cards/charts/calendar/table never flash
+  // fabricated zero values while individual requests are still in flight.
+  const loadAll = useCallback(() => {
+    let dead = false;
+    (async () => {
+      setIsLoading(true);
+      try {
+        if (typeof API === 'undefined') return;
+        const guard = (promise) => promise.catch(() => null);
+        const [kpisRes, hallsRes, bookingsRes] = await Promise.all([
+          guard(API.dashboard.kpis({ period })),
+          guard(API.halls.list({ limit: 100, is_active: true })),
+          guard(API.get(`/dashboard/bookings?period=${period}`)),
+        ]);
+        if (dead) return;
 
-  // Hall Occupancy widget must list real halls from the Halls module, not the
-  // hardcoded HALLS_D demo set — otherwise the names shown never match the DB.
-  useEffect(()=>{
-    let dead=false;
-    (async()=>{
-      try{
-        if(typeof API==='undefined') return;
-        const r = await API.halls.list({ limit:100, is_active:true });
-        const rows = r?.data?.halls || [];
-        if(!dead && rows.length){
-          const mapped = rows.map(h=>({ n:h.hall_name, cap:h.capacity_seated||h.capacity||0 }));
-          setHalls(mapped);
-          REAL_HALLS = mapped;
+        const mapped = mapDashboardData(kpisRes?.data);
+        setLiveData(mapped || null);
+
+        const hallRows = hallsRes?.data?.halls || [];
+        if (hallRows.length) {
+          const mappedHalls = hallRows.map(h => ({ n: h.hall_name, cap: h.capacity_seated || h.capacity || 0 }));
+          setHalls(mappedHalls);
+          REAL_HALLS = mappedHalls;
         }
-      }catch(_){ /* keep halls empty — no fabricated hall data */ }
-    })();
-    return()=>{dead=true};
-  },[]);
 
-  useEffect(()=>{
-    let dead=false;
-    (async()=>{
-      try{
-        if(typeof API==='undefined') return;
-        const r=await API.get(`/dashboard/bookings?period=${period}`);
-        const raw=Array.isArray(r?.data)?r.data:(Array.isArray(r?.data?.bookings)?r.data.bookings:[]);
-        if(!dead&&raw.length){
-          setBookings(raw.map(b=>({
+        const raw = Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes?.data?.bookings) ? bookingsRes.data.bookings : []);
+        if (raw.length) {
+          setBookings(raw.map(b => ({
             id:       b.booking_id??b.id,
             ref:      b.booking_ref||b.ref||b.id,
             customer: b.customer_name||b.customer,
@@ -1231,10 +1278,14 @@ const DashboardView = ({ period, searchQuery }) => {
             staffCount: parseInt(b.staff_count??b.staffCount)||0,
           })));
         }
-      }catch(_){}
+      } finally {
+        if (!dead) setIsLoading(false);
+      }
     })();
-    return()=>{dead=true};
-  },[period]);
+    return () => { dead = true; };
+  }, [period]);
+
+  useEffect(() => loadAll(), [loadAll]);
 
   const ViewAllLink = ({href}) => (
     <a href={href} style={{fontSize:12,color:C.gold,fontWeight:600,textDecoration:'none',display:'flex',alignItems:'center',gap:3}}>
@@ -1326,16 +1377,16 @@ const DashboardView = ({ period, searchQuery }) => {
 
       {/* KPI row */}
       <div className="resp-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
-        <KPICard IconEl={()=>I.calendar({width:22,height:22})}   label="Total Bookings"   value={kpi.bookings.toLocaleString()} delta={kpi.bd} color={C.purple} anim="fu-1" href="../bookings/index.html"
+        <KPICard IconEl={()=>I.calendar({width:22,height:22})}   label="Total Bookings"   value={kpi.bookings.toLocaleString()} delta={kpi.bd} color={C.purple} anim="fu-1" href="../bookings/index.html" loading={isLoading}
           blurb="Number of bookings created in the selected period."
           desc="Count of all bookings created in the selected period, excluding cancelled and draft holds. % change is vs. the previous equivalent period."/>
-        <KPICard IconEl={()=>I.dollarSign()}                       label="Revenue"          value={fmtS(kpi.revenue)}             delta={kpi.rd} color={C.green}  anim="fu-2" href="../reports/revenue.html"
+        <KPICard IconEl={()=>I.dollarSign()}                       label="Revenue"          value={fmtS(kpi.revenue)}             delta={kpi.rd} color={C.green}  anim="fu-2" href="../reports/revenue.html" loading={isLoading}
           blurb="Total amount collected from bookings this period."
           desc="Sum of amount_paid across all non-cancelled bookings in the selected period. % change is vs. the previous equivalent period."/>
-        <KPICard IconEl={()=>I.clock()}                            label="Pending Payments" value={fmtS(kpi.pending)}             delta={kpi.pd} color={C.amber}  anim="fu-3" href="../payments/index.html"
+        <KPICard IconEl={()=>I.clock()}                            label="Pending Payments" value={fmtS(kpi.pending)}             delta={kpi.pd} color={C.amber}  anim="fu-3" href="../payments/index.html" loading={isLoading}
           blurb="Outstanding balance still owed across confirmed bookings."
           desc="Sum of (total_amount − amount_paid) across confirmed bookings with an outstanding balance."/>
-        <KPICard IconEl={()=>I.building({width:22,height:22})}    label="Hall Occupancy"    value={kpi.occ+'%'}                   delta={kpi.od} color={C.blue}   anim="fu-4" href="../reports/occupancy.html"
+        <KPICard IconEl={()=>I.building({width:22,height:22})}    label="Hall Occupancy"    value={kpi.occ+'%'}                   delta={kpi.od} color={C.blue}   anim="fu-4" href="../reports/occupancy.html" loading={isLoading}
           blurb="Percentage of total hall capacity utilized during the selected period."
           desc="Average of (booked hall-days ÷ available hall-days) across all active halls in the selected period."/>
       </div>
@@ -1378,11 +1429,11 @@ const DashboardView = ({ period, searchQuery }) => {
               No revenue target set — <a href="../settings/index.html" style={{color:C.gold}}>configure one in Settings</a>.
             </div>
           )}
-          <RevenueChart data={rev}/>
+          {isLoading ? <Skeleton height={200}/> : <RevenueChart data={rev}/>}
         </Card>
         <Card hover style={{padding:'12px 16px'}}>
           <h3 style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:6}}>Booking Status</h3>
-          <StatusDonut data={sts}/>
+          {isLoading ? <Skeleton height={200} radius="50%" style={{maxWidth:200,margin:'0 auto',aspectRatio:'1'}}/> : <StatusDonut data={sts}/>}
         </Card>
       </div>
 
@@ -1395,7 +1446,7 @@ const DashboardView = ({ period, searchQuery }) => {
             {selDate&&<span style={{fontWeight:500,fontSize:12,color:C.gold}}>· {dL(selDate)}</span>}
           </h3>
           <div style={{flex:1,minHeight:0,overflow:'hidden'}}>
-            <MiniCalendar selected={selDate} onSelect={setSelDate} eventsByDate={eventsByDate}/>
+            {isLoading ? <Skeleton height="100%"/> : <MiniCalendar selected={selDate} onSelect={setSelDate} eventsByDate={eventsByDate}/>}
           </div>
         </Card>
         <Card hover style={{padding:'12px 16px',display:'flex',flexDirection:'column',height:460}}>
@@ -1408,7 +1459,13 @@ const DashboardView = ({ period, searchQuery }) => {
             </h3>
             <ViewAllLink href="../bookings/index.html"/>
           </div>
-          <UpcomingList bookings={filteredBookings} selected={selDate} onOpenBooking={openBookingDetail} now={now}/>
+          {isLoading ? (
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {[1,2,3,4].map(i => <Skeleton key={i} height={48}/>)}
+            </div>
+          ) : (
+            <UpcomingList bookings={filteredBookings} selected={selDate} onOpenBooking={openBookingDetail} now={now}/>
+          )}
         </Card>
       </div>
 
@@ -1441,7 +1498,11 @@ const DashboardView = ({ period, searchQuery }) => {
             </div>
           </div>
           <div style={{flex:1,minHeight:0,overflow:'hidden'}}>
-            <OccupancyBars halls={hallStats}/>
+            {isLoading ? (
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {[1,2,3].map(i => <Skeleton key={i} height={28}/>)}
+              </div>
+            ) : <OccupancyBars halls={hallStats}/>}
           </div>
           <div style={{marginTop:8,display:'flex',gap:12,flexWrap:'wrap',flexShrink:0}}>
             {[{c:C.green,l:'High ≥80%'},{c:C.amber,l:'Mid ≥55%'},{c:C.red,l:'Low <55%'}].map(x=>(
@@ -1454,7 +1515,11 @@ const DashboardView = ({ period, searchQuery }) => {
         </Card>
         <Card hover style={{padding:'12px 16px',display:'flex',flexDirection:'column',height:380}}>
           <h3 style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:6,flexShrink:0}}>Recent Activity</h3>
-          <ActivityFeed items={activityItems}/>
+          {isLoading ? (
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {[1,2,3,4].map(i => <Skeleton key={i} height={32}/>)}
+            </div>
+          ) : <ActivityFeed items={activityItems}/>}
         </Card>
       </div>
 
@@ -1486,7 +1551,13 @@ const DashboardView = ({ period, searchQuery }) => {
           </div>
           <ViewAllLink href="../bookings/index.html"/>
         </div>
-        <BookingsTable bookings={visibleBookings} onOpenBooking={openBookingDetail}/>
+        {isLoading ? (
+          <div style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:10}}>
+            {[1,2,3,4,5].map(i => <Skeleton key={i} height={36}/>)}
+          </div>
+        ) : (
+          <BookingsTable bookings={visibleBookings} onOpenBooking={openBookingDetail}/>
+        )}
       </Card>
 
       <footer style={{textAlign:'center',fontSize:12,color:'#9ca3af',padding:'16px 0',marginTop:8,borderTop:'1px solid rgba(61,84,127,.08)'}}>

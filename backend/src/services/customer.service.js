@@ -6,10 +6,11 @@
 const repo = require('../repositories/customer.repository');
 const { NotFoundError, ConflictError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+const { resolveBranchScope } = require('../utils/branchScope');
 
 const getAll = async (query, actor) => {
     const p = parsePagination(query, ['created_at', 'first_name', 'total_bookings', 'total_spend']);
-    const branchId = actor.branchId || query.branch_id || null;
+    const branchId = resolveBranchScope(actor, query);
     const [{ rows, total }, stats] = await Promise.all([
         repo.findAll({
             companyId: actor.companyId,

@@ -19,17 +19,19 @@ function getDashboardNav(I) {
             { id:'bookings',    icon:I.calendar,   label:'All Bookings',  href:'../bookings/index.html', perm:'bookings:read'  },
             { id:'newBooking',  icon:I.calendar,   label:'New Booking',   href:'../bookings/create.html', perm:'bookings:create' },
         ]},
-        { s:'Catering & Inventory', items:[
-            { id:'masterMenu', icon:I.fileText,      label:'Master Menu', href:'../catering/menu.html', perm:'catering:read'   },
-            { id:'inventory',  icon:I.clipboardList, label:'Inventory',   href:'../inventory/index.html', perm:'resources:read' },
+        { s:'Catalog & Inventory', items:[
+            { id:'masterMenu',       icon:I.fileText,      label:'Master Menu',      href:'../catering/menu.html', perm:'catering:read'   },
+            { id:'bookingPackages',  icon:I.calendar,      label:'Booking Packages', href:'../booking-packages/index.html', perm:'bookings:read' },
+            { id:'inventory',        icon:I.clipboardList, label:'Inventory',        href:'../inventory/index.html', perm:'resources:read' },
         ]},
         { s:'CRM', items:[
             { id:'customers', icon:I.users,         label:'Customers',      href:'../customers/index.html', perm:'customers:read' },
             { id:'leads',     icon:I.clipboardList, label:'Sales Pipeline', href:'../leads/index.html', perm:'leads:read'     },
         ]},
         { s:'Finance', items:[
-            { id:'payments',  icon:I.creditCard,    label:'Payments',  href:'../payments/index.html', perm:'payments:read'  },
-            { id:'invoices',  icon:I.fileText,      label:'Invoices',  href:'../invoices/index.html', perm:'invoices:read'  },
+            { id:'payments',    icon:I.creditCard,    label:'Payments',    href:'../payments/index.html', perm:'payments:read'  },
+            { id:'invoices',    icon:I.fileText,      label:'Invoices',    href:'../invoices/index.html', perm:'invoices:read'  },
+            { id:'quotations',  icon:I.fileText,      label:'Quotations',  href:'../quotations/index.html', perm:'quotations:read' },
         ]},
         { s:'Reports', items:[
             { id:'r-bk',      icon:I.clipboardList, label:'Booking Reports',href:'../reports/bookings.html', perm:'reports:read'        },
@@ -41,6 +43,10 @@ function getDashboardNav(I) {
             { id:'users',    icon:I.user,           label:'Users',    href:'../users/index.html', perm:'users:read'    },
             { id:'staff',    icon:I.users,          label:'Staff Management', href:'../staff/index.html', perm:'users:read' },
             { id:'settings', icon:I.settings,       label:'Settings', href:'../settings/index.html', perm:'settings:read' },
+        ]},
+        { s:'Platform', items:[
+            { id:'platform-dashboard', icon:I.trendingUp, label:'Platform Dashboard', href:'../platform/dashboard.html', perm:'companies:read' },
+            { id:'platform-tenants',   icon:I.building,   label:'Tenants',            href:'../platform/tenants.html',   perm:'companies:read' },
         ]},
     ];
 }

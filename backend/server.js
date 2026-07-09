@@ -16,25 +16,28 @@ const expireTentativeHoldsJob = require('./src/jobs/expireTentativeHolds.job');
 const PORT = process.env.PORT || 3000;
 const ENV  = process.env.NODE_ENV || 'development';
 
-const DB_STARTUP_RETRIES    = parseInt(process.env.DB_STARTUP_RETRIES, 10) || 10;
 const DB_STARTUP_RETRY_MS   = parseInt(process.env.DB_STARTUP_RETRY_MS, 10) || 5000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Retries pre-warming the pool so a slow-starting SQL Server (e.g. right after
-// a host reboot, when it initializes slower than Node) doesn't permanently
-// kill the API — a transient failure here previously required a manual restart.
+// Keeps retrying the DB connection forever in the background so a slow-starting
+// SQL Server (e.g. right after a host reboot, when it initializes slower than
+// Node) never requires a manual restart — the API just self-heals once SQL
+// Server finishes coming up. Never throws and never exits the process: the
+// HTTP server stays up and serving (health check reports "degraded") the
+// whole time, and every route that touches the DB will start working the
+// moment a connection attempt finally succeeds.
 const connectWithRetry = async () => {
-    for (let attempt = 1; attempt <= DB_STARTUP_RETRIES; attempt += 1) {
+    let attempt = 0;
+    for (;;) {
+        attempt += 1;
         try {
             await getPool();
+            logger.info('MSSQL connection established', { attempt });
             return;
         } catch (err) {
-            if (attempt === DB_STARTUP_RETRIES) {
-                throw err;
-            }
             logger.error('DB connection attempt failed, retrying', {
-                attempt, maxAttempts: DB_STARTUP_RETRIES, error: err.message,
+                attempt, error: err.message,
             });
             await sleep(DB_STARTUP_RETRY_MS);
         }
@@ -44,12 +47,15 @@ const connectWithRetry = async () => {
 // ─── Start ───────────────────────────────────────────────────────────────────
 (async () => {
     try {
-        // Pre-warm the DB connection pool (with retry — see connectWithRetry)
-        await connectWithRetry();
-
+        // Start accepting HTTP connections immediately — don't block on the DB.
+        // If SQL Server isn't ready yet, the site is still reachable and the
+        // health endpoint reflects "degraded" until the DB comes online.
         const server = app.listen(PORT, () => {
             logger.info('BanquetPro API server started', { port: PORT, env: ENV });
         });
+
+        // Warm the DB pool in the background, retrying indefinitely.
+        connectWithRetry();
 
         expireTentativeHoldsJob.start();
 

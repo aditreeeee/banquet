@@ -6,6 +6,7 @@
 const resourceService = require('../../../services/resource.service');
 const recommendationService = require('../../../services/inventoryRecommendation.service');
 const response         = require('../../../utils/response');
+const { ValidationError } = require('../middleware/errorHandler');
 
 const list = async (req, res) => {
     const resources = await resourceService.list(req.companyId);
@@ -62,4 +63,10 @@ const getRecommendations = async (req, res) => {
     return response.success(res, recommendations);
 };
 
-module.exports = { list, getById, create, update, getAvailability, getSnapshot, getRecommendations };
+const importCsv = async (req, res) => {
+    if (!req.file) throw new ValidationError('CSV file is required');
+    const result = await resourceService.importCsv(req.file.buffer, req.companyId);
+    return response.success(res, result, `Imported ${result.created}/${result.totalRows} inventory items`);
+};
+
+module.exports = { list, getById, create, update, getAvailability, getSnapshot, getRecommendations, importCsv };

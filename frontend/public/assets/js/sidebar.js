@@ -20,6 +20,7 @@ const Sidebar = (() => {
         pipeline:  '<path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path>',
         payments:  '<path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path>',
         invoices:  '<path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path>',
+        quotations: '<path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z"></path><path d="M9 7h6"></path><path d="M9 11h6"></path><path d="M9 15h4"></path>',
         reports:   '<path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path>',
         occupancy: '<path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path>',
         revenue:   '<path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path>',
@@ -46,17 +47,19 @@ const Sidebar = (() => {
             { label: 'All Bookings',  href: '../bookings/index.html',                     icon: ICONS.bookings,   perm: 'bookings:read' },
             { label: 'New Booking',   href: '../bookings/create.html',                    icon: ICONS.newBooking, perm: 'bookings:create' },
         ]},
-        { group: 'Catering & Inventory', items: [
-            { label: 'Master Menu', href: '../catering/menu.html',   icon: ICONS.menu,      perm: 'catering:read' },
-            { label: 'Inventory',   href: '../inventory/index.html', icon: ICONS.inventory, perm: 'resources:read' },
+        { group: 'Catalog & Inventory', items: [
+            { label: 'Master Menu',       href: '../catering/menu.html',          icon: ICONS.menu,      perm: 'catering:read' },
+            { label: 'Booking Packages',  href: '../booking-packages/index.html', icon: ICONS.newBooking, perm: 'bookings:read' },
+            { label: 'Inventory',         href: '../inventory/index.html',        icon: ICONS.inventory, perm: 'resources:read' },
         ]},
         { group: 'CRM', items: [
             { label: 'Customers',     href: '../customers/index.html', icon: ICONS.customers, perm: 'customers:read' },
             { label: 'Sales Pipeline', href: '../leads/index.html',     icon: ICONS.pipeline,  perm: 'leads:read' },
         ]},
         { group: 'Finance', items: [
-            { label: 'Payments', href: '../payments/index.html', icon: ICONS.payments, perm: 'payments:read' },
-            { label: 'Invoices', href: '../invoices/index.html', icon: ICONS.invoices, perm: 'invoices:read' },
+            { label: 'Payments',    href: '../payments/index.html',    icon: ICONS.payments,   perm: 'payments:read' },
+            { label: 'Invoices',    href: '../invoices/index.html',    icon: ICONS.invoices,   perm: 'invoices:read' },
+            { label: 'Quotations', href: '../quotations/index.html', icon: ICONS.quotations, perm: 'quotations:read' },
         ]},
         { group: 'Reports', items: [
             { label: 'Booking Reports', href: '../reports/bookings.html',       icon: ICONS.reports,   perm: 'reports:read' },
@@ -68,6 +71,10 @@ const Sidebar = (() => {
             { label: 'Users',            href: '../users/index.html',    icon: ICONS.users,    perm: 'users:read' },
             { label: 'Staff Management', href: '../staff/index.html',    icon: ICONS.staff,    perm: 'users:read' },
             { label: 'Settings',         href: '../settings/index.html', icon: ICONS.settings, perm: 'settings:read' },
+        ]},
+        { group: 'Platform', items: [
+            { label: 'Platform Dashboard', href: '../platform/dashboard.html', icon: ICONS.analytics, perm: 'companies:read' },
+            { label: 'Tenants',            href: '../platform/tenants.html',   icon: ICONS.banquet,   perm: 'companies:read' },
         ]},
     ];
 

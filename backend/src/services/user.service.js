@@ -8,6 +8,7 @@ const auditLogRepo = require('../repositories/auditLog.repository');
 const { hashPassword } = require('../utils/encryption');
 const { NotFoundError, ConflictError, ForbiddenError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+const { resolveBranchScope } = require('../utils/branchScope');
 const logger = require('../utils/logger');
 
 // Frontend only distinguishes active/inactive; any other value (e.g. "suspended",
@@ -29,7 +30,7 @@ const mapUser = (u) => ({
 
 const getAll = async (query, actor) => {
     const p = parsePagination(query, ['first_name', 'created_at', 'last_login_at']);
-    const branchId = actor.branchId || query.branch_id || null;
+    const branchId = resolveBranchScope(actor, query);
     const [{ rows, total }, stats] = await Promise.all([
         userRepo.findAll({
             companyId: actor.companyId,
@@ -176,4 +177,43 @@ const toggleStatus = async (id, actor) => {
     return mapUser(await userRepo.update(id, actor.companyId, { isActive: newStatus }));
 };
 
-module.exports = { getAll, getById, create, update, toggleStatus, getRoles, getPending, approve, reject };
+/**
+ * Soft-delete — distinct from deactivate/toggleStatus. See
+ * hall.service.js:remove for the same pattern. Blocked while the user still
+ * holds a staff assignment on any non-terminal booking, and (like every
+ * other modification path here) a super_admin can only be deleted by
+ * another super_admin. A user can't delete their own account through this
+ * path either — that's an account-settings action, not an admin action.
+ */
+const remove = async (id, actor) => {
+    const existing = await userRepo.findById(id, actor.companyId);
+    if (!existing) throw new NotFoundError('User');
+    if (existing.role_slug === 'super_admin' && actor.roleSlug !== 'super_admin') {
+        throw new ForbiddenError('Cannot modify a Super Admin account');
+    }
+    if (id === actor.userId) {
+        throw new ValidationError('You cannot delete your own account');
+    }
+
+    const activeAssignments = await userRepo.countActiveAssignments(id, actor.companyId);
+    if (activeAssignments > 0) {
+        const name = `${existing.first_name} ${existing.last_name || ''}`.trim();
+        throw new ValidationError(
+            `Cannot delete ${name} — still staffed on ${activeAssignments} active booking(s). Reassign or complete them first.`
+        );
+    }
+
+    await userRepo.softDelete(id, actor.companyId);
+
+    await auditLogRepo.log({
+        companyId:  actor.companyId,
+        userId:     actor.userId,
+        action:     'user.deleted',
+        entityType: 'user',
+        entityId:   id,
+        description: `User ${existing.email} deleted`,
+        oldValues:  { email: existing.email },
+    });
+};
+
+module.exports = { getAll, getById, create, update, toggleStatus, remove, getRoles, getPending, approve, reject };

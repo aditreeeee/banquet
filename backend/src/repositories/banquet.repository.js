@@ -8,26 +8,33 @@ const { executeQuery } = require('../config/database');
 const BASE_SELECT = `
     SELECT b.banquet_id, b.banquet_name, b.description, b.address_line1 AS address, b.city, b.state,
            b.pincode, b.gst_number, b.phone, b.email, b.cover_image_url AS image_url,
-           b.total_capacity, b.average_rating AS avg_rating, b.total_reviews, b.total_bookings,
+           b.total_capacity, b.average_rating AS avg_rating, b.total_reviews,
            b.is_active, b.created_at,
            b.company_id, b.branch_id,
            br.branch_name,
-           (SELECT COUNT(*) FROM Halls h WHERE h.banquet_id = b.banquet_id AND h.is_active = 1) AS total_halls
+           co.company_name,
+           (SELECT COUNT(*) FROM Halls h WHERE h.banquet_id = b.banquet_id AND h.is_active = 1 AND h.deleted_at IS NULL) AS total_halls,
+           (SELECT COUNT(*) FROM Bookings bk JOIN Halls h2 ON h2.hall_id = bk.hall_id
+              WHERE h2.banquet_id = b.banquet_id AND bk.status NOT IN ('cancelled','draft')) AS total_bookings,
+           (SELECT ISNULL(SUM(bk.total_amount), 0) FROM Bookings bk JOIN Halls h2 ON h2.hall_id = bk.hall_id
+              WHERE h2.banquet_id = b.banquet_id AND bk.status NOT IN ('cancelled','draft')) AS total_revenue
     FROM Banquets b
     LEFT JOIN Branches br ON br.branch_id = b.branch_id
+    LEFT JOIN Companies co ON co.company_id = b.company_id
 `;
 
 const findById = async (banquetId, companyId) => {
     const rows = await executeQuery(
-        `${BASE_SELECT} WHERE b.banquet_id = @id AND b.company_id = @companyId`,
-        { id: banquetId, companyId }
+        `${BASE_SELECT} WHERE b.banquet_id = @id AND (@companyId IS NULL OR b.company_id = @companyId) AND b.deleted_at IS NULL`,
+        { id: banquetId, companyId: companyId || null }
     );
     return rows[0] || null;
 };
 
 const findAll = async ({ companyId, branchId, search, isActive, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'b.company_id = @companyId',
+        '(@companyId IS NULL OR b.company_id = @companyId)',
+        'b.deleted_at IS NULL',
         '(@branchId IS NULL OR b.branch_id = @branchId)',
         '(@isActive IS NULL OR b.is_active = @isActive)',
         `(@search IS NULL OR b.banquet_name LIKE CONCAT('%', @search, '%') OR b.city LIKE CONCAT('%', @search, '%'))`,
@@ -139,4 +146,25 @@ const toggleActive = async (banquetId, companyId, isActive) => {
     );
 };
 
-module.exports = { findById, findAll, create, update, toggleActive };
+/**
+ * Count non-deleted halls still under this banquet — a banquet with any
+ * remaining hall can't be deleted; halls must be deleted/reassigned first.
+ */
+const countActiveHalls = async (banquetId, companyId) => {
+    const rows = await executeQuery(
+        `SELECT COUNT(*) AS cnt FROM Halls
+         WHERE banquet_id = @banquetId AND company_id = @companyId AND deleted_at IS NULL`,
+        { banquetId, companyId }
+    );
+    return rows[0].cnt;
+};
+
+const softDelete = async (banquetId, companyId) => {
+    await executeQuery(
+        `UPDATE Banquets SET deleted_at = GETUTCDATE(), updated_at = GETUTCDATE()
+         WHERE banquet_id = @id AND company_id = @companyId AND deleted_at IS NULL`,
+        { id: banquetId, companyId }
+    );
+};
+
+module.exports = { findById, findAll, create, update, toggleActive, countActiveHalls, softDelete };

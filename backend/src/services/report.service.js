@@ -8,6 +8,7 @@ const NodeCache  = require('node-cache');
 const { CACHE_TTL } = require('../constants');
 const { parsePagination, buildMeta } = require('../utils/pagination');
 const { ValidationError } = require('../api/v1/middleware/errorHandler');
+const { resolveBranchScope } = require('../utils/branchScope');
 
 const cache = new NodeCache({ stdTTL: CACHE_TTL.REPORTS });
 
@@ -43,7 +44,7 @@ const getRevenueReport = async (query, actor) => {
     const cached = cache.get(key);
     if (cached) return cached;
 
-    const branchId = actor.branchId || query.branch_id || null;
+    const branchId = resolveBranchScope(actor, query);
     const priorFrom = shiftYearBack(from);
     const priorTo   = shiftYearBack(to);
 
@@ -84,7 +85,7 @@ const getBookingReport = async (query, actor) => {
 
     const { rows, total } = await reportRepo.getBookingReport({
         companyId: actor.companyId,
-        branchId:  actor.branchId || query.branch_id || null,
+        branchId:  resolveBranchScope(actor, query),
         fromDate:  from,
         toDate:    to,
         status:    query.status || null,
@@ -102,8 +103,7 @@ const getOccupancyReport = async (query, actor) => {
     const cached = cache.get(key);
     if (cached) return cached;
 
-    const branchId = actor.branchId || query.branch_id || null;
-    // NOTE: branchId already falls back to query.branch_id when actor has no fixed branch.
+    const branchId = resolveBranchScope(actor, query);
 
     const [byHall, daily] = await Promise.all([
         reportRepo.getOccupancyReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
@@ -136,7 +136,7 @@ const getOccupancyReport = async (query, actor) => {
 const getPaymentReport = async (query, actor) => {
     const { from, to } = validateDateRange(query.from_date, query.to_date);
 
-    const branchId = actor.branchId || query.branch_id || null;
+    const branchId = resolveBranchScope(actor, query);
     const [payments, summary] = await Promise.all([
         reportRepo.getPaymentReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getSummaryStats({  companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
@@ -158,7 +158,7 @@ const getPaymentReport = async (query, actor) => {
  */
 const getOwnerAnalytics = async (query, actor) => {
     const { from, to } = validateDateRange(query.from_date, query.to_date);
-    const branchId = actor.branchId || query.branch_id || null;
+    const branchId = resolveBranchScope(actor, query);
     const companyId = actor.companyId;
 
     // Previous period of equal length, immediately preceding `from`, for month-over-month comparison.

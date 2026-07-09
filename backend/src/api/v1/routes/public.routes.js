@@ -8,6 +8,7 @@ const { Router }       = require('express');
 const router           = Router();
 const { executeQuery } = require('../../../config/database');
 const response         = require('../../../utils/response');
+const quotationService = require('../../../services/quotation.service');
 
 /**
  * GET /api/v1/public/banquets?city=&min_capacity=
@@ -67,6 +68,17 @@ router.get('/halls/:id/availability', async (req, res) => {
         bookedSlots:   rows,
         isFullyBooked: rows.length > 0 && rows.some(s => s.event_time_start === '00:00:00'),
     });
+});
+
+/**
+ * PATCH /api/v1/public/quotations/accept/:token
+ * Customer-facing acceptance link — no auth, mirrors the password-reset
+ * token pattern. The token itself (random 24-byte hex, single-use per
+ * quotation) is the only credential.
+ */
+router.patch('/quotations/accept/:token', async (req, res) => {
+    const updated = await quotationService.acceptViaToken(req.params.token);
+    return response.success(res, updated, 'Quotation accepted');
 });
 
 module.exports = router;

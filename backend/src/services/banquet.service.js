@@ -4,14 +4,16 @@
 'use strict';
 
 const repo = require('../repositories/banquet.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+const { resolveBranchScope, resolveCompanyScope } = require('../utils/branchScope');
 
 const getAll = async (query, actor) => {
     const p = parsePagination(query, ['banquet_name', 'city', 'created_at']);
     const { rows, total } = await repo.findAll({
-        companyId: actor.companyId,
-        branchId:  actor.branchId || query.branch_id || null,
+        companyId: resolveCompanyScope(actor),
+        branchId:  resolveBranchScope(actor, query),
         search:    query.search   || null,
         isActive:  query.is_active != null ? query.is_active === 'true' : null,
         ...p,
@@ -72,4 +74,35 @@ const setActive = async (id, isActive, actor) => {
     await repo.toggleActive(id, actor.companyId, isActive);
 };
 
-module.exports = { getAll, getById, create, update, setActive };
+/**
+ * Soft-delete — distinct from deactivate. See hall.service.js:remove for the
+ * same pattern. Blocked while any hall still exists under this banquet
+ * (delete/reassign halls first) — that transitively guarantees no active
+ * bookings are orphaned either, since a hall itself can't be deleted while
+ * it has active bookings.
+ */
+const remove = async (id, actor) => {
+    const existing = await repo.findById(id, actor.companyId);
+    if (!existing) throw new NotFoundError('Banquet');
+
+    const activeHalls = await repo.countActiveHalls(id, actor.companyId);
+    if (activeHalls > 0) {
+        throw new ValidationError(
+            `Cannot delete banquet "${existing.banquet_name}" — it still has ${activeHalls} hall(s). Delete or reassign them first.`
+        );
+    }
+
+    await repo.softDelete(id, actor.companyId);
+
+    await auditLogRepo.log({
+        companyId:  actor.companyId,
+        userId:     actor.userId,
+        action:     'banquet.deleted',
+        entityType: 'banquet',
+        entityId:   id,
+        description: `Banquet ${existing.banquet_name} deleted`,
+        oldValues:  { banquet_name: existing.banquet_name },
+    });
+};
+
+module.exports = { getAll, getById, create, update, setActive, remove };

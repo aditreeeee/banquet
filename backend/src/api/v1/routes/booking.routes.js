@@ -5,6 +5,7 @@
 
 const { Router }           = require('express');
 const ctrl                 = require('../controllers/booking.controller');
+const cateringCtrl         = require('../controllers/bookingCatering.controller');
 const v                    = require('../validators/booking.validator');
 const { requirePermission } = require('../middleware/auth');
 const { PERMISSIONS }      = require('../../../constants');
@@ -31,6 +32,16 @@ router.delete('/:id/contacts/:contactId', requirePermission(PERMISSIONS.BOOKINGS
 router.get('/:id/staff',      requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getStaff);
 router.post('/:id/staff',     requirePermission(PERMISSIONS.BOOKINGS_UPDATE), ctrl.assignStaff);
 router.delete('/:id/staff/:assignmentId', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), ctrl.removeStaff);
+
+// Per-booking multi-session catering plan (distinct from the company-wide
+// Master Menu / CateringPackages under /catering — see bookingCatering.service.js)
+router.get('/:bookingId/catering/sessions',            requirePermission(PERMISSIONS.BOOKINGS_READ),   cateringCtrl.listSessions);
+router.post('/:bookingId/catering/sessions',           requirePermission(PERMISSIONS.BOOKINGS_UPDATE), cateringCtrl.addSession);
+router.put('/:bookingId/catering/sessions/:sessionId', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), cateringCtrl.updateSession);
+router.delete('/:bookingId/catering/sessions/:sessionId', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), cateringCtrl.removeSession);
+router.post('/:bookingId/catering/sessions/:sessionId/items', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), cateringCtrl.addItem);
+router.delete('/:bookingId/catering/sessions/:sessionId/items/:itemRowId', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), cateringCtrl.removeItem);
+router.post('/:bookingId/catering/sessions/:sessionId/apply-package', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), cateringCtrl.applyPackage);
 router.patch('/:id',         requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateUpdate, ctrl.update);
 router.put('/:id',           requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateUpdate, ctrl.update);
 router.patch('/:id/reschedule', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateReschedule, ctrl.reschedule);

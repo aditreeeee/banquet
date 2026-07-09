@@ -182,6 +182,15 @@
                         </div>
                         <div id="resourcesList" style="font-size:12.5px;color:var(--text-muted)">Loading…</div>
                     </div>
+
+                    <!-- Catering Sessions -->
+                    <div class="detail-section">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border-color)">
+                            <h6 style="margin:0;padding:0;border:none">Catering Sessions</h6>
+                            <button class="btn-ghost" data-require-perm="bookings:update" style="padding:2px 10px;font-size:12px" onclick="openCateringSessionModal()">+ Add Session</button>
+                        </div>
+                        <div id="cateringSessionsList" style="font-size:12.5px;color:var(--text-muted)">Loading…</div>
+                    </div>
                 </div>
 
                 <!-- Right column: timeline -->
@@ -290,6 +299,87 @@
     </div>
 </div>
 
+<!-- Add Catering Session Modal -->
+<div class="modal fade" id="cateringSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Add Catering Session</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label">Session</label>
+                        <select class="form-select" id="csSessionType">
+                            <option value="welcome_drinks">Welcome Drinks</option>
+                            <option value="morning_tea">Morning Tea</option>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="evening_snacks">Evening Snacks</option>
+                            <option value="high_tea">High Tea</option>
+                            <option value="dinner" selected>Dinner</option>
+                            <option value="midnight_refreshments">Midnight Refreshments</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Serving Time</label>
+                        <input type="time" class="form-control" id="csServingTime">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Guest Count Override</label>
+                        <input type="number" class="form-control" id="csGuestCount" min="0" placeholder="Uses booking's guest count if left blank">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmCateringSessionBtn" onclick="submitCateringSession()">Add Session</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Catering Item Modal -->
+<div class="modal fade" id="cateringItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Add Menu Item</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-8">
+                        <label class="form-label">Menu Item</label>
+                        <select class="form-select" id="ciMenuItemId"></select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Plates</label>
+                        <input type="number" class="form-control" id="ciQuantity" min="1" value="1">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmCateringItemBtn" onclick="submitCateringItem()">Add Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apply Catering Package Modal -->
+<div class="modal fade" id="applyPackageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Apply Catering Package</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <p style="font-size:12.5px;color:var(--text-muted)">Adds every Master Menu item in the package to this session, at the session's (or booking's) guest count.</p>
+                <label class="form-label">Catering Package</label>
+                <select class="form-select" id="apPackageId"></select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmApplyPackageBtn" onclick="submitApplyPackage()">Apply</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Add Contact Modal -->
 <div class="modal fade" id="contactModal" tabindex="-1">
     <div class="modal-dialog">
@@ -369,6 +459,7 @@ async function loadBooking() {
     render(booking);
     loadActivities();
     loadResources();
+    loadCateringSessions();
     loadBookingStaff();
     loadContacts();
     loadPreviousBookings();
@@ -564,6 +655,7 @@ async function submitInventoryAlloc() {
         bootstrap.Modal.getInstance(document.getElementById('inventoryAllocModal'))?.hide();
         Utils.toast('Inventory allocated', 'success');
         loadResources();
+        refreshBookingTotals();
     } catch (err) {
         Utils.hideLoader(btn);
         Utils.toast(err.message || 'Failed to allocate inventory', 'error');
@@ -578,8 +670,184 @@ async function removeInventoryAlloc(resourceId) {
         await API.bookings.updateResources(booking.booking_id, remaining);
         Utils.toast('Allocation removed', 'success');
         loadResources();
+        refreshBookingTotals();
     } catch (err) {
         Utils.toast(err.message || 'Failed to remove allocation', 'error');
+    }
+}
+
+/* Re-fetch + re-render after any edit that can change the recalculated
+   total_amount (resource allocation, catering sessions/items) — the pricing
+   breakdown card otherwise keeps showing the pre-edit total. */
+async function refreshBookingTotals() {
+    try {
+        const res = await API.bookings.get(booking.booking_id);
+        booking = res.data;
+        render(booking);
+    } catch { /* non-critical — the section-specific reload already succeeded */ }
+}
+
+/* ── Catering Sessions ── */
+const SESSION_LABELS = {
+    welcome_drinks: 'Welcome Drinks', morning_tea: 'Morning Tea', breakfast: 'Breakfast',
+    lunch: 'Lunch', evening_snacks: 'Evening Snacks', high_tea: 'High Tea',
+    dinner: 'Dinner', midnight_refreshments: 'Midnight Refreshments',
+};
+
+async function loadCateringSessions() {
+    const el = document.getElementById('cateringSessionsList');
+    try {
+        const res = await API.bookings.catering.sessions(booking.booking_id);
+        const sessions = res.data || [];
+        el.innerHTML = sessions.length ? sessions.map(s => {
+            const itemsTotal = (s.items || []).reduce((sum, i) => sum + (i.line_total || 0), 0);
+            const plates = (s.items || []).reduce((sum, i) => sum + (parseFloat(i.quantity) || 0), 0);
+            const expectedGuests = s.guest_count != null ? s.guest_count : booking.guest_count;
+            const shortfall = expectedGuests && plates < expectedGuests;
+            return `
+            <div style="padding:8px 0;border-bottom:1px solid var(--border-color)">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <span style="font-weight:700;color:var(--text-primary)">${SESSION_LABELS[s.session_type] || s.session_type}</span>
+                        ${s.serving_time ? `<span style="color:var(--text-muted)"> · ${s.serving_time.substring(0,5)}</span>` : ''}
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span style="font-weight:600">${Utils.formatCurrency(itemsTotal)}</span>
+                        <button class="btn-ghost" data-require-perm="bookings:update" style="padding:2px 8px;font-size:11px" onclick="openApplyPackageModal(${s.session_id})">Apply Package</button>
+                        <button class="btn-ghost" data-require-perm="bookings:update" style="padding:2px 8px;font-size:11px" onclick="openCateringItemModal(${s.session_id})">+ Item</button>
+                        <button class="btn-ghost" data-require-perm="bookings:update" style="padding:2px 8px;font-size:11px;color:var(--color-danger)" onclick="removeCateringSession(${s.session_id})">Remove</button>
+                    </div>
+                </div>
+                ${shortfall ? `<div style="font-size:11px;color:var(--color-warning);margin-top:2px">⚠ ${plates} plate(s) ordered vs. ${expectedGuests} expected guests</div>` : ''}
+                ${(s.items || []).map(i => `
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-muted);padding:2px 0 2px 8px">
+                        <span>${i.item_name} × ${i.quantity}</span>
+                        <span>${Utils.formatCurrency(i.line_total)} <button class="btn-ghost" data-require-perm="bookings:update" style="padding:0 4px;font-size:11px;color:var(--color-danger)" onclick="removeCateringItem(${s.session_id}, ${i.item_row_id})">×</button></span>
+                    </div>`).join('')}
+            </div>`;
+        }).join('') : `<div>No catering sessions added yet.</div>`;
+        Auth.populateUserUI();
+    } catch {
+        el.innerHTML = `<div>Unable to load catering sessions.</div>`;
+    }
+}
+
+function openCateringSessionModal() {
+    document.getElementById('csServingTime').value = '';
+    document.getElementById('csGuestCount').value = '';
+    new bootstrap.Modal(document.getElementById('cateringSessionModal')).show();
+}
+
+async function submitCateringSession() {
+    const sessionType = document.getElementById('csSessionType').value;
+    const servingTime = document.getElementById('csServingTime').value || null;
+    const guestCountRaw = document.getElementById('csGuestCount').value;
+    const btn = document.getElementById('confirmCateringSessionBtn');
+    Utils.showLoader(btn, 'Adding…');
+    try {
+        await API.bookings.catering.addSession(booking.booking_id, {
+            sessionType, servingTime, guestCount: guestCountRaw ? parseInt(guestCountRaw, 10) : null,
+        });
+        Utils.hideLoader(btn);
+        bootstrap.Modal.getInstance(document.getElementById('cateringSessionModal'))?.hide();
+        Utils.toast('Catering session added', 'success');
+        loadCateringSessions();
+        refreshBookingTotals();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to add catering session', 'error');
+    }
+}
+
+async function removeCateringSession(sessionId) {
+    const ok = await Utils.confirm('Remove this catering session and its items?', { title: 'Remove Session', danger: true });
+    if (!ok) return;
+    try {
+        await API.bookings.catering.removeSession(booking.booking_id, sessionId);
+        Utils.toast('Catering session removed', 'success');
+        loadCateringSessions();
+        refreshBookingTotals();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to remove catering session', 'error');
+    }
+}
+
+let cateringItemSessionId = null;
+async function openCateringItemModal(sessionId) {
+    cateringItemSessionId = sessionId;
+    const sel = document.getElementById('ciMenuItemId');
+    sel.innerHTML = '<option>Loading…</option>';
+    document.getElementById('ciQuantity').value = 1;
+    new bootstrap.Modal(document.getElementById('cateringItemModal')).show();
+    try {
+        const res = await API.menuItems.list();
+        const items = (res.data?.items || res.data || []).filter(i => i.is_active);
+        sel.innerHTML = items.map(i => `<option value="${i.item_id}">${i.item_name} (${Utils.formatCurrency(i.base_price)}/plate)</option>`).join('') || '<option value="">No menu items available</option>';
+    } catch {
+        sel.innerHTML = '<option value="">Failed to load menu</option>';
+    }
+}
+
+async function submitCateringItem() {
+    const itemId = parseInt(document.getElementById('ciMenuItemId').value, 10);
+    const quantity = parseInt(document.getElementById('ciQuantity').value, 10);
+    if (!itemId || !quantity || quantity < 1) { Utils.toast('Select a menu item and a valid quantity', 'error'); return; }
+    const btn = document.getElementById('confirmCateringItemBtn');
+    Utils.showLoader(btn, 'Adding…');
+    try {
+        const result = await API.bookings.catering.addItem(booking.booking_id, cateringItemSessionId, { itemId, quantity });
+        Utils.hideLoader(btn);
+        bootstrap.Modal.getInstance(document.getElementById('cateringItemModal'))?.hide();
+        Utils.toast(result.data?.warning || 'Menu item added', result.data?.warning ? 'warning' : 'success');
+        loadCateringSessions();
+        refreshBookingTotals();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to add menu item', 'error');
+    }
+}
+
+let applyPackageSessionId = null;
+async function openApplyPackageModal(sessionId) {
+    applyPackageSessionId = sessionId;
+    const sel = document.getElementById('apPackageId');
+    sel.innerHTML = '<option>Loading…</option>';
+    new bootstrap.Modal(document.getElementById('applyPackageModal')).show();
+    try {
+        const res = await API.catering.packages();
+        const packages = (res.data || []).filter(p => p.is_active);
+        sel.innerHTML = packages.map(p => `<option value="${p.package_id}">${p.package_name} (${Utils.formatCurrency(p.price_per_plate)}/plate)</option>`).join('') || '<option value="">No catering packages available</option>';
+    } catch {
+        sel.innerHTML = '<option value="">Failed to load packages</option>';
+    }
+}
+
+async function submitApplyPackage() {
+    const packageId = parseInt(document.getElementById('apPackageId').value, 10);
+    if (!packageId) { Utils.toast('Select a catering package', 'error'); return; }
+    const btn = document.getElementById('confirmApplyPackageBtn');
+    Utils.showLoader(btn, 'Applying…');
+    try {
+        const result = await API.bookings.catering.applyPackage(booking.booking_id, applyPackageSessionId, packageId);
+        Utils.hideLoader(btn);
+        bootstrap.Modal.getInstance(document.getElementById('applyPackageModal'))?.hide();
+        Utils.toast(result.data?.warning || 'Package applied', result.data?.warning ? 'warning' : 'success');
+        loadCateringSessions();
+        refreshBookingTotals();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to apply package', 'error');
+    }
+}
+
+async function removeCateringItem(sessionId, itemRowId) {
+    try {
+        await API.bookings.catering.removeItem(booking.booking_id, sessionId, itemRowId);
+        Utils.toast('Item removed', 'success');
+        loadCateringSessions();
+        refreshBookingTotals();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to remove item', 'error');
     }
 }
 
@@ -802,7 +1070,7 @@ async function generateInvoice() {
 function cancelBooking() {
     Utils.confirm('Cancel this booking? This cannot be undone.', { title:'Cancel Booking', danger:true }).then(ok => {
         if (!ok) return;
-        API.bookings.cancel(booking.booking_id, { reason:'customer_request' })
+        API.bookings.cancel(booking.booking_id, 'customer_request')
             .then(() => { Utils.toast('Booking cancelled', 'success'); setTimeout(() => location.href = 'index.html', 1200); })
             .catch(err => Utils.toast(err.message || 'Failed to cancel booking', 'error'));
     });

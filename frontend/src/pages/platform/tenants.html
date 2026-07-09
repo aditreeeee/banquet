@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tenants | BanquetPro Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<style>
+.tenant-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:16px }
+.tenant-icon { width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0 }
+.tenant-icon.active   { background:#D1FAE5;color:#059669 }
+.tenant-icon.inactive { background:#FEE2E2;color:#DC2626 }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Tenants</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Tenants</h1><p class="page-subtitle">Manage every Business Owner organization on the platform</p></div>
+            <button class="btn-primary-brand" onclick="openCreateModal()">+ New Tenant</button>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+            <input type="text" class="form-control" id="tSearch" placeholder="Search tenants…" style="max-width:280px" oninput="handleSearch()">
+            <select class="form-select" id="statusFilter" onchange="loadTenants()" style="width:auto">
+                <option value="">All Status</option>
+                <option value="true">Active</option>
+                <option value="false">Suspended</option>
+            </select>
+        </div>
+
+        <div id="tenantList"><div class="text-center py-5"><span class="spinner-border" style="color:var(--brand-primary)"></span></div></div>
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro Platform</footer>
+</div>
+
+<!-- Create/Edit Tenant Modal -->
+<div class="modal fade" id="tenantModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="tenantModalTitle">New Tenant</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="tId">
+                <div class="row g-3">
+                    <div class="col-6"><label class="form-label">Company Name *</label><input type="text" class="form-control" id="tName"></div>
+                    <div class="col-6"><label class="form-label">Legal Name</label><input type="text" class="form-control" id="tLegalName"></div>
+                    <div class="col-6"><label class="form-label">Email *</label><input type="email" class="form-control" id="tEmail"></div>
+                    <div class="col-6"><label class="form-label">Phone *</label><input type="text" class="form-control" id="tPhone"></div>
+                    <div class="col-12"><label class="form-label">Address *</label><input type="text" class="form-control" id="tAddress"></div>
+                    <div class="col-6"><label class="form-label">GST Number</label><input type="text" class="form-control" id="tGst"></div>
+                    <div class="col-6"><label class="form-label">Subscription Plan</label>
+                        <select class="form-select" id="tPlan">
+                            <option value="basic">Basic</option>
+                            <option value="pro">Pro</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+                    <div class="col-6"><label class="form-label">Max Branches</label><input type="number" class="form-control" id="tMaxBranches" min="1" value="1"></div>
+                    <div class="col-6"><label class="form-label">Max Banquets</label><input type="number" class="form-control" id="tMaxBanquets" min="1" value="5"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmTenantBtn" onclick="submitTenant()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+let allTenants = [];
+
+async function loadTenants() {
+    const wrap = document.getElementById('tenantList');
+    wrap.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></div>';
+    try {
+        const res = await API.companies.list({
+            search: document.getElementById('tSearch').value || undefined,
+            is_active: document.getElementById('statusFilter').value || undefined,
+        });
+        allTenants = res.data?.companies || [];
+        renderTenants(allTenants);
+    } catch (err) {
+        Utils.toast(err.message || 'Unable to load tenants', 'error');
+        wrap.innerHTML = `<div class="empty-state" style="padding:48px">Unable to load tenants.</div>`;
+    }
+}
+
+function renderTenants(rows) {
+    const wrap = document.getElementById('tenantList');
+    if (!rows.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No tenants found</div>'; return; }
+    wrap.innerHTML = rows.map(t => `
+    <div class="tenant-card" style="margin-bottom:10px">
+        <div class="tenant-icon ${t.is_active ? 'active' : 'inactive'}"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M4 20V9l8-5 8 5v11"></path></svg></div>
+        <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-weight:700;font-size:14px">${t.company_name}</span>
+                <span class="badge-status ${t.is_active ? 'badge-confirmed' : 'badge-cancelled'}">${t.is_active ? 'Active' : 'Suspended'}</span>
+                <span style="font-size:11px;color:var(--text-muted);text-transform:capitalize">${t.subscription_plan}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)">${t.email} · ${t.phone} · ${t.banquet_count} banquets · ${t.hall_count} halls · ${t.user_count} users · ${t.booking_count} bookings</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick='viewAsTenant(${t.company_id}, ${JSON.stringify(t.company_name)})'>View As</button>
+            <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick='openEditModal(${JSON.stringify(t).replace(/'/g,"&apos;")})'>Edit</button>
+            <button class="btn-ghost" style="font-size:12px;padding:5px 10px;color:${t.is_active ? 'var(--color-danger)' : 'var(--color-success)'}" onclick="toggleTenantStatus(${t.company_id}, ${t.is_active})">${t.is_active ? 'Suspend' : 'Activate'}</button>
+            <button class="btn-ghost" style="font-size:12px;padding:5px 10px;color:var(--color-danger)" onclick="deleteTenant(${t.company_id})">Delete</button>
+        </div>
+    </div>`).join('');
+}
+
+function viewAsTenant(companyId, companyName) {
+    API.Impersonation.set(companyId, companyName);
+    Utils.toast(`Viewing as ${companyName}`, 'success');
+    window.location.href = '../dashboard/index.html';
+}
+
+function openCreateModal() {
+    document.getElementById('tenantModalTitle').textContent = 'New Tenant';
+    document.getElementById('tId').value = '';
+    ['tName','tLegalName','tEmail','tPhone','tAddress','tGst'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('tPlan').value = 'basic';
+    document.getElementById('tMaxBranches').value = 1;
+    document.getElementById('tMaxBanquets').value = 5;
+    new bootstrap.Modal(document.getElementById('tenantModal')).show();
+}
+
+function openEditModal(t) {
+    document.getElementById('tenantModalTitle').textContent = 'Edit Tenant';
+    document.getElementById('tId').value = t.company_id;
+    document.getElementById('tName').value = t.company_name || '';
+    document.getElementById('tLegalName').value = t.legal_name || '';
+    document.getElementById('tEmail').value = t.email || '';
+    document.getElementById('tPhone').value = t.phone || '';
+    document.getElementById('tAddress').value = t.address_line1 || '';
+    document.getElementById('tGst').value = t.gst_number || '';
+    document.getElementById('tPlan').value = t.subscription_plan || 'basic';
+    document.getElementById('tMaxBranches').value = t.max_branches || 1;
+    document.getElementById('tMaxBanquets').value = t.max_banquets || 5;
+    new bootstrap.Modal(document.getElementById('tenantModal')).show();
+}
+
+async function submitTenant() {
+    const id = document.getElementById('tId').value;
+    const data = {
+        companyName: document.getElementById('tName').value,
+        legalName: document.getElementById('tLegalName').value || undefined,
+        email: document.getElementById('tEmail').value,
+        phone: document.getElementById('tPhone').value,
+        addressLine1: document.getElementById('tAddress').value,
+        gstNumber: document.getElementById('tGst').value || undefined,
+        subscriptionPlan: document.getElementById('tPlan').value,
+        maxBranches: parseInt(document.getElementById('tMaxBranches').value, 10) || 1,
+        maxBanquets: parseInt(document.getElementById('tMaxBanquets').value, 10) || 5,
+    };
+    if (!data.companyName || !data.email || !data.phone || !data.addressLine1) {
+        Utils.toast('Company name, email, phone, and address are required', 'error'); return;
+    }
+    const btn = document.getElementById('confirmTenantBtn');
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        if (id) await API.companies.update(id, data);
+        else    await API.companies.create(data);
+        Utils.hideLoader(btn);
+        bootstrap.Modal.getInstance(document.getElementById('tenantModal'))?.hide();
+        Utils.toast(id ? 'Tenant updated' : 'Tenant created', 'success');
+        loadTenants();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to save tenant', 'error');
+    }
+}
+
+async function toggleTenantStatus(id, isActive) {
+    const action = isActive ? 'suspend' : 'activate';
+    const ok = await Utils.confirm(isActive ? 'Suspend this tenant? Their users will be unable to log in.' : 'Activate this tenant?', { danger: isActive });
+    if (!ok) return;
+    try {
+        await API.companies[action](id);
+        Utils.toast(`Tenant ${action}d`, isActive ? 'warning' : 'success');
+        loadTenants();
+    } catch (err) {
+        Utils.toast(err.message || `Failed to ${action} tenant`, 'error');
+    }
+}
+
+async function deleteTenant(id) {
+    const ok = await Utils.confirm('Permanently delete this tenant? Blocked if it still has active users.', { title: 'Delete Tenant', danger: true });
+    if (!ok) return;
+    try {
+        await API.companies.delete(id);
+        Utils.toast('Tenant deleted', 'success');
+        loadTenants();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to delete tenant', 'error');
+    }
+}
+
+const handleSearch = Utils.debounce(() => loadTenants(), 350);
+document.addEventListener('DOMContentLoaded', () => loadTenants());
+</script>
+</body>
+</html>

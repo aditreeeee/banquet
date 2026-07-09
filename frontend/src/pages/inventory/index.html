@@ -35,7 +35,11 @@
     <main class="page-content">
         <div class="page-header">
             <div><h1 class="page-title">Inventory</h1><p class="page-subtitle">Structured decoration &amp; operational inventory — Furniture, Decor, Lighting, Audio, Visual, Signage</p></div>
-            <button class="btn-primary-brand" onclick="openResourceModal()">+ Add Inventory Item</button>
+            <div style="display:flex;gap:10px">
+                <input type="file" id="inventoryCsvInput" accept=".csv" style="display:none" onchange="importInventoryCsv(this.files[0])">
+                <button class="btn-ghost" onclick="document.getElementById('inventoryCsvInput').click()">⇪ Import CSV</button>
+                <button class="btn-primary-brand" onclick="openResourceModal()">+ Add Inventory Item</button>
+            </div>
         </div>
 
         <div class="stat-strip">
@@ -211,6 +215,21 @@ function updateStats(filtered) {
     document.getElementById('statReserved').textContent = Utils.formatNumber(reservedTotal);
     const shortageCount = filtered.filter(r => (snapshot[r.resource_id]||{}).is_shortage).length;
     document.getElementById('statShortage').textContent = Utils.formatNumber(shortageCount);
+}
+
+async function importInventoryCsv(file) {
+    if (!file) return;
+    try {
+        const res = await API.resources.importCsv(file);
+        const r = res.data;
+        Utils.toast(`Imported ${r.created}/${r.totalRows} inventory items${r.failed ? ` — ${r.failed} row(s) failed` : ''}`, r.failed ? 'warning' : 'success');
+        if (r.errors?.length) console.warn('Inventory CSV import errors:', r.errors);
+        loadResources();
+    } catch (err) {
+        Utils.toast(err.message || 'CSV import failed', 'error');
+    } finally {
+        document.getElementById('inventoryCsvInput').value = '';
+    }
 }
 
 let editingResourceId = null;

@@ -5,12 +5,13 @@
 
 const dashService = require('../../../services/dashboard.service');
 const response    = require('../../../utils/response');
+const { resolveBranchScope } = require('../../../utils/branchScope');
 
 const getData = async (req, res) => {
     const { period = 'month' } = req.query;
     const scope = {
         companyId: req.companyId,
-        branchId:  req.user.branch_id || null,
+        branchId:  resolveBranchScope({ branchId: req.user.branch_id, roleSlug: req.user.role_slug }, req.query),
     };
     const data = await dashService.getDashboardData(scope, period);
     return response.success(res, data, 'Dashboard data retrieved');
@@ -22,7 +23,7 @@ const getBookingsByDate = async (req, res) => {
 
     const scope = {
         companyId: req.companyId,
-        branchId:  req.user.branch_id || null,
+        branchId:  resolveBranchScope({ branchId: req.user.branch_id, roleSlug: req.user.role_slug }, req.query),
     };
     const bookings = await dashService.getBookingsByDate(scope, date);
     return response.success(res, bookings);
@@ -32,7 +33,7 @@ const getBookingsByDate = async (req, res) => {
 const getBookings = async (req, res) => {
     const scope = {
         companyId: req.companyId,
-        branchId:  req.user.branch_id || null,
+        branchId:  resolveBranchScope({ branchId: req.user.branch_id, roleSlug: req.user.role_slug }, req.query),
     };
 
     if (req.query.date) {

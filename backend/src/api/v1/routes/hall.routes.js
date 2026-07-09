@@ -26,6 +26,7 @@ router.patch('/:id',                 requirePermission(PERMISSIONS.HALLS_UPDATE)
 router.put('/:id',                   requirePermission(PERMISSIONS.HALLS_UPDATE), requireScope(PERMISSIONS.HALLS_UPDATE, resolveHallScope), ctrl.update);
 router.patch('/:id/activate',        requirePermission(PERMISSIONS.HALLS_UPDATE), requireScope(PERMISSIONS.HALLS_UPDATE, resolveHallScope), ctrl.activate);
 router.patch('/:id/deactivate',      requirePermission(PERMISSIONS.HALLS_UPDATE), requireScope(PERMISSIONS.HALLS_UPDATE, resolveHallScope), ctrl.deactivate);
+router.delete('/:id',                requirePermission(PERMISSIONS.HALLS_DELETE), requireScope(PERMISSIONS.HALLS_DELETE, resolveHallScope), ctrl.remove);
 router.get('/:id/availability',      requirePermission(PERMISSIONS.AVAILABILITY_READ),  ctrl.getAvailability);
 router.post('/:id/block',            requirePermission(PERMISSIONS.AVAILABILITY_MANAGE),ctrl.block);
 router.delete('/:id/block/:blockId', requirePermission(PERMISSIONS.AVAILABILITY_MANAGE),ctrl.unblock);

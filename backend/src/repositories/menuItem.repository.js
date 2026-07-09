@@ -85,4 +85,42 @@ const update = async (itemId, companyId, { itemName, description, basePrice, tax
     return findById(itemId, companyId);
 };
 
-module.exports = { list, findById, create, update, listCategories };
+/**
+ * New tenants otherwise start with zero MenuCategories (only company_id=1's
+ * demo categories are seeded by setup.js), which made the Master Menu's
+ * category dropdown empty and any item create() fail its category_id FK —
+ * every new company gets this same standard starter set.
+ */
+const DEFAULT_CATEGORIES = [
+    { name: 'Starters',      foodType: 'mixed', sortOrder: 1 },
+    { name: 'Main Course',   foodType: 'mixed', sortOrder: 2 },
+    { name: 'Desserts',      foodType: 'veg',   sortOrder: 3 },
+    { name: 'Beverages',     foodType: 'mixed', sortOrder: 4 },
+];
+
+const findOrCreateCategoryByName = async (companyId, categoryName) => {
+    const existing = await executeQuery(
+        `SELECT category_id FROM MenuCategories WHERE company_id = @companyId AND category_name = @categoryName`,
+        { companyId, categoryName }
+    );
+    if (existing[0]) return existing[0].category_id;
+    const inserted = await executeQuery(
+        `INSERT INTO MenuCategories (company_id, category_name, food_type, sort_order, is_active)
+         OUTPUT INSERTED.category_id AS id
+         VALUES (@companyId, @categoryName, 'mixed', 99, 1)`,
+        { companyId, categoryName }
+    );
+    return inserted[0].id;
+};
+
+const seedDefaultCategories = async (companyId) => {
+    for (const c of DEFAULT_CATEGORIES) {
+        await executeQuery(
+            `INSERT INTO MenuCategories (company_id, category_name, food_type, sort_order, is_active)
+             VALUES (@companyId, @name, @foodType, @sortOrder, 1)`,
+            { companyId, name: c.name, foodType: c.foodType, sortOrder: c.sortOrder }
+        );
+    }
+};
+
+module.exports = { list, findById, create, update, listCategories, seedDefaultCategories, findOrCreateCategoryByName };

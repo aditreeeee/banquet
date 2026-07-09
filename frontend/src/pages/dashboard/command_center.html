@@ -173,7 +173,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 .fu-3{animation-delay:.12s;opacity:0}.fu-4{animation-delay:.16s;opacity:0}
 
 /* Resource Matrix */
-.matrix-row{display:grid;grid-template-columns:140px 1fr;gap:0;align-items:stretch;border-bottom:1px solid var(--border-color)}
+.matrix-row{display:grid;grid-template-columns:172px 1fr;gap:0;align-items:stretch;border-bottom:1px solid var(--border-color)}
 .matrix-row:last-child{border-bottom:none}
 .matrix-hall-label{padding:10px 12px;font-size:12.5px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:6px;border-right:1px solid var(--border-color)}
 .matrix-track{position:relative;min-height:44px;display:grid}
@@ -244,6 +244,10 @@ const STATUS_COLOR = {
   confirmed: C.blue, tentative: C.amber, completed: C.green,
   advance_paid: C.blue, fully_paid: C.green, draft: C.slate,
   archived: C.slate, cancelled: '#94a3b8',
+};
+const STATUS_LABEL = {
+  draft:'Draft', tentative:'Tentative', confirmed:'Confirmed', advance_paid:'Advance Paid',
+  fully_paid:'Fully Paid', completed:'Completed', cancelled:'Cancelled', archived:'Archived', no_show:'No Show',
 };
 const STATUS_LEGEND = [
   { label:'Confirmed', color:C.blue }, { label:'Tentative', color:C.amber },
@@ -459,10 +463,6 @@ const QuickDrawer = ({ bookingId, onClose, onChanged }) => {
   const markDeposit     = () => doAction(()=>API.bookings.status(bookingId,'advance_paid'), 'Marked deposit received');
   const markFullyPaid   = () => doAction(()=>API.bookings.status(bookingId,'fully_paid'), 'Marked fully paid');
   const completeEvent   = () => doAction(()=>API.bookings.status(bookingId,'completed'), 'Event marked complete');
-  const cancelBooking   = async () => {
-    if (!(await (Utils.confirm ? Utils.confirm('Cancel this booking?', {title:'Cancel Booking'}) : Promise.resolve(true)))) return;
-    doAction(()=>API.bookings.cancel(bookingId,'Cancelled from Command Center'), 'Booking cancelled');
-  };
   const assignMyself = () => {
     const user = Auth.getUser();
     doAction(()=>API.bookings.assignStaff(bookingId, { userId:user.user_id, roleNote:'Assigned from Command Center' }), 'Staff assigned');
@@ -492,7 +492,7 @@ const QuickDrawer = ({ bookingId, onClose, onChanged }) => {
               <div className="drawer-row"><span className="k">Date</span><span>{Utils.formatDate(booking.event_date)}</span></div>
               <div className="drawer-row"><span className="k">Time</span><span>{timeHM(booking.event_time_start)} – {timeHM(booking.event_time_end)}</span></div>
               <div className="drawer-row"><span className="k">Guests</span><span>{booking.guest_count ?? '—'}</span></div>
-              <div className="drawer-row"><span className="k">Status</span><span>{Utils.statusBadge ? Utils.statusBadge(booking.status) : booking.status}</span></div>
+              <div className="drawer-row"><span className="k">Status</span>{Utils.statusBadge ? <span dangerouslySetInnerHTML={{__html: Utils.statusBadge(booking.status)}}/> : <span>{booking.status}</span>}</div>
               {booking.is_priority && <div className="drawer-row"><span className="k">Priority</span><span style={{color:C.gold,fontWeight:700}}>★ VIP Booking</span></div>}
             </div>
 
@@ -559,8 +559,7 @@ const QuickDrawer = ({ bookingId, onClose, onChanged }) => {
               <button className="qa-btn" disabled={busy} onClick={markDeposit}>Mark Deposit Received</button>
               <button className="qa-btn" disabled={busy} onClick={markFullyPaid}>Mark Fully Paid</button>
               <button className="qa-btn" disabled={busy} onClick={completeEvent}>Complete Event</button>
-              <button className="qa-btn danger" disabled={busy} onClick={cancelBooking}>Cancel Booking</button>
-              <a className="qa-btn" style={{textDecoration:'none',display:'inline-block'}} href={`../bookings/detail.html?id=${bookingId}`}>Open Full Detail →</a>
+              <a className="qa-btn" style={{textDecoration:'none',display:'inline-block'}} href={`../bookings/detail.html?id=${bookingId}`}>Open Full Booking Details →</a>
             </div>
           </div>
         )}
@@ -570,8 +569,21 @@ const QuickDrawer = ({ bookingId, onClose, onChanged }) => {
 };
 
 /* ── Resource Matrix (left) ── */
+const mondayOf = (dateStr) => {
+  const dt = new Date(dateStr+'T00:00:00');
+  const shift = dt.getDay()===0 ? -6 : 1-dt.getDay();
+  dt.setDate(dt.getDate()+shift);
+  return dt.toISOString().slice(0,10);
+};
+
 const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDate, setAnchorDate, onSelectBooking, onHoverBooking, onMoveBooking }) => {
-  const days = granularity==='hourly' ? [anchorDate] : Array.from({length:7},(_,i)=>addDays(anchorDate,i-3));
+  // Three distinct aggregation levels: hourly = single day / 24 hour columns,
+  // daily = 7 individual day columns (unchanged), weekly = 6 week columns,
+  // each aggregating every booking that falls in that Mon–Sun span rather
+  // than rendering one bar per event (a week column is too narrow for that).
+  const days = granularity==='hourly' ? [anchorDate]
+    : granularity==='weekly' ? Array.from({length:6},(_,i)=>addDays(mondayOf(anchorDate),(i-2)*7))
+    : Array.from({length:7},(_,i)=>addDays(anchorDate,i-3));
   const cols = granularity==='hourly' ? 24 : days.length;
 
   const barsForHall = (hallId) => {
@@ -641,9 +653,9 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
           <p style={{fontSize:11.5,color:'var(--text-muted)',marginTop:2}}>Halls × timeline — spot free slots and conflicts at a glance</p>
         </div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
-          <button className="fpill" onClick={()=>setAnchorDate(addDays(anchorDate,granularity==='hourly'?-1:-7))}>‹</button>
+          <button className="fpill" onClick={()=>setAnchorDate(addDays(anchorDate,granularity==='hourly'?-1:granularity==='weekly'?-7*6:-7))}>‹</button>
           <input type="date" value={anchorDate} onChange={e=>setAnchorDate(e.target.value)} style={{fontSize:12,padding:'5px 8px',borderRadius:8,border:'1px solid var(--border-color)',background:'var(--surface)',color:'var(--text-primary)'}}/>
-          <button className="fpill" onClick={()=>setAnchorDate(addDays(anchorDate,granularity==='hourly'?1:7))}>›</button>
+          <button className="fpill" onClick={()=>setAnchorDate(addDays(anchorDate,granularity==='hourly'?1:granularity==='weekly'?7*6:7))}>›</button>
           {['hourly','daily','weekly'].map(g=>(
             <button key={g} className={`fpill${granularity===g?' on':''}`} onClick={()=>setGranularity(g)} style={{textTransform:'capitalize'}}>{g}</button>
           ))}
@@ -656,17 +668,39 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
         <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`}}>
           {granularity==='hourly'
             ? Array.from({length:24},(_,h)=>(<div key={h} style={{fontSize:9.5,color:'var(--text-muted)',textAlign:'center',padding:'6px 0',borderRight:'1px solid var(--border-color)'}}>{h}:00</div>))
+            : granularity==='weekly'
+            ? days.map(d=>{ const isCur = d===mondayOf(anchorDate); const end = addDays(d,6); return (
+                <div key={d} style={{fontSize:10,color:isCur?C.gold:'var(--text-muted)',fontWeight:isCur?700:500,textAlign:'center',padding:'6px 0',borderRight:'1px solid var(--border-color)'}}>
+                  {new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}–{new Date(end+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
+                </div>);})
             : days.map(d=>(<div key={d} style={{fontSize:10.5,color:d===anchorDate?C.gold:'var(--text-muted)',fontWeight:d===anchorDate?700:500,textAlign:'center',padding:'6px 0',borderRight:'1px solid var(--border-color)'}}>{new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric'})}</div>))
           }
         </div>
       </div>
 
-      <div className="scroll-y" style={{maxHeight:420}}>
+      {/* Cap grows with the number of halls (each row is ~78px with the
+          capacity/occupancy/status info) so a handful of halls shows fully
+          without a scrollbar, while a large roster still caps out and
+          scrolls rather than pushing the rest of the dashboard off-screen. */}
+      <div className="scroll-y" style={{maxHeight:Math.min(640, Math.max(160, halls.length*78))}}>
         {halls.map(h=>{
           const hallBookings = barsForHall(h.hall_id);
+          const seatedCap    = h.capacity_seated || h.capacity || 0;
+          const anchorBookings = hallBookings.filter(b=>b.event_date_iso===anchorDate);
+          const occupancy    = anchorBookings.reduce((s,b)=>s+(b.guest_count||0),0);
+          const available    = Math.max(0, seatedCap - occupancy);
+          const bookingStatus = h.is_under_maintenance ? 'Maintenance'
+            : !h.is_active ? 'Inactive'
+            : anchorBookings.length ? 'Booked' : 'Available';
+          const statusColor = { Maintenance:C.red, Inactive:C.slate, Booked:C.amber, Available:C.green }[bookingStatus];
           return (
             <div className="matrix-row" key={h.hall_id}>
-              <div className="matrix-hall-label" title={h.hall_name}>{h.hall_name}</div>
+              <div className="matrix-hall-label" style={{flexDirection:'column',alignItems:'flex-start',gap:2,lineHeight:1.3}} title={h.hall_name}>
+                <span style={{fontWeight:700}}>{h.hall_name}</span>
+                <span style={{fontSize:9.5,color:'var(--text-muted)'}}>Seated {seatedCap} · Standing {h.capacity_standing||0}</span>
+                <span style={{fontSize:9.5,color:'var(--text-muted)'}}>Occ {occupancy} · Free {available}</span>
+                <span style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:9999,color:'white',background:statusColor}}>{bookingStatus}</span>
+              </div>
               <div className="matrix-track" style={{gridTemplateColumns:`repeat(${cols},1fr)`,position:'relative'}}>
                 <div className="matrix-grid-lines" style={{gridTemplateColumns:`repeat(${cols},1fr)`}}>
                   {Array.from({length:cols},(_,i)=><div key={i}/>)}
@@ -677,7 +711,7 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
                     availability/capacity re-check (reschedule()), so an
                     imprecise drop just surfaces that as a toast, never a
                     silent double-booking. */}
-                {Array.from({length:cols},(_,i)=>{
+                {granularity!=='weekly' && Array.from({length:cols},(_,i)=>{
                   const key = `${h.hall_id}:${i}`;
                   return (
                     <div key={`dz${i}`}
@@ -726,6 +760,23 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
                               title={`Cleanup/cool-off buffer for ${b.event_name||b.booking_ref}`}/>
                           )}
                         </React.Fragment>
+                      );
+                    })
+                  : granularity==='weekly'
+                  ? days.map((weekStart,i)=>{
+                      const weekEnd = addDays(weekStart,6);
+                      const weekBookings = hallBookings.filter(b=>b.event_date_iso>=weekStart && b.event_date_iso<=weekEnd);
+                      if (!weekBookings.length) return <div key={weekStart} style={{gridColumn:`${i+1} / ${i+2}`,pointerEvents:'none'}}/>;
+                      const guestTotal = weekBookings.reduce((s,b)=>s+(b.guest_count||0),0);
+                      return (
+                        <div key={weekStart} style={{gridColumn:`${i+1} / ${i+2}`,display:'flex',alignItems:'center',justifyContent:'center',padding:'6px 4px'}}
+                          title={`${weekBookings.length} booking(s), ${guestTotal} guests — click to view that week in Daily view`}
+                          onClick={()=>{ setAnchorDate(weekStart); setGranularity('daily'); }}>
+                          <div style={{cursor:'pointer',borderRadius:9999,padding:'4px 12px',fontSize:11,fontWeight:700,color:'white',
+                            background: weekBookings.some(b=>b.status==='cancelled') ? C.slate : STATUS_COLOR.confirmed}}>
+                            {weekBookings.length} booking{weekBookings.length===1?'':'s'}
+                          </div>
+                        </div>
                       );
                     })
                   : days.map((d,i)=>{
@@ -806,7 +857,7 @@ const ContextPanel = ({ anchorDate, bookings, halls, hoveredBooking, onSelectBoo
           <div style={{fontSize:11.5,color:'var(--text-secondary)',lineHeight:1.6}}>
             {hoveredBooking.customer_name}<br/>
             {hoveredBooking.hall_name} · {timeHM(hoveredBooking.event_time_start)}–{timeHM(hoveredBooking.event_time_end)}<br/>
-            {hoveredBooking.guest_count||0} guests · {hoveredBooking.status}
+            {hoveredBooking.guest_count||0} guests · {STATUS_LABEL[hoveredBooking.status] || hoveredBooking.status}
           </div>
         </div>
       )}
@@ -953,7 +1004,7 @@ const CommandCenterView = () => {
         <KPICard IconEl={()=>I.clipboardList({width:18,height:18})} color={C.amber} label="Catering" value={cateringCount} sub="Active packages" onClick={()=>goOrToast('../catering/menu.html')}/>
         <KPICard IconEl={()=>I.users({width:18,height:18})} color={C.purple} label="Total Customers" value={customerCount} sub="Manage customers" onClick={()=>goOrToast('../customers/index.html')}/>
         <KPICard IconEl={()=>I.trendingUp({width:18,height:18})} color={C.blue} label="Sales Pipeline" value={openLeadsCount} sub="Open leads & quotations" onClick={()=>goOrToast('../leads/index.html')}/>
-        <KPICard IconEl={()=>I.home({width:18,height:18})} color={C.slate} label="Maintenance" value="Halls" sub="Blocked dates & upkeep" onClick={()=>goOrToast('../halls/index.html')}/>
+        <KPICard IconEl={()=>I.home({width:18,height:18})} color={C.slate} label="Total Halls" value={halls.length} sub="Across all venues" onClick={()=>goOrToast('../halls/index.html')}/>
       </div>
 
       <div className="fu fu-3 split-view" style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:16,alignItems:'start'}}>

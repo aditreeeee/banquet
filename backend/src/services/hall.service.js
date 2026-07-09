@@ -8,14 +8,15 @@ const banquetRepo = require('../repositories/banquet.repository');
 const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+const { resolveBranchScope, resolveCompanyScope } = require('../utils/branchScope');
 
 const BLOCK_TYPES = ['maintenance', 'vip_hold', 'emergency_closure', 'blackout'];
 
 const getAll = async (query, actor) => {
     const p = parsePagination(query, ['hall_name', 'capacity', 'base_price', 'created_at']);
     const { rows, total } = await repo.findAll({
-        companyId:  actor.companyId,
-        branchId:   actor.branchId || query.branch_id || null,
+        companyId:  resolveCompanyScope(actor),
+        branchId:   resolveBranchScope(actor, query),
         banquetId:  query.banquet_id ? parseInt(query.banquet_id, 10) : null,
         minCapacity: query.min_capacity ? parseInt(query.min_capacity, 10) : null,
         maxCapacity: query.max_capacity ? parseInt(query.max_capacity, 10) : null,
@@ -54,7 +55,7 @@ const normalize = (data) => ({
     hasWashroom:         data.hasWashroom        ?? data.has_washroom        ?? null,
     hasGreenRoom:        data.hasGreenRoom       ?? data.has_green_room      ?? null,
     hasBridalRoom:       data.hasBridalRoom      ?? data.has_bridal_room     ?? null,
-    floorNumber:         data.floorNumber        || data.floor_number         || null,
+    floorNumber:         data.floorNumber        ?? data.floor_number         ?? null,
     areaSqft:            data.areaSqft           || data.area_sqft            || null,
     basePrice:           data.basePrice          || data.base_price           || 0,
     weekendSurchargePct: data.weekendSurchargePct|| data.weekend_multiplier   || 0,
@@ -80,6 +81,38 @@ const setActive = async (id, isActive, actor) => {
     const existing = await repo.findById(id, actor.companyId);
     if (!existing) throw new NotFoundError('Hall');
     await repo.toggleActive(id, actor.companyId, isActive);
+};
+
+/**
+ * Soft-delete — distinct from deactivate. The row, its audit history, and
+ * every FK reference (Bookings, HallBlockedDates, etc.) are preserved; the
+ * hall is just hidden from every normal list/detail query going forward
+ * (see hall.repository.js's deleted_at IS NULL filters). Blocked while the
+ * hall still has any non-terminal booking — those must be resolved
+ * (completed/cancelled) or reassigned to another hall first.
+ */
+const remove = async (id, actor) => {
+    const existing = await repo.findById(id, actor.companyId);
+    if (!existing) throw new NotFoundError('Hall');
+
+    const activeBookings = await repo.countActiveBookings(id, actor.companyId);
+    if (activeBookings > 0) {
+        throw new ValidationError(
+            `Cannot delete hall "${existing.hall_name}" — it has ${activeBookings} active booking(s). Cancel/complete them or reassign to another hall first.`
+        );
+    }
+
+    await repo.softDelete(id, actor.companyId);
+
+    await auditLogRepo.log({
+        companyId:  actor.companyId,
+        userId:     actor.userId,
+        action:     'hall.deleted',
+        entityType: 'hall',
+        entityId:   id,
+        description: `Hall ${existing.hall_name} deleted`,
+        oldValues:  { hall_name: existing.hall_name },
+    });
 };
 
 const getAvailability = async (id, query, actor) => {
@@ -146,4 +179,4 @@ const unblock = async (id, blockId, actor) => {
     });
 };
 
-module.exports = { getAll, getById, create, update, setActive, getAvailability, block, unblock };
+module.exports = { getAll, getById, create, update, setActive, remove, getAvailability, block, unblock };

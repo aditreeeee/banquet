@@ -15,15 +15,20 @@ const BASE_SELECT = `
            h.is_active, h.is_under_maintenance, h.maintenance_note, h.image_url, h.created_at,
            h.company_id, COALESCE(h.branch_id, b.branch_id) AS branch_id,
            b.banquet_name, b.city,
-           (SELECT COUNT(*) FROM HallAmenities ha WHERE ha.hall_id = h.hall_id) AS amenities_count
+           co.company_name,
+           (SELECT COUNT(*) FROM HallAmenities ha WHERE ha.hall_id = h.hall_id) AS amenities_count,
+           (SELECT COUNT(*) FROM Bookings bk WHERE bk.hall_id = h.hall_id AND bk.event_date = CAST(GETDATE() AS DATE)
+              AND bk.status NOT IN ('cancelled','draft')) AS today_bookings
     FROM Halls h
     JOIN Banquets b ON b.banquet_id = h.banquet_id
+    LEFT JOIN Companies co ON co.company_id = h.company_id
 `;
 
 const findById = async (hallId, companyId = null) => {
     const rows = await executeQuery(
         `${BASE_SELECT}
          WHERE h.hall_id = @id
+           AND h.deleted_at IS NULL
            AND (@companyId IS NULL OR h.company_id = @companyId)`,
         { id: hallId, companyId: companyId || null }
     );
@@ -32,7 +37,8 @@ const findById = async (hallId, companyId = null) => {
 
 const findAll = async ({ companyId, branchId, banquetId, minCapacity, maxCapacity, hallType, search, isActive, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'h.company_id = @companyId',
+        '(@companyId IS NULL OR h.company_id = @companyId)',
+        'h.deleted_at IS NULL',
         '(@branchId  IS NULL OR h.branch_id  = @branchId)',
         '(@banquetId IS NULL OR h.banquet_id = @banquetId)',
         '(@minCap    IS NULL OR h.capacity   >= @minCap)',
@@ -111,7 +117,7 @@ const create = async (data) => {
             hasWashroom:     !!data.hasWashroom,
             hasGreenRoom:    !!data.hasGreenRoom,
             hasBridalRoom:   !!data.hasBridalRoom,
-            floor:     data.floorNumber || null,
+            floor:     data.floorNumber != null ? data.floorNumber : 0,
             area:      data.areaSqft    || null,
             basePrice: data.basePrice   || 0,
             surcharge: data.weekendSurchargePct || 0,
@@ -170,7 +176,7 @@ const update = async (hallId, companyId, data) => {
             hasWashroom:     data.hasWashroom    != null ? !!data.hasWashroom    : null,
             hasGreenRoom:    data.hasGreenRoom   != null ? !!data.hasGreenRoom   : null,
             hasBridalRoom:   data.hasBridalRoom  != null ? !!data.hasBridalRoom  : null,
-            floor:     data.floorNumber || null,
+            floor:     data.floorNumber != null ? data.floorNumber : null,
             area:      data.areaSqft  || null,
             basePrice: data.basePrice  || null,
             surcharge: data.weekendSurchargePct || null,
@@ -186,6 +192,29 @@ const toggleActive = async (hallId, companyId, isActive) => {
         `UPDATE Halls SET is_active = @isActive, updated_at = GETUTCDATE()
          WHERE hall_id = @id AND company_id = @companyId`,
         { id: hallId, companyId, isActive }
+    );
+};
+
+/**
+ * Count non-terminal bookings against this hall — a hall with any active
+ * booking can't be deleted (only halls whose bookings are all
+ * cancelled/completed/archived, or that have none at all, are eligible).
+ */
+const countActiveBookings = async (hallId, companyId) => {
+    const rows = await executeQuery(
+        `SELECT COUNT(*) AS cnt FROM Bookings
+         WHERE hall_id = @hallId AND company_id = @companyId
+           AND status NOT IN ('cancelled', 'completed', 'archived')`,
+        { hallId, companyId }
+    );
+    return rows[0].cnt;
+};
+
+const softDelete = async (hallId, companyId) => {
+    await executeQuery(
+        `UPDATE Halls SET deleted_at = GETUTCDATE(), updated_at = GETUTCDATE()
+         WHERE hall_id = @id AND company_id = @companyId AND deleted_at IS NULL`,
+        { id: hallId, companyId }
     );
 };
 
@@ -235,4 +264,4 @@ const unblockDate = async (blockId, hallId, companyId = null) => {
     );
 };
 
-module.exports = { findById, findAll, create, update, toggleActive, getBlockedDates, blockDate, unblockDate };
+module.exports = { findById, findAll, create, update, toggleActive, countActiveBookings, softDelete, getBlockedDates, blockDate, unblockDate };

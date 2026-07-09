@@ -285,13 +285,14 @@ function renderHalls(halls) {
             </div>
             <div class="hall-tile-body">
                 <div class="hall-tile-name">${h.hall_name}</div>
-                <div class="hall-tile-venue">${h.banquet_name || ''}</div>
+                <div class="hall-tile-venue">${h.banquet_name || ''}${Auth.isSuperAdmin() && h.company_name ? ` · <span style="color:var(--brand-primary);font-weight:600">${h.company_name}</span>` : ''}</div>
                 <div class="hall-chips">
                     <span class="chip"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path></svg> ${h.capacity_seated} seated</span>
                     <span class="chip">${Utils.titleCase(h.hall_type)}</span>
                     ${h.has_ac ? '<span class="chip"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> AC</span>' : ''}
                     ${h.has_stage ? '<span class="chip"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M8 13a4 4 0 0 0 8 0"></path><path d="M12 17v4"></path></svg> Stage</span>' : ''}
                     ${h.has_kitchen ? '<span class="chip"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> Kitchen</span>' : ''}
+                    ${h.today_bookings > 0 ? `<span class="chip" style="background:var(--color-warning-soft,#fef3c7);color:#92400e">${h.today_bookings} booking${h.today_bookings > 1 ? 's' : ''} today</span>` : '<span class="chip" style="color:var(--color-success)">Free today</span>'}
                 </div>
                 <div class="hall-tile-footer">
                     <div class="hall-price-tag">${Utils.formatCurrency(h.base_price)}<span style="font-size:11px;font-weight:400;color:var(--text-muted)">/day</span></div>
@@ -299,6 +300,7 @@ function renderHalls(halls) {
                         <button class="btn-icon" title="Edit" onclick="openHallModal(${JSON.stringify(h).replace(/"/g,'&quot;')})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
                         <a href="../bookings/create.html?hall=${h.hall_id}" class="btn-icon" title="Book"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 9h18"></path></svg></a>
                         <button class="btn-icon" data-require-perm="halls:update" title="${h.is_active ? 'Deactivate' : 'Activate'}" style="color:${h.is_active ? 'var(--color-danger)' : 'var(--color-success)'}" onclick="toggleHallStatus(${h.hall_id}, ${h.is_active})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></button>
+                        <button class="btn-icon" data-require-perm="halls:delete" title="Delete" style="color:var(--color-danger)" onclick="deleteHall(${h.hall_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="6" x2="21" y2="6"></line><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
                     </div>
                 </div>
             </div>
@@ -312,7 +314,7 @@ function renderHalls(halls) {
                 <tbody>
                 ${halls.map(h => `<tr data-hall-id="${h.hall_id}">
                     <td><div style="font-weight:600">${h.hall_name}</div><div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${h.hall_code}</div></td>
-                    <td>${h.banquet_name || '—'}</td>
+                    <td>${h.banquet_name || '—'}${Auth.isSuperAdmin() && h.company_name ? `<div style="font-size:11px;color:var(--brand-primary);font-weight:600">${h.company_name}</div>` : ''}</td>
                     <td>${Utils.titleCase(h.hall_type)}</td>
                     <td>${Utils.formatNumber(h.capacity_seated)}</td>
                     <td style="font-weight:600">${Utils.formatCurrency(h.base_price)}</td>
@@ -324,6 +326,7 @@ function renderHalls(halls) {
                     <td><div style="display:flex;gap:4px">
                         <button class="btn-icon" onclick="openHallModal(${JSON.stringify(h).replace(/"/g,'&quot;')})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
                         <button class="btn-icon" data-require-perm="halls:update" title="${h.is_active ? 'Deactivate' : 'Activate'}" style="color:${h.is_active ? 'var(--color-danger)' : 'var(--color-success)'}" onclick="toggleHallStatus(${h.hall_id}, ${h.is_active})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></button>
+                        <button class="btn-icon" data-require-perm="halls:delete" title="Delete" style="color:var(--color-danger)" onclick="deleteHall(${h.hall_id})"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="6" x2="21" y2="6"></line><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
                     </div></td>
                 </tr>`).join('')}
                 </tbody>
@@ -346,6 +349,21 @@ async function toggleHallStatus(hallId, isActive) {
         loadHalls();
     } catch (err) {
         Utils.toast(err.message || `Failed to ${action} hall`, 'error');
+    }
+}
+
+async function deleteHall(hallId) {
+    const ok = await Utils.confirm(
+        'Permanently delete this hall? This cannot be undone from here. It will be blocked if the hall has any active bookings — cancel/complete them or reassign first.',
+        { title: 'Delete Hall', danger: true }
+    );
+    if (!ok) return;
+    try {
+        await API.halls.delete(hallId);
+        Utils.toast('Hall deleted', 'success');
+        loadHalls();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to delete hall', 'error');
     }
 }
 

@@ -102,6 +102,25 @@ const getBookedDates = async ({ hallId, fromDate, toDate, companyId }) => {
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
 /**
+ * Reject a hall/date-range combination that falls under a maintenance/blocked
+ * window (HallBlockedDates) — shared by create() and reschedule() so a
+ * drag-and-drop hall move can't bypass the same maintenance check a fresh
+ * booking already enforces.
+ */
+const assertHallNotBlocked = async (tx, hallId, eventDate, eventEndDate) => {
+    const blockRows = await tx.execute(
+        `SELECT TOP 1 block_type, reason FROM HallBlockedDates
+         WHERE hall_id = @hallId AND block_type <> 'vip_hold'
+           AND blocked_date BETWEEN @eventDate AND @eventEndDate`,
+        { hallId, eventDate: new Date(eventDate), eventEndDate: new Date(eventEndDate || eventDate) }
+    );
+    if (blockRows.length > 0) {
+        const { ConflictError } = require('../api/v1/middleware/errorHandler');
+        throw new ConflictError(`Hall is blocked (${blockRows[0].block_type}): ${blockRows[0].reason || 'no reason given'}`);
+    }
+};
+
+/**
  * Create a booking atomically — checks availability inside same transaction
  */
 const create = async (data) => {
@@ -124,16 +143,7 @@ const create = async (data) => {
             throw new ConflictError('Hall is not available for the selected date and time');
         }
 
-        const blockRows = await tx.execute(
-            `SELECT TOP 1 block_type, reason FROM HallBlockedDates
-             WHERE hall_id = @hallId AND block_type <> 'vip_hold'
-               AND blocked_date BETWEEN @eventDate AND @eventEndDate`,
-            { hallId: data.hallId, eventDate: new Date(data.eventDate), eventEndDate: new Date(data.eventEndDate || data.eventDate) }
-        );
-        if (blockRows.length > 0) {
-            const { ConflictError } = require('../api/v1/middleware/errorHandler');
-            throw new ConflictError(`Hall is blocked (${blockRows[0].block_type}): ${blockRows[0].reason || 'no reason given'}`);
-        }
+        await assertHallNotBlocked(tx, data.hallId, data.eventDate, data.eventEndDate);
 
         const dateStr   = new Date(data.eventDate).toISOString().slice(0, 10).replace(/-/g, '');
         const bookingRef = `BKG-${dateStr}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
@@ -147,7 +157,9 @@ const create = async (data) => {
                 notes, status, is_priority, priority_surcharge, parent_booking_id,
                 theme, decoration_notes, staff_count, event_end_date,
                 setup_minutes, cleanup_minutes, cooloff_minutes, cleanup_charge, late_exit_charge,
+                setup_charge, decoration_charge, cleaning_charge, extended_usage_charge, cooloff_charge,
                 catering_package_id, catering_price_per_plate, catering_tax_amount,
+                package_id, package_overtime_rate, package_max_extension_hours, package_base_price,
                 created_by, created_at, updated_at
             )
             OUTPUT INSERTED.booking_id AS id
@@ -159,7 +171,9 @@ const create = async (data) => {
                 @notes, @status, @isPriority, @prioritySurcharge, @parentBookingId,
                 @theme, @decorationNotes, @staffCount, @eventEndDate,
                 @setupMinutes, @cleanupMinutes, @cooloffMinutes, @cleanupCharge, @lateExitCharge,
+                @setupCharge, @decorationCharge, @cleaningCharge, @extendedUsageCharge, @cooloffCharge,
                 @cateringPackageId, @cateringPricePerPlate, @cateringTaxAmount,
+                @packageId, @packageOvertimeRate, @packageMaxExtensionHours, @packageBasePrice,
                 @createdBy, GETUTCDATE(), GETUTCDATE()
             )`,
             {
@@ -191,9 +205,18 @@ const create = async (data) => {
                 cooloffMinutes:     data.cooloffMinutes  || 0,
                 cleanupCharge:      data.cleanupCharge   || 0,
                 lateExitCharge:     data.lateExitCharge  || 0,
+                setupCharge:        data.setupCharge         || 0,
+                decorationCharge:   data.decorationCharge    || 0,
+                cleaningCharge:     data.cleaningCharge      || 0,
+                extendedUsageCharge: data.extendedUsageCharge || 0,
+                cooloffCharge:      data.cooloffCharge       || 0,
                 cateringPackageId:     data.cateringPackageId     || null,
                 cateringPricePerPlate: data.cateringPricePerPlate || null,
                 cateringTaxAmount:     data.cateringTaxAmount     || null,
+                packageId:              data.packageId              || null,
+                packageOvertimeRate:    data.packageOvertimeRate    || null,
+                packageMaxExtensionHours: data.packageMaxExtensionHours || null,
+                packageBasePrice:       data.packageBasePrice       || null,
                 createdBy:      data.createdBy,
             }
         );
@@ -335,9 +358,18 @@ const update = async (bookingId, companyId, data) => {
              cooloff_minutes   = ISNULL(@cooloffMinutes,   cooloff_minutes),
              cleanup_charge    = ISNULL(@cleanupCharge,    cleanup_charge),
              late_exit_charge  = ISNULL(@lateExitCharge,   late_exit_charge),
+             setup_charge          = ISNULL(@setupCharge,         setup_charge),
+             decoration_charge     = ISNULL(@decorationCharge,    decoration_charge),
+             cleaning_charge       = ISNULL(@cleaningCharge,      cleaning_charge),
+             extended_usage_charge = ISNULL(@extendedUsageCharge, extended_usage_charge),
+             cooloff_charge        = ISNULL(@cooloffCharge,       cooloff_charge),
              catering_package_id      = ISNULL(@cateringPackageId,     catering_package_id),
              catering_price_per_plate = ISNULL(@cateringPricePerPlate, catering_price_per_plate),
              catering_tax_amount      = ISNULL(@cateringTaxAmount,     catering_tax_amount),
+             package_id                  = CASE WHEN @packageIdProvided = 1 THEN @packageId                 ELSE package_id                  END,
+             package_overtime_rate       = CASE WHEN @packageIdProvided = 1 THEN @packageOvertimeRate       ELSE package_overtime_rate        END,
+             package_max_extension_hours = CASE WHEN @packageIdProvided = 1 THEN @packageMaxExtensionHours  ELSE package_max_extension_hours  END,
+             package_base_price          = CASE WHEN @packageIdProvided = 1 THEN @packageBasePrice          ELSE package_base_price           END,
              updated_at        = GETUTCDATE()
          WHERE booking_id = @bookingId AND company_id = @companyId`,
         {
@@ -356,9 +388,19 @@ const update = async (bookingId, companyId, data) => {
             cooloffMinutes:    data.cooloffMinutes != null ? data.cooloffMinutes : null,
             cleanupCharge:     data.cleanupCharge  != null ? data.cleanupCharge  : null,
             lateExitCharge:    data.lateExitCharge != null ? data.lateExitCharge : null,
+            setupCharge:         data.setupCharge         != null ? data.setupCharge         : null,
+            decorationCharge:    data.decorationCharge    != null ? data.decorationCharge    : null,
+            cleaningCharge:      data.cleaningCharge      != null ? data.cleaningCharge      : null,
+            extendedUsageCharge: data.extendedUsageCharge != null ? data.extendedUsageCharge : null,
+            cooloffCharge:       data.cooloffCharge       != null ? data.cooloffCharge        : null,
             cateringPackageId:     data.cateringPackageId     != null ? data.cateringPackageId     : null,
             cateringPricePerPlate: data.cateringPricePerPlate != null ? data.cateringPricePerPlate : null,
             cateringTaxAmount:     data.cateringTaxAmount     != null ? data.cateringTaxAmount     : null,
+            packageIdProvided:         data.packageIdProvided ? 1 : 0,
+            packageId:                 data.packageId                 != null ? data.packageId                 : null,
+            packageOvertimeRate:       data.packageOvertimeRate       != null ? data.packageOvertimeRate       : null,
+            packageMaxExtensionHours:  data.packageMaxExtensionHours  != null ? data.packageMaxExtensionHours  : null,
+            packageBasePrice:          data.packageBasePrice          != null ? data.packageBasePrice          : null,
         }
     );
     return findById(bookingId, companyId);
@@ -378,18 +420,28 @@ const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eve
         // existing hall when no move is requested (plain date/time reschedule).
         const targetHallId = hallId || booking?.hall_id;
 
-        if (hallId && hallId !== booking?.hall_id) {
-            const targetHall = await hallRepo.findById(hallId, companyId);
-            if (!targetHall) {
-                const { NotFoundError } = require('../api/v1/middleware/errorHandler');
-                throw new NotFoundError('Hall');
-            }
-            if (booking?.guest_count > (targetHall.capacity_seated || targetHall.capacity || 0)) {
-                const { ValidationError } = require('../api/v1/middleware/errorHandler');
-                throw new ValidationError(
-                    `Target hall capacity (${targetHall.capacity_seated || targetHall.capacity}) is below the booking's guest count (${booking.guest_count})`
-                );
-            }
+        // Re-validate the target hall on every reschedule (not just hall
+        // moves) — the hall the booking already lives in may since have been
+        // deactivated or put under maintenance, and that shouldn't be
+        // reachable again just by dragging the same booking to a new date.
+        const targetHall = await hallRepo.findById(targetHallId, companyId);
+        if (!targetHall) {
+            const { NotFoundError } = require('../api/v1/middleware/errorHandler');
+            throw new NotFoundError('Hall');
+        }
+        if (!targetHall.is_active) {
+            const { ValidationError } = require('../api/v1/middleware/errorHandler');
+            throw new ValidationError('Target hall is not accepting bookings (inactive)');
+        }
+        if (targetHall.is_under_maintenance) {
+            const { ValidationError } = require('../api/v1/middleware/errorHandler');
+            throw new ValidationError(`Target hall is under maintenance${targetHall.maintenance_note ? `: ${targetHall.maintenance_note}` : ''}`);
+        }
+        if (booking?.guest_count > (targetHall.capacity_seated || targetHall.capacity || 0)) {
+            const { ValidationError } = require('../api/v1/middleware/errorHandler');
+            throw new ValidationError(
+                `Target hall capacity (${targetHall.capacity_seated || targetHall.capacity}) is below the booking's guest count (${booking.guest_count})`
+            );
         }
 
         const isAvail  = await checkAvailabilityInTx(tx, {
@@ -408,6 +460,8 @@ const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eve
             const { ConflictError } = require('../api/v1/middleware/errorHandler');
             throw new ConflictError('Hall is not available for the new date/time');
         }
+
+        await assertHallNotBlocked(tx, targetHallId, eventDate, resolvedEndDate);
 
         await tx.execute(
             `UPDATE Bookings
@@ -428,6 +482,23 @@ const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eve
     });
 
     return findById(bookingId, companyId);
+};
+
+/**
+ * Persist a freshly recalculated total_amount — see
+ * booking.service.js:recalculateBookingTotal for what feeds into this. Kept
+ * as its own narrow statement (not folded into update()) so callers that
+ * only need to sync the total after a resource/catering/reschedule change
+ * don't have to pass through update()'s full ISNULL-guarded field set.
+ */
+const updateTotalAmount = async (bookingId, companyId, totalAmount) => {
+    await executeQuery(
+        `UPDATE Bookings
+         SET total_amount = @totalAmount,
+             updated_at   = GETUTCDATE()
+         WHERE booking_id = @bookingId AND company_id = @companyId`,
+        { bookingId, companyId, totalAmount }
+    );
 };
 
 /**
@@ -509,6 +580,7 @@ module.exports = {
     findAll,
     findChildren,
     update,
+    updateTotalAmount,
     reschedule,
     updateStatus,
     cancel,

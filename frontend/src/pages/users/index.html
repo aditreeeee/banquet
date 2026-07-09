@@ -80,7 +80,7 @@
             <div class="table-responsive">
                 <table class="table">
                     <thead>
-                        <tr><th>User</th><th>Role</th><th>Branch</th><th>Last Login</th><th>Status</th><th>2FA</th><th style="width:120px">Actions</th></tr>
+                        <tr><th>User</th><th id="companyColHeader" style="display:none">Company</th><th>Role</th><th>Branch</th><th>Last Login</th><th>Status</th><th>2FA</th><th style="width:120px">Actions</th></tr>
                     </thead>
                     <tbody id="usersBody">
                         <tr><td colspan="7" class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></td></tr>
@@ -187,7 +187,9 @@ async function loadUsers(page = 1) {
 
 function renderUsers(users) {
     const tbody = document.getElementById('usersBody');
-    if (!users.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state" style="padding:24px">No users found</div></td></tr>'; return; }
+    const showCompany = Auth.isSuperAdmin();
+    document.getElementById('companyColHeader').style.display = showCompany ? '' : 'none';
+    if (!users.length) { tbody.innerHTML = `<tr><td colspan="${showCompany?8:7}"><div class="empty-state" style="padding:24px">No users found</div></td></tr>`; return; }
     const me = Auth.getUser()?.user_id;
     tbody.innerHTML = users.map(u => `
     <tr>
@@ -200,6 +202,7 @@ function renderUsers(users) {
                 </div>
             </div>
         </td>
+        ${showCompany ? `<td style="font-size:12px"><span title="company_id: ${u.company_id}">${u.company_name || '—'}</span> <span style="color:var(--text-muted);font-size:10.5px">#${u.company_id}</span></td>` : ''}
         <td><span style="background:${ROLE_COLORS[u.role_name]}20;color:${ROLE_COLORS[u.role_name]};padding:3px 8px;border-radius:20px;font-size:11.5px;font-weight:600">${u.role_name}</span></td>
         <td style="font-size:12.5px">${u.branch_name || '—'}</td>
         <td style="font-size:12px;color:var(--text-muted)">${u.last_login || '—'}</td>
@@ -210,6 +213,7 @@ function renderUsers(users) {
                 <button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px" onclick="editUser(${u.user_id})" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
                 ${u.status === 'active' ? `<button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px;color:var(--color-warning)" onclick="toggleStatus(${u.user_id},'inactive')" title="Deactivate"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path></svg></button>` : `<button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px;color:var(--color-success)" onclick="toggleStatus(${u.user_id},'active')" title="Activate"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0"></path></svg></button>`}
                 <button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px" onclick="resetPassword(${u.user_id}, '${u.email}')" title="Reset Password"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg></button>
+                <button class="btn-ghost" data-require-perm="users:delete" style="padding:4px 8px;font-size:12px;color:var(--color-danger)" onclick="deleteUser(${u.user_id}, '${u.email}')" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="6" x2="21" y2="6"></line><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
             </div>
         </td>
     </tr>`).join('');
@@ -293,6 +297,21 @@ async function toggleStatus(id, newStatus) {
         loadUsers(1);
     } catch (err) {
         Utils.toast(err.message || `Failed to ${label} user`, 'error');
+    }
+}
+
+async function deleteUser(id, email) {
+    const ok = await Utils.confirm(
+        `Permanently delete ${email}? This cannot be undone from here. It will be blocked if they're still staffed on any active booking.`,
+        { title: 'Delete User', danger: true }
+    );
+    if (!ok) return;
+    try {
+        await API.users.delete(id);
+        Utils.toast('User deleted', 'success');
+        loadUsers(1);
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to delete user', 'error');
     }
 }
 

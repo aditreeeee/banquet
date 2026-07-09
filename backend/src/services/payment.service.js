@@ -10,6 +10,7 @@ const auditLogRepo = require('../repositories/auditLog.repository');
 const settingsService = require('./settings.service');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+const { resolveBranchScope } = require('../utils/branchScope');
 const logger = require('../utils/logger');
 
 // Same formula as booking.service.js's calculateAdvanceAmount (not imported
@@ -41,7 +42,7 @@ const getAll = async (query, actor) => {
     const p = parsePagination(query, ['created_at', 'amount', 'status']);
     const { rows, total } = await payRepo.findAll({
         companyId: actor.companyId,
-        branchId:  actor.branchId || query.branch_id || null,
+        branchId:  resolveBranchScope(actor, query),
         status:    query.status   || null,
         method:    query.method   || null,
         bookingId: query.booking_id ? parseInt(query.booking_id, 10) : null,

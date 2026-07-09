@@ -12,15 +12,17 @@ const BASE_SELECT = `
            u.is_active, u.is_email_verified, u.approval_status,
            u.last_login_at, u.created_at,
            u.avatar_url, u.timezone,
-           br.branch_name
+           br.branch_name,
+           c.company_name
     FROM Users u
     JOIN Roles r ON r.role_id = u.role_id
     LEFT JOIN Branches br ON br.branch_id = u.branch_id
+    LEFT JOIN Companies c ON c.company_id = u.company_id
 `;
 
 const findPending = async (companyId) => {
     return executeQuery(
-        `${BASE_SELECT} WHERE u.company_id = @companyId AND u.approval_status = 'pending' ORDER BY u.created_at ASC`,
+        `${BASE_SELECT} WHERE u.company_id = @companyId AND u.approval_status = 'pending' AND u.deleted_at IS NULL ORDER BY u.created_at ASC`,
         { companyId }
     );
 };
@@ -38,12 +40,17 @@ const findById = async (userId, companyId = null) => {
     const rows = await executeQuery(
         `${BASE_SELECT}
          WHERE u.user_id = @id
+           AND u.deleted_at IS NULL
            AND (@companyId IS NULL OR u.company_id = @companyId)`,
         { id: userId, companyId: companyId || null }
     );
     return rows[0] || null;
 };
 
+// Deliberately does NOT filter deleted_at — Users.email has a hard UNIQUE
+// constraint (UQ_users_email) that a soft-deleted row still occupies, so this
+// uniqueness pre-check must still see deleted users to surface a clean
+// validation error instead of an unhandled DB constraint violation.
 const findByEmail = async (email, companyId) => {
     const rows = await executeQuery(
         `SELECT user_id FROM Users WHERE email = @email AND company_id = @companyId`,
@@ -55,6 +62,7 @@ const findByEmail = async (email, companyId) => {
 const findAll = async ({ companyId, branchId, roleId, isActive, search, offset, limit, sortBy, sortDir }) => {
     const where = [
         'u.company_id = @companyId',
+        'u.deleted_at IS NULL',
         '(@branchId IS NULL OR u.branch_id = @branchId)',
         '(@roleId   IS NULL OR u.role_id   = @roleId)',
         '(@isActive IS NULL OR u.is_active = @isActive)',
@@ -193,4 +201,28 @@ const getRoles = async () => {
     return rows;
 };
 
-module.exports = { findById, findByEmail, findAll, create, update, getRoles, getStats, setUserRoles, findRoles, findPending, setApprovalStatus };
+/**
+ * Count staff assignments this user still holds on non-terminal bookings —
+ * a user can't be deleted while staffed on an upcoming/active event.
+ */
+const countActiveAssignments = async (userId, companyId) => {
+    const rows = await executeQuery(
+        `SELECT COUNT(*) AS cnt
+         FROM BookingStaffAssignments bsa
+         JOIN Bookings b ON b.booking_id = bsa.booking_id
+         WHERE bsa.user_id = @userId AND b.company_id = @companyId
+           AND b.status NOT IN ('cancelled', 'completed', 'archived')`,
+        { userId, companyId }
+    );
+    return rows[0].cnt;
+};
+
+const softDelete = async (userId, companyId) => {
+    await executeQuery(
+        `UPDATE Users SET deleted_at = GETUTCDATE(), updated_at = GETUTCDATE()
+         WHERE user_id = @id AND company_id = @companyId AND deleted_at IS NULL`,
+        { id: userId, companyId }
+    );
+};
+
+module.exports = { findById, findByEmail, findAll, create, update, getRoles, getStats, setUserRoles, findRoles, findPending, setApprovalStatus, countActiveAssignments, softDelete };

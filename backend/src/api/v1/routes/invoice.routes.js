@@ -9,7 +9,7 @@ const { PERMISSIONS }       = require('../../../constants');
 const { executeQuery }      = require('../../../config/database');
 const response              = require('../../../utils/response');
 const auditLogRepo          = require('../../../repositories/auditLog.repository');
-const settingsService       = require('../../../services/settings.service');
+const invoiceService        = require('../../../services/invoice.service');
 
 const router = Router();
 
@@ -115,67 +115,19 @@ router.post('/', requirePermission(PERMISSIONS.INVOICES_CREATE), async (req, res
     const { bookingId, booking_ref } = req.body;
     if (!bookingId && !booking_ref) return res.status(400).json({ success: false, message: 'bookingId or booking_ref required' });
 
-    const bookingRows = await executeQuery(
-        `SELECT b.booking_id, b.total_amount, b.booking_ref, b.customer_id
-         FROM Bookings b
-         WHERE (@bookingId IS NULL OR b.booking_id = @bookingId)
-           AND (@bookingRef IS NULL OR b.booking_ref = @bookingRef)
-           AND b.company_id = @companyId`,
-        { bookingId: bookingId ? parseInt(bookingId, 10) : null, bookingRef: booking_ref || null, companyId: req.companyId }
-    );
-    if (!bookingRows[0]) return res.status(404).json({ success: false, message: 'Booking not found' });
+    let resolvedBookingId = bookingId ? parseInt(bookingId, 10) : null;
+    if (!resolvedBookingId && booking_ref) {
+        const rows = await executeQuery(
+            `SELECT booking_id FROM Bookings WHERE booking_ref = @ref AND company_id = @companyId`,
+            { ref: booking_ref, companyId: req.companyId }
+        );
+        if (!rows[0]) return res.status(404).json({ success: false, message: 'Booking not found' });
+        resolvedBookingId = rows[0].booking_id;
+    }
 
-    const b             = bookingRows[0];
-    const year          = new Date().getFullYear();
-    const invoiceNumber = `INV-${year}-${Date.now().toString().slice(-6)}`;
-
-    // Tax rates are configurable per company (Settings → Billing & Tax) rather
-    // than hardcoded, so GST changes take effect without a code change.
-    const { cgstRate, sgstRate } = await settingsService.getTaxRates(req.companyId);
-    const taxableAmount = parseFloat(b.total_amount);
-    const cgstAmount = Math.round(taxableAmount * (cgstRate / 100) * 100) / 100;
-    const sgstAmount = Math.round(taxableAmount * (sgstRate / 100) * 100) / 100;
-    const grandTotal = taxableAmount + cgstAmount + sgstAmount;
-
-    const result = await executeQuery(
-        `INSERT INTO Invoices
-            (invoice_number, company_id, booking_id, customer_id,
-             invoice_date, due_date,
-             subtotal, discount_amount, taxable_amount,
-             cgst_rate, cgst_amount, sgst_rate, sgst_amount,
-             grand_total, amount_paid, balance_due,
-             payment_status, created_by, created_at)
-         OUTPUT INSERTED.invoice_id AS insertId
-         VALUES
-            (@invoiceNumber, @companyId, @bookingId, @customerId,
-             CAST(GETUTCDATE() AS DATE), DATEADD(day, 7, CAST(GETUTCDATE() AS DATE)),
-             @taxableAmount, 0, @taxableAmount,
-             @cgstRate, @cgstAmount, @sgstRate, @sgstAmount,
-             @grandTotal, 0, @grandTotal,
-             'pending', @createdBy, GETUTCDATE())`,
-        {
-            invoiceNumber,
-            companyId:  req.companyId,
-            bookingId:  b.booking_id,
-            customerId: b.customer_id,
-            taxableAmount,
-            cgstRate, cgstAmount, sgstRate, sgstAmount,
-            grandTotal,
-            createdBy:  req.user.user_id,
-        }
-    );
-
-    await auditLogRepo.log({
-        companyId:  req.companyId,
-        userId:     req.user.user_id,
-        action:     'invoice.generated',
-        entityType: 'invoice',
-        entityId:   result[0].insertId,
-        description: `Invoice ${invoiceNumber} generated for booking ${b.booking_ref}`,
-        newValues:  { invoiceNumber, bookingId: b.booking_id, taxableAmount, cgstAmount, sgstAmount, grandTotal },
-    });
-
-    return response.created(res, { invoice_id: result[0].insertId, invoice_number: invoiceNumber });
+    const actor = { companyId: req.companyId, userId: req.user.user_id };
+    const invoice = await invoiceService.generateForBooking(resolvedBookingId, actor);
+    return response.created(res, invoice);
 });
 
 // Cancel invoice (soft delete — sets is_cancelled = 1)

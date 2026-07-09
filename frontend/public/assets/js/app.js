@@ -14,6 +14,7 @@
         initSidebar();
         initTopbar();
         initScrollTop();
+        initImpersonationBanner();
         Auth.populateUserUI();
         Auth.highlightNav();
         Utils.loadCurrencySetting();
@@ -24,6 +25,24 @@
             new bootstrap.Tooltip(el, { trigger: 'hover' });
         });
     });
+
+    /* ── Impersonation banner — shown on every page while a Super Admin is
+       "viewing as" a tenant (see api.js's Impersonation helper). Purely
+       client-side: no server session, just a header attached to requests
+       until the admin clicks Exit. ── */
+    function initImpersonationBanner() {
+        if (typeof API === 'undefined' || !API.Impersonation) return;
+        const state = API.Impersonation.get();
+        if (!state) return;
+        const bar = document.createElement('div');
+        bar.style.cssText = 'position:sticky;top:0;z-index:1000;background:#7C3AED;color:white;padding:8px 16px;text-align:center;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px';
+        bar.innerHTML = `<span>Viewing as tenant: ${state.companyName}</span><button style="background:white;color:#7C3AED;border:none;border-radius:6px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer">Exit</button>`;
+        bar.querySelector('button').onclick = () => {
+            API.Impersonation.clear();
+            window.location.href = '../platform/tenants.html';
+        };
+        document.body.prepend(bar);
+    }
 
     /* ── SIDEBAR ── */
     function initSidebar() {
@@ -233,13 +252,23 @@
         btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
 
-    /* ── GLOBAL ERROR HANDLER for unhandled API failures ── */
+    /* ── GLOBAL ERROR HANDLER for unhandled API failures ──
+       A raw `TypeError: Failed to fetch` (no `status` field, since it never
+       got an HTTP response at all) means the browser couldn't reach the API
+       — e.g. the backend is still finishing its startup after a reboot.
+       Retry quietly instead of dumping a scary error on the very first load. */
+    let connectivityRetryScheduled = false;
     window.addEventListener('unhandledrejection', e => {
         const err = e.reason;
         if (err?.status === 403) {
             Utils.toast('You don\'t have permission to perform this action.', 'error');
         } else if (err?.status >= 500) {
             Utils.toast('Server error. Please try again shortly.', 'error');
+        } else if (!err?.status && err instanceof TypeError) {
+            if (connectivityRetryScheduled) return;
+            connectivityRetryScheduled = true;
+            Utils.toast('Connecting to server… retrying', 'info');
+            setTimeout(() => window.location.reload(), 4000);
         }
     });
 

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Platform Dashboard | BanquetPro</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+
+<div class="main-content" id="mainContent">
+    <header class="topbar">
+        <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Platform Dashboard</li></ol></nav>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
+            <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">Log Out</a></li></ul></div>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="page-header">
+            <div><h1 class="page-title">Platform Dashboard</h1><p class="page-subtitle">Cross-tenant overview across every Business Owner on BanquetPro</p></div>
+            <a href="tenants.html" class="btn-primary-brand">Manage Tenants</a>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+            <div class="kpi-card"><div class="kpi-label">Total Tenants</div><div class="kpi-value" id="kpiTenants">—</div><div style="font-size:11px;color:var(--text-muted)"><span id="kpiActiveTenants">—</span> active · <span id="kpiInactiveTenants">—</span> suspended</div></div>
+            <div class="kpi-card"><div class="kpi-label">Platform Revenue</div><div class="kpi-value" id="kpiRevenue" style="color:var(--color-success)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Platform Bookings</div><div class="kpi-value" id="kpiBookings">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Avg Occupancy</div><div class="kpi-value" id="kpiOccupancy">—</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+            <div class="kpi-card"><div class="kpi-label">Banquets</div><div class="kpi-value" id="kpiBanquets">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Halls</div><div class="kpi-value" id="kpiHalls">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Customers</div><div class="kpi-value" id="kpiCustomers">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Staff</div><div class="kpi-value" id="kpiStaff">—</div></div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="report-card">
+                    <h6>Revenue by Tenant</h6>
+                    <table class="table table-sm"><thead><tr><th>Tenant</th><th>Bookings</th><th class="text-end">Revenue</th></tr></thead>
+                    <tbody id="revenueByTenantBody"><tr><td colspan="3" class="text-center">Loading…</td></tr></tbody></table>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="report-card">
+                    <h6>Payment Status Breakdown</h6>
+                    <table class="table table-sm"><thead><tr><th>Status</th><th>Count</th><th class="text-end">Value</th></tr></thead>
+                    <tbody id="paymentStatusBody"><tr><td colspan="3" class="text-center">Loading…</td></tr></tbody></table>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="report-card">
+                    <h6>Revenue by Banquet (Top 10)</h6>
+                    <table class="table table-sm"><thead><tr><th>Banquet</th><th>Tenant</th><th class="text-end">Revenue</th></tr></thead>
+                    <tbody id="revenueByBanquetBody"><tr><td colspan="3" class="text-center">Loading…</td></tr></tbody></table>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="report-card">
+                    <h6>Revenue by Hall (Top 10)</h6>
+                    <table class="table table-sm"><thead><tr><th>Hall</th><th>Tenant</th><th class="text-end">Revenue</th></tr></thead>
+                    <tbody id="revenueByHallBody"><tr><td colspan="3" class="text-center">Loading…</td></tr></tbody></table>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="report-card">
+                    <h6>Booking Trends (by month)</h6>
+                    <table class="table table-sm"><thead><tr><th>Month</th><th>Bookings</th><th class="text-end">Revenue</th></tr></thead>
+                    <tbody id="bookingTrendsBody"><tr><td colspan="3" class="text-center">Loading…</td></tr></tbody></table>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="report-card">
+                    <h6>Customer Growth (by month)</h6>
+                    <table class="table table-sm"><thead><tr><th>Month</th><th class="text-end">New Customers</th></tr></thead>
+                    <tbody id="customerGrowthBody"><tr><td colspan="2" class="text-center">Loading…</td></tr></tbody></table>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro Platform</footer>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<button id="scrollTop">↑</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../../public/assets/js/config.js"></script>
+<script src="../../../public/assets/js/api.js"></script>
+<script src="../../../public/assets/js/utils.js"></script>
+<script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
+<script src="../../../public/assets/js/app.js"></script>
+<script>
+Auth.requireAuth('../auth/login.html');
+
+async function loadPlatformDashboard() {
+    try {
+        const [overviewRes, revenueRes, trendsRes] = await Promise.all([
+            API.platform.overview({}),
+            API.platform.revenue({}),
+            API.platform.trends({}),
+        ]);
+        const o = overviewRes.data;
+        const r = revenueRes.data;
+        const t = trendsRes.data;
+
+        document.getElementById('kpiTenants').textContent = o.tenants.total_tenants;
+        document.getElementById('kpiActiveTenants').textContent = o.tenants.active_tenants;
+        document.getElementById('kpiInactiveTenants').textContent = o.tenants.inactive_tenants;
+        document.getElementById('kpiRevenue').textContent = Utils.formatCurrency(o.totals.platform_revenue);
+        document.getElementById('kpiBookings').textContent = Utils.formatNumber(o.totals.total_bookings);
+        document.getElementById('kpiOccupancy').textContent = o.occupancy.avgOccupancyPct + '%';
+        document.getElementById('kpiBanquets').textContent = Utils.formatNumber(o.totals.total_banquets);
+        document.getElementById('kpiHalls').textContent = Utils.formatNumber(o.totals.total_halls);
+        document.getElementById('kpiCustomers').textContent = Utils.formatNumber(o.totals.total_customers);
+        document.getElementById('kpiStaff').textContent = Utils.formatNumber(o.totals.total_staff);
+
+        document.getElementById('revenueByTenantBody').innerHTML = o.revenueByTenant.map(x => `
+            <tr><td>${x.company_name} ${x.is_active ? '' : '<span class="badge-status badge-cancelled">Suspended</span>'}</td><td>${x.bookings_count}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
+
+        document.getElementById('paymentStatusBody').innerHTML = o.paymentStatus.map(x => `
+            <tr><td>${Utils.titleCase(x.status)}</td><td>${x.count}</td><td class="text-end">${Utils.formatCurrency(x.total_value)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
+
+        document.getElementById('revenueByBanquetBody').innerHTML = r.byBanquet.slice(0, 10).map(x => `
+            <tr><td>${x.banquet_name}</td><td>${x.company_name}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
+
+        document.getElementById('revenueByHallBody').innerHTML = r.byHall.slice(0, 10).map(x => `
+            <tr><td>${x.hall_name}</td><td>${x.company_name}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
+
+        document.getElementById('bookingTrendsBody').innerHTML = t.bookingTrends.map(x => `
+            <tr><td>${x.period_label}</td><td>${x.bookings_count}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
+
+        document.getElementById('customerGrowthBody').innerHTML = t.customerGrowth.map(x => `
+            <tr><td>${x.period_label}</td><td class="text-end">${x.new_customers}</td></tr>`).join('') || '<tr><td colspan="2" class="text-center">No data</td></tr>';
+    } catch (err) {
+        Utils.toast(err.message || 'Unable to load platform dashboard', 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => loadPlatformDashboard());
+</script>
+</body>
+</html>

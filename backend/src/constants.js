@@ -78,6 +78,12 @@ const PERMISSIONS = {
     INVOICES_READ:        'invoices:read',
     INVOICES_SEND:        'invoices:send',
 
+    // Quotations
+    QUOTATIONS_CREATE:    'quotations:create',
+    QUOTATIONS_READ:      'quotations:read',
+    QUOTATIONS_UPDATE:    'quotations:update',
+    QUOTATIONS_APPROVE:   'quotations:approve',
+
     // Reports
     REPORTS_READ:         'reports:read',
     REPORTS_EXPORT:       'reports:export',

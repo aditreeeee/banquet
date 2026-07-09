@@ -17,8 +17,9 @@ router.patch('/:id',             requirePermission(PERMISSIONS.BANQUETS_UPDATE),
 router.put('/:id',               requirePermission(PERMISSIONS.BANQUETS_UPDATE), ctrl.update);
 router.patch('/:id/activate',    requirePermission(PERMISSIONS.BANQUETS_UPDATE), ctrl.activate);
 router.patch('/:id/deactivate',  requirePermission(PERMISSIONS.BANQUETS_UPDATE), ctrl.deactivate);
-// Soft delete — a hard DELETE would orphan/cascade into Halls and Bookings, so
-// "delete" here deactivates instead, same pattern as Halls' toggle-active.
-router.delete('/:id',            requirePermission(PERMISSIONS.BANQUETS_UPDATE), ctrl.deactivate);
+// Genuine soft delete (deleted_at), distinct from deactivate (is_active) —
+// blocked while any hall still exists under the banquet. See
+// banquet.service.js:remove.
+router.delete('/:id',            requirePermission(PERMISSIONS.BANQUETS_DELETE), ctrl.remove);
 
 module.exports = router;

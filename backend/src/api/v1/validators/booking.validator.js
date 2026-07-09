@@ -7,6 +7,24 @@ const Joi = require('joi');
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+// `eventDate` payloads carry a date only (no time-of-day), so comparing them
+// against the exact current instant (Joi's 'now' ref) rejects *today* itself
+// for anything requested after midnight — e.g. dragging a booking onto today's
+// column in the Command Center matrix, or a same-day walk-in booking, would
+// fail validation with "date must be greater than or equal to now" every
+// single time. Validate against the start of today instead (computed fresh on
+// every request, not once at schema-build time), so today stays valid and
+// only genuinely past dates are rejected.
+const notBeforeToday = (value, helpers) => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    if (new Date(value) < startOfToday) {
+        return helpers.error('date.min', { limit: 'today' });
+    }
+    return value;
+};
+const futureDate = () => Joi.date().iso().custom(notBeforeToday, 'not before today');
+
 const eventDetailFields = {
     theme:            Joi.string().max(200).optional(),
     decorationNotes:  Joi.string().max(1000).optional(),
@@ -17,6 +35,11 @@ const eventDetailFields = {
     cooloffMinutes:   Joi.number().integer().min(0).max(1440).optional(),
     cleanupCharge:    Joi.number().precision(2).min(0).optional(),
     lateExitCharge:   Joi.number().precision(2).min(0).optional(),
+    setupCharge:          Joi.number().precision(2).min(0).optional(),
+    decorationCharge:     Joi.number().precision(2).min(0).optional(),
+    cleaningCharge:       Joi.number().precision(2).min(0).optional(),
+    extendedUsageCharge:  Joi.number().precision(2).min(0).optional(),
+    cooloffCharge:        Joi.number().precision(2).min(0).optional(),
     cateringPackageId:     Joi.number().integer().positive().allow(null).optional(),
     cateringPricePerPlate: Joi.number().precision(2).min(0).optional(),
     cateringTaxAmount:     Joi.number().precision(2).min(0).optional(),
@@ -36,7 +59,7 @@ const validate = (schema) => (req, res, next) => {
 const createSchema = Joi.object({
     hallId:         Joi.number().integer().positive().required(),
     customerId:     Joi.number().integer().positive().required(),
-    eventDate:      Joi.date().iso().min('now').required(),
+    eventDate:      futureDate().required(),
     eventTimeStart: Joi.string().pattern(TIME_PATTERN).required(),
     eventTimeEnd:   Joi.string().pattern(TIME_PATTERN).required(),
     eventName:      Joi.string().max(200).optional(),
@@ -47,6 +70,7 @@ const createSchema = Joi.object({
     notes:          Joi.string().max(2000).optional(),
     asTentative:    Joi.boolean().optional().default(false),
     isPriority:     Joi.boolean().optional().default(false),
+    packageId:      Joi.number().integer().positive().optional(),
     ...eventDetailFields,
     resources:      Joi.array().items(
         Joi.object({
@@ -61,11 +85,12 @@ const updateSchema = Joi.object({
     eventType:  Joi.string().max(50).optional(),
     guestCount: Joi.number().integer().min(1).optional(),
     notes:      Joi.string().max(2000).optional(),
+    packageId:  Joi.number().integer().positive().allow(null).optional(),
     ...eventDetailFields,
 });
 
 const rescheduleSchema = Joi.object({
-    eventDate:      Joi.date().iso().min('now').required(),
+    eventDate:      futureDate().required(),
     eventTimeStart: Joi.string().pattern(TIME_PATTERN).required(),
     eventTimeEnd:   Joi.string().pattern(TIME_PATTERN).required(),
     eventEndDate:   Joi.date().iso().min(Joi.ref('eventDate')).optional(), // multi-day bookings only
@@ -86,7 +111,7 @@ const cancelSchema = Joi.object({
 const slotSchema = Joi.object({
     hallId:         Joi.number().integer().positive().required(),
     customerId:     Joi.number().integer().positive().optional(),
-    eventDate:      Joi.date().iso().min('now').required(),
+    eventDate:      futureDate().required(),
     eventTimeStart: Joi.string().pattern(TIME_PATTERN).required(),
     eventTimeEnd:   Joi.string().pattern(TIME_PATTERN).required(),
     eventName:      Joi.string().max(200).optional(),
@@ -99,7 +124,7 @@ const slotSchema = Joi.object({
 });
 
 const cloneSchema = Joi.object({
-    eventDate:      Joi.date().iso().min('now').required(),
+    eventDate:      futureDate().required(),
     eventTimeStart: Joi.string().pattern(TIME_PATTERN).required(),
     eventTimeEnd:   Joi.string().pattern(TIME_PATTERN).required(),
     customerId:     Joi.number().integer().positive().optional(),

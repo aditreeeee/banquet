@@ -872,8 +872,340 @@ const seedExtendedDemoData = async (pool) => {
             ALTER TABLE Bookings ADD cleanup_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
         IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'late_exit_charge')
             ALTER TABLE Bookings ADD late_exit_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'setup_charge')
+            ALTER TABLE Bookings ADD setup_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'decoration_charge')
+            ALTER TABLE Bookings ADD decoration_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'cleaning_charge')
+            ALTER TABLE Bookings ADD cleaning_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'extended_usage_charge')
+            ALTER TABLE Bookings ADD extended_usage_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'cooloff_charge')
+            ALTER TABLE Bookings ADD cooloff_charge DECIMAL(12,2) NOT NULL DEFAULT 0;
     `);
     ok('Event details / multi-day / buffer columns ensured.');
+
+    // ── 3l. Soft delete — distinct from is_active (Halls/Banquets/Users) ────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Halls') AND name = 'deleted_at')
+            ALTER TABLE Halls ADD deleted_at DATETIME2 NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Banquets') AND name = 'deleted_at')
+            ALTER TABLE Banquets ADD deleted_at DATETIME2 NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'deleted_at')
+            ALTER TABLE Users ADD deleted_at DATETIME2 NULL;
+    `);
+    ok('Soft-delete (deleted_at) columns ensured.');
+
+    // ── 3m. Per-booking catering plans (multi-session) ──────────────────────
+    await pool.request().batch(`
+        IF OBJECT_ID(N'dbo.BookingCateringSessions', N'U') IS NULL
+        BEGIN
+            CREATE TABLE BookingCateringSessions (
+                session_id      BIGINT          NOT NULL IDENTITY(1,1),
+                booking_id      BIGINT          NOT NULL,
+                company_id      INT             NOT NULL,
+                session_type    NVARCHAR(50)    NOT NULL,
+                serving_time    TIME            NULL,
+                guest_count     INT             NULL,
+                notes           NVARCHAR(500)   NULL,
+                created_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                updated_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_booking_catering_sessions PRIMARY KEY (session_id),
+                CONSTRAINT FK_bcs_booking FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id),
+                CONSTRAINT FK_bcs_company FOREIGN KEY (company_id) REFERENCES Companies(company_id)
+            );
+            CREATE INDEX IX_bcs_booking ON BookingCateringSessions(booking_id);
+        END
+    `);
+    await pool.request().batch(`
+        IF OBJECT_ID(N'dbo.BookingCateringItems', N'U') IS NULL
+        BEGIN
+            CREATE TABLE BookingCateringItems (
+                item_row_id     BIGINT          NOT NULL IDENTITY(1,1),
+                session_id      BIGINT          NOT NULL,
+                item_id         INT             NULL,
+                item_name       NVARCHAR(200)   NOT NULL,
+                quantity        DECIMAL(10,2)   NOT NULL DEFAULT 1,
+                unit_price      DECIMAL(10,2)   NOT NULL DEFAULT 0,
+                tax_percent     DECIMAL(5,2)    NOT NULL DEFAULT 0,
+                created_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_booking_catering_items PRIMARY KEY (item_row_id),
+                CONSTRAINT FK_bci_session FOREIGN KEY (session_id) REFERENCES BookingCateringSessions(session_id),
+                CONSTRAINT FK_bci_item FOREIGN KEY (item_id) REFERENCES MenuItems(item_id)
+            );
+            CREATE INDEX IX_bci_session ON BookingCateringItems(session_id);
+        END
+    `);
+    ok('Per-booking catering session/item tables ensured.');
+
+    // ── 3n. Quotations module ────────────────────────────────────────────────
+    await pool.request().batch(`
+        IF OBJECT_ID(N'dbo.Quotations', N'U') IS NULL
+        BEGIN
+            CREATE TABLE Quotations (
+                quotation_id         BIGINT          NOT NULL IDENTITY(1,1),
+                company_id           INT             NOT NULL,
+                branch_id            INT             NULL,
+                lead_id              INT             NULL,
+                customer_id          INT             NULL,
+                quotation_number     NVARCHAR(30)    NOT NULL,
+                status               NVARCHAR(20)    NOT NULL DEFAULT 'draft',
+                revision             INT             NOT NULL DEFAULT 1,
+                parent_quotation_id  BIGINT          NULL,
+                event_name           NVARCHAR(200)   NULL,
+                event_type           NVARCHAR(50)    NULL,
+                event_date           DATE            NULL,
+                guest_count          INT             NULL,
+                hall_id              INT             NULL,
+                subtotal             DECIMAL(14,2)   NOT NULL DEFAULT 0,
+                discount_amount      DECIMAL(14,2)   NOT NULL DEFAULT 0,
+                tax_amount           DECIMAL(14,2)   NOT NULL DEFAULT 0,
+                grand_total          DECIMAL(14,2)   NOT NULL DEFAULT 0,
+                notes                NVARCHAR(2000)  NULL,
+                expiry_date          DATE            NULL,
+                accepted_at          DATETIME2       NULL,
+                accept_token         NVARCHAR(64)    NULL,
+                converted_booking_id BIGINT          NULL,
+                created_by           INT             NOT NULL,
+                created_at           DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                updated_at           DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_quotations PRIMARY KEY (quotation_id),
+                CONSTRAINT UQ_quotation_number UNIQUE (quotation_number),
+                CONSTRAINT FK_quotations_company  FOREIGN KEY (company_id) REFERENCES Companies(company_id),
+                CONSTRAINT FK_quotations_lead     FOREIGN KEY (lead_id) REFERENCES Leads(lead_id),
+                CONSTRAINT FK_quotations_customer FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
+                CONSTRAINT FK_quotations_hall     FOREIGN KEY (hall_id) REFERENCES Halls(hall_id),
+                CONSTRAINT FK_quotations_booking  FOREIGN KEY (converted_booking_id) REFERENCES Bookings(booking_id),
+                CONSTRAINT FK_quotations_parent   FOREIGN KEY (parent_quotation_id) REFERENCES Quotations(quotation_id),
+                CONSTRAINT FK_quotations_creator  FOREIGN KEY (created_by) REFERENCES Users(user_id),
+                CONSTRAINT CHK_quotation_status CHECK (status IN ('draft','sent','accepted','rejected','expired','converted'))
+            );
+            CREATE INDEX IX_quotations_company ON Quotations(company_id, status);
+            CREATE INDEX IX_quotations_lead    ON Quotations(lead_id);
+        END
+    `);
+    await pool.request().batch(`
+        IF OBJECT_ID(N'dbo.QuotationItems', N'U') IS NULL
+        BEGIN
+            CREATE TABLE QuotationItems (
+                item_row_id     BIGINT          NOT NULL IDENTITY(1,1),
+                quotation_id    BIGINT          NOT NULL,
+                description     NVARCHAR(200)   NOT NULL,
+                quantity        DECIMAL(10,2)   NOT NULL DEFAULT 1,
+                unit_price      DECIMAL(12,2)   NOT NULL DEFAULT 0,
+                tax_percent     DECIMAL(5,2)    NOT NULL DEFAULT 0,
+                created_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_quotation_items PRIMARY KEY (item_row_id),
+                CONSTRAINT FK_qi_quotation FOREIGN KEY (quotation_id) REFERENCES Quotations(quotation_id)
+            );
+            CREATE INDEX IX_qi_quotation ON QuotationItems(quotation_id);
+        END
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'quotations:read')
+            INSERT INTO Permissions (module, action, permission_key, description) VALUES ('quotations','read','quotations:read','View quotations');
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'quotations:create')
+            INSERT INTO Permissions (module, action, permission_key, description) VALUES ('quotations','create','quotations:create','Create/revise quotations');
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'quotations:update')
+            INSERT INTO Permissions (module, action, permission_key, description) VALUES ('quotations','update','quotations:update','Edit quotations');
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'quotations:approve')
+            INSERT INTO Permissions (module, action, permission_key, description) VALUES ('quotations','approve','quotations:approve','Approve/accept quotations and convert to bookings');
+    `);
+    await pool.request().batch(`
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id
+        FROM Roles r
+        CROSS JOIN Permissions p
+        WHERE r.role_slug IN ('sales_manager', 'finance_manager')
+          AND p.permission_key IN ('quotations:read','quotations:create','quotations:update','quotations:approve')
+          AND NOT EXISTS (
+              SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id
+          );
+    `);
+    ok('Quotations module (tables + permissions) ensured.');
+
+    // ── 3o. Company (tenant) hardening — soft delete + platform permissions ──
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Companies') AND name = 'deleted_at')
+            ALTER TABLE Companies ADD deleted_at DATETIME2 NULL;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'companies:create')
+            INSERT INTO Permissions (module, action, permission_key, description) VALUES ('companies','create','companies:create','Create tenant companies (platform)');
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'companies:read')
+            INSERT INTO Permissions (module, action, permission_key, description) VALUES ('companies','read','companies:read','View tenant companies (platform)');
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'companies:update')
+            INSERT INTO Permissions (module, action, permission_key, description) VALUES ('companies','update','companies:update','Edit/suspend/activate tenant companies (platform)');
+        IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = 'companies:delete')
+            INSERT INTO Permissions (module, action, permission_key, description) VALUES ('companies','delete','companies:delete','Delete tenant companies (platform)');
+    `);
+    await pool.request().batch(`
+        DELETE rp FROM RolePermissions rp
+        JOIN Roles r ON r.role_id = rp.role_id
+        JOIN Permissions p ON p.permission_id = rp.permission_id
+        WHERE r.role_slug <> 'super_admin' AND p.permission_key LIKE 'companies:%';
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id
+        FROM Roles r
+        CROSS JOIN Permissions p
+        WHERE r.role_slug = 'super_admin'
+          AND p.permission_key IN ('companies:create','companies:read','companies:update','companies:delete')
+          AND NOT EXISTS (
+              SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id
+          );
+    `);
+    ok('Company (tenant) soft-delete + platform permissions ensured.');
+
+    // ── 3p. RBAC permission repair — every non-super_admin role was found to
+    // be severely under-provisioned vs. the seed file's documented intent.
+    await pool.request().batch(`
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'company_admin'
+          AND p.permission_key NOT IN ('companies:create','companies:read','companies:update','companies:delete','audit_logs:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'branch_manager'
+          AND p.permission_key IN (
+            'dashboard:read', 'banquets:read', 'halls:read',
+            'bookings:create','bookings:read','bookings:update','bookings:cancel','bookings:confirm',
+            'customers:create','customers:read','customers:update',
+            'payments:create','payments:read',
+            'invoices:create','invoices:read','invoices:send',
+            'reports:read','reports:export', 'pricing:read',
+            'availability:manage','availability:read',
+            'resources:create','resources:read','resources:update', 'settings:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'booking_executive'
+          AND p.permission_key IN (
+            'dashboard:read', 'banquets:read', 'halls:read',
+            'bookings:create','bookings:read','bookings:update','bookings:cancel',
+            'customers:create','customers:read','customers:update',
+            'payments:create','payments:read',
+            'invoices:create','invoices:read','invoices:send',
+            'availability:read', 'coupons:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'customer'
+          AND p.permission_key IN (
+            'banquets:read','halls:read',
+            'bookings:create','bookings:read','bookings:cancel',
+            'invoices:read','payments:read','availability:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'business_owner'
+          AND p.permission_key NOT IN ('companies:create','companies:read','companies:update','companies:delete','audit_logs:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'operations_manager'
+          AND p.permission_key IN (
+            'dashboard:read','banquets:read','halls:read',
+            'bookings:create','bookings:read','bookings:update','bookings:cancel','bookings:confirm',
+            'customers:read','customers:update',
+            'availability:manage','availability:read',
+            'resources:create','resources:read','resources:update', 'reports:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'sales_manager'
+          AND p.permission_key IN (
+            'dashboard:read','banquets:read','halls:read',
+            'bookings:create','bookings:read','bookings:update',
+            'customers:create','customers:read','customers:update',
+            'coupons:create','coupons:read','coupons:update',
+            'availability:read','reports:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'finance_manager'
+          AND p.permission_key IN (
+            'dashboard:read','bookings:read',
+            'payments:create','payments:read','payments:refund',
+            'invoices:create','invoices:read','invoices:send',
+            'reports:read','reports:export')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'staff'
+          AND p.permission_key IN ('dashboard:read','bookings:read','banquets:read','halls:read','availability:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id FROM Roles r CROSS JOIN Permissions p
+        WHERE r.role_slug = 'receptionist'
+          AND p.permission_key IN (
+            'dashboard:read','banquets:read','halls:read',
+            'bookings:create','bookings:read','bookings:update',
+            'customers:create','customers:read','customers:update','availability:read')
+          AND NOT EXISTS (SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id);
+    `);
+    ok('RBAC permission repair applied (all roles match seed intent).');
+
+    // ── 3q. Booking duration packages ────────────────────────────────────────
+    await pool.request().batch(`
+        IF OBJECT_ID(N'dbo.BookingPackages', N'U') IS NULL
+        BEGIN
+            CREATE TABLE BookingPackages (
+                package_id              INT             NOT NULL IDENTITY(1,1),
+                company_id              INT             NOT NULL,
+                package_name            NVARCHAR(200)   NOT NULL,
+                package_category        NVARCHAR(20)    NOT NULL,
+                calc_type               NVARCHAR(20)    NOT NULL,
+                included_hours          DECIMAL(5,2)    NULL,
+                base_price              DECIMAL(12,2)   NOT NULL DEFAULT 0,
+                overtime_rate_per_hour  DECIMAL(10,2)   NOT NULL DEFAULT 0,
+                max_extension_hours     DECIMAL(5,2)    NOT NULL DEFAULT 0,
+                default_setup_minutes   INT             NOT NULL DEFAULT 0,
+                default_cleanup_minutes INT             NOT NULL DEFAULT 0,
+                default_cooloff_minutes INT             NOT NULL DEFAULT 0,
+                description             NVARCHAR(500)   NULL,
+                is_active               BIT             NOT NULL DEFAULT 1,
+                created_at              DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                updated_at              DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_booking_packages PRIMARY KEY (package_id),
+                CONSTRAINT FK_bp_company FOREIGN KEY (company_id) REFERENCES Companies(company_id),
+                CONSTRAINT CHK_bp_category CHECK (package_category IN ('corporate','social')),
+                CONSTRAINT CHK_bp_calc_type CHECK (calc_type IN ('hourly','half_day','full_day','fixed_session'))
+            );
+            CREATE INDEX IX_bp_company ON BookingPackages(company_id, is_active);
+        END
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'package_id')
+            ALTER TABLE Bookings ADD package_id INT NULL;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_bookings_package')
+            ALTER TABLE Bookings ADD CONSTRAINT FK_bookings_package FOREIGN KEY (package_id) REFERENCES BookingPackages(package_id);
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'package_overtime_rate')
+            ALTER TABLE Bookings ADD package_overtime_rate DECIMAL(10,2) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'package_max_extension_hours')
+            ALTER TABLE Bookings ADD package_max_extension_hours DECIMAL(5,2) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'package_base_price')
+            ALTER TABLE Bookings ADD package_base_price DECIMAL(12,2) NULL;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BookingPackages') AND name = 'deleted_at')
+            ALTER TABLE BookingPackages ADD deleted_at DATETIME2 NULL;
+    `);
+    ok('Booking packages table + Bookings.package_id ensured.');
 
     // ── 3k. Owner overrides: block_type on HallBlockedDates ──────────────────
     await pool.request().batch(`

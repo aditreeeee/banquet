@@ -5,6 +5,7 @@
 
 const menuItemService = require('../../../services/menuItem.service');
 const response = require('../../../utils/response');
+const { ValidationError } = require('../middleware/errorHandler');
 
 const list = async (req, res) => {
     const items = await menuItemService.list(req.companyId);
@@ -40,4 +41,10 @@ const listCategories = async (req, res) => {
     return response.success(res, categories);
 };
 
-module.exports = { list, getById, create, update, listCategories };
+const importCsv = async (req, res) => {
+    if (!req.file) throw new ValidationError('CSV file is required');
+    const result = await menuItemService.importCsv(req.file.buffer, req.companyId);
+    return response.success(res, result, `Imported ${result.created}/${result.totalRows} menu items`);
+};
+
+module.exports = { list, getById, create, update, listCategories, importCsv };

@@ -29,6 +29,10 @@ const DEFAULTS = {
     'billing.cgst_rate':                '9',
     'billing.sgst_rate':                '9',
     'general.currency':                 'INR',
+    // Catering plate-count validation: 'warn' surfaces a toast but allows the
+    // save; 'block' rejects saving a session whose ordered plates fall short
+    // of the guest count/package minimum; 'off' disables the check entirely.
+    'catering.min_plate_policy':         'warn',
 };
 
 const cacheKey = (companyId) => `settings_${companyId}`;
@@ -101,6 +105,12 @@ const getTaxRates = async (companyId) => {
     };
 };
 
+const getCateringPolicy = async (companyId) => {
+    const flat = await getFlatWithDefaults(companyId);
+    const policy = flat['catering.min_plate_policy'];
+    return ['warn', 'block', 'off'].includes(policy) ? policy : 'warn';
+};
+
 const getCurrency = async (companyId) => {
     const flat = await getFlatWithDefaults(companyId);
     const code = flat['general.currency'] || 'INR';
@@ -124,4 +134,4 @@ const update = async (companyId, key, value, group, actor) => {
     });
 };
 
-module.exports = { getAll, getAllWithDefaults, getFlatWithDefaults, getOne, getBookingDefaults, getTaxRates, getCurrency, update };
+module.exports = { getAll, getAllWithDefaults, getFlatWithDefaults, getOne, getBookingDefaults, getTaxRates, getCateringPolicy, getCurrency, update };

@@ -43,7 +43,9 @@
 
         <!-- Master Menu tab -->
         <div id="tab-menu">
-            <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:12px">
+                <input type="file" id="menuCsvInput" accept=".csv" style="display:none" onchange="importMenuCsv(this.files[0])">
+                <button class="btn-ghost" onclick="document.getElementById('menuCsvInput').click()">⇪ Import CSV</button>
                 <button class="btn-primary-brand" onclick="openItemModal()">+ Add Menu Item</button>
             </div>
             <div class="table-card">
@@ -233,6 +235,22 @@ async function deleteMenuItem(id) {
         loadMenuItems();
     } catch (err) {
         Utils.toast(err.message || 'Failed to delete menu item', 'error');
+    }
+}
+
+async function importMenuCsv(file) {
+    if (!file) return;
+    try {
+        const res = await API.menuItems.importCsv(file);
+        const r = res.data;
+        Utils.toast(`Imported ${r.created}/${r.totalRows} menu items${r.failed ? ` — ${r.failed} row(s) failed` : ''}`, r.failed ? 'warning' : 'success');
+        if (r.errors?.length) console.warn('Menu CSV import errors:', r.errors);
+        loadMenuItems();
+        loadCategories?.();
+    } catch (err) {
+        Utils.toast(err.message || 'CSV import failed', 'error');
+    } finally {
+        document.getElementById('menuCsvInput').value = '';
     }
 }
 

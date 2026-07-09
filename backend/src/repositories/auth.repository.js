@@ -29,7 +29,7 @@ const findByEmail = async (email) => {
             u.avatar_url, u.timezone, u.created_at
          FROM Users u
          JOIN Roles r ON r.role_id = u.role_id
-         WHERE u.email = @email`,
+         WHERE u.email = @email AND u.deleted_at IS NULL`,
         { email }
     );
     return rows[0] || null;
@@ -76,7 +76,7 @@ const findById = async (userId) => {
             u.last_login_at, u.created_at
          FROM Users u
          JOIN Roles r ON r.role_id = u.role_id
-         WHERE u.user_id = @userId AND u.is_active = 1`,
+         WHERE u.user_id = @userId AND u.is_active = 1 AND u.deleted_at IS NULL`,
         { userId }
     );
     return rows[0] || null;

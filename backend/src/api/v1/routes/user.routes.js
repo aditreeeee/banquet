@@ -19,6 +19,7 @@ router.get('/:id/schedule',       requirePermission(PERMISSIONS.USERS_READ),   c
 router.patch('/:id',              requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.update);
 router.put('/:id',                requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.update);
 router.patch('/:id/toggle-status',requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.toggleStatus);
+router.delete('/:id',             requirePermission(PERMISSIONS.USERS_DELETE), ctrl.remove);
 router.patch('/:id/approve',      requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.approve);
 router.patch('/:id/reject',       requirePermission(PERMISSIONS.USERS_UPDATE), ctrl.reject);
 

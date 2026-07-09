@@ -374,6 +374,13 @@
                             <input type="text" class="form-control" id="eventName" placeholder="e.g. Sharma – Patel Wedding" required>
                             <div class="invalid-feedback" id="eventName_error"></div>
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Booking Package</label>
+                            <select class="form-select" id="bookingPackageSelect" onchange="selectBookingPackage(this.value)">
+                                <option value="">— Custom / no package —</option>
+                            </select>
+                            <div class="form-text">Optional — pre-fills base price, setup/cleanup/cool-off duration from a <a href="../booking-packages/index.html" target="_blank">configured package</a>. You can still adjust details manually.</div>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Theme</label>
                             <input type="text" class="form-control" id="theme" placeholder="e.g. Rustic Garden, Royal Vintage…">
@@ -410,26 +417,38 @@
             <!-- STEP 5: Catering -->
             <div class="step-panel card" id="step5">
                 <div class="card-body">
-                    <h5 style="font-weight:700;margin-bottom:8px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 3v8"></path><path d="M6 11h4"></path><path d="M10 3v8"></path><path d="M14 5h4"></path><path d="M16 3v10"></path></svg> Catering Package</h5>
-                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Optional — select a Master Menu catering package or skip this step. Pricing, tax, and inventory are calculated live from the <a href="../catering/menu.html" target="_blank">Master Menu</a>.</p>
-                    <div class="row g-3" id="cateringPkgList">
-                        <div class="col-12"><div class="form-text">Loading catering packages…</div></div>
+                    <h5 style="font-weight:700;margin-bottom:8px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M6 3v8"></path><path d="M6 11h4"></path><path d="M10 3v8"></path><path d="M14 5h4"></path><path d="M16 3v10"></path></svg> Catering Sessions</h5>
+                    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Optional — add one or more catering sessions (e.g. Lunch, High Tea). Each session applies a Master Menu-based Catering Package as a reusable template; you can still add/remove individual items afterward from the Booking Details page.</p>
+
+                    <div class="row g-3 align-items-end" style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border-color)">
+                        <div class="col-md-3">
+                            <label class="form-label">Session</label>
+                            <select class="form-select" id="csbSessionType">
+                                <option value="welcome_drinks">Welcome Drinks</option>
+                                <option value="morning_tea">Morning Tea</option>
+                                <option value="breakfast">Breakfast</option>
+                                <option value="lunch" selected>Lunch</option>
+                                <option value="evening_snacks">Evening Snacks</option>
+                                <option value="high_tea">High Tea</option>
+                                <option value="dinner">Dinner</option>
+                                <option value="midnight_refreshments">Midnight Refreshments</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Serving Time</label>
+                            <input type="time" class="form-control" id="csbServingTime">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Catering Package</label>
+                            <select class="form-select" id="csbPackageId"><option value="">Loading…</option></select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn-primary-brand" style="width:100%" onclick="addStagedCateringSession()">+ Add</button>
+                        </div>
                     </div>
-                    <div class="row g-3">
-                        <div class="col-12" id="cateringPlateInput" style="display:none">
-                            <label class="form-label">Number of Plates</label>
-                            <input type="number" class="form-control" id="plateCount" style="max-width:200px" placeholder="Plates" onchange="onPlateCountChange()">
-                            <div class="form-text">Minimum plates = expected guests</div>
-                        </div>
-                        <div class="col-12" id="cateringBillSummary" style="display:none">
-                            <div class="alert alert-light border" style="font-size:13px">
-                                <div class="d-flex justify-content-between"><span>Price per plate (from Master Menu)</span><strong id="cbsPPP">₹0</strong></div>
-                                <div class="d-flex justify-content-between"><span>Tax included per plate</span><strong id="cbsTax">₹0</strong></div>
-                                <div class="d-flex justify-content-between" style="border-top:1px solid var(--border-color);margin-top:6px;padding-top:6px">
-                                    <span>Catering total (<span id="cbsPlates">0</span> plates)</span><strong id="cbsTotal">₹0</strong>
-                                </div>
-                            </div>
-                        </div>
+
+                    <div id="stagedCateringList" class="row g-3">
+                        <div class="col-12"><div class="form-text">No catering sessions added yet — this booking will have none, or you can add sessions later from Booking Details.</div></div>
                     </div>
                 </div>
                 <div class="wizard-nav" style="margin:0;padding:16px 20px;border-top:1px solid var(--border-color)">
@@ -512,6 +531,12 @@
                             </p>
                             <div id="inventoryAllocList" class="table-responsive">
                                 <div class="form-text">Loading recommendations…</div>
+                            </div>
+                            <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
+                                <select class="form-select" id="addInventoryItemSelect" style="max-width:320px">
+                                    <option value="">— Add another item —</option>
+                                </select>
+                                <button type="button" class="btn-ghost" onclick="addInventoryItem()">+ Add</button>
                             </div>
                         </div>
                     </div>
@@ -738,7 +763,7 @@ const STEPS = [
     { id:2, label:'Banquet',      desc:'Select banquet property' },
     { id:3, label:'Hall',         desc:'Choose your hall' },
     { id:4, label:'Event Info',   desc:'Event details and customer' },
-    { id:5, label:'Catering',     desc:'Select catering package' },
+    { id:5, label:'Catering',     desc:'Add catering sessions' },
     { id:6, label:'Decoration',   desc:'Choose decoration package' },
     { id:7, label:'Services',     desc:'Additional services' },
     { id:8, label:'Pricing',      desc:'Review pricing and apply coupon' },
@@ -779,6 +804,7 @@ const state = {
     hallId:         null,
     hallName:       '',
     hallBasePrice:  0,
+    hallOriginalPrice: 0,
     pricingId:      null,
     eventTypeId:    null,
     eventTypeName:  '',
@@ -793,6 +819,7 @@ const state = {
     cateringTotal:  0,
     cateringPricePerPlate: null,
     cateringTaxAmount:     null,
+    stagedCateringSessions: [], // [{sessionType, servingTime, packageId, packageName, subtotal}] — persisted after booking create()
     resourceAllocations:   [], // [{resourceId, resourceName, quantity, available}] — editable inventory recommendations
     decorationAmt:  0,
     selectedServices:[],
@@ -814,6 +841,7 @@ const state = {
     cooloffMinutes: 30,
     cleanupCharge:  0,
     lateExitCharge: 0,
+    packageId:      null,
 };
 
 /* Advance % and GST rate come from Settings (Billing & Tax tab) rather than
@@ -1034,18 +1062,6 @@ function validateCurrentStep() {
         state.specialRequests = document.getElementById('specialRequests').value;
     }
 
-    if (state.currentStep === 5) {
-        if (state.cateringPkgId) {
-            const pc = parseInt(document.getElementById('plateCount').value);
-            if (!pc || pc < state.guestCount) {
-                showAlert(`Plate count must be at least ${state.guestCount} (your guest count).`);
-                return false;
-            }
-            // cateringTotal/cateringTaxAmount/cateringPricePerPlate are already computed
-            // server-side from the Master Menu via refreshCateringBill() — don't override them here.
-        }
-    }
-
     if (state.currentStep === 6) {
         const dt = document.getElementById('decorationType').value;
         state.decorationAmt = dt === 'custom'
@@ -1205,103 +1221,149 @@ function renderHalls(halls) {
 function selectHall(id, name, price) {
     state.hallId       = id;
     state.hallName     = name;
-    state.hallBasePrice= price;
+    state.hallOriginalPrice = price;
+    state.hallBasePrice= state.packageId ? state.hallBasePrice : price;
     document.querySelectorAll('#hallsGrid .hall-card').forEach(c => c.classList.remove('selected'));
     const cards = document.querySelectorAll('#hallsGrid .hall-card');
     cards.forEach(c => { if (c.querySelector('.hall-name')?.textContent === name) c.classList.add('selected'); });
     calculatePrice();
 }
 
-/* ── Catering — packages are real Master Menu-derived data from the backend,
-   never hardcoded. Pricing/tax are computed server-side per plate count. ── */
+/* ── Booking Packages — real company-configured presets (2hr/half-day/full-day/
+   fixed-session). Selecting one pre-fills price/duration client-side; the
+   booking still stores its own snapshot so later package edits never
+   retroactively reprice this booking. ── */
+let bookingPackages = [];
+
+async function loadBookingPackages() {
+    const sel = document.getElementById('bookingPackageSelect');
+    try {
+        const res = await API.bookingPackages.list({ is_active: 'true' });
+        bookingPackages = res.data?.packages || res.data || [];
+    } catch (err) {
+        return;
+    }
+    sel.innerHTML = '<option value="">— Custom / no package —</option>' +
+        bookingPackages.map(p => `<option value="${p.package_id}">${p.package_name} — ₹${Number(p.base_price).toLocaleString('en-IN')}</option>`).join('');
+}
+
+function selectBookingPackage(packageId) {
+    if (!packageId) {
+        state.packageId = null;
+        state.hallBasePrice = state.hallOriginalPrice || 0;
+        calculatePrice();
+        return;
+    }
+    const pkg = bookingPackages.find(p => String(p.package_id) === String(packageId));
+    if (!pkg) return;
+    state.packageId = pkg.package_id;
+    // Duration packages (hourly/half_day/full_day) price a fraction of THIS
+    // hall's own rate, not a flat company-wide figure — same formula as
+    // computePackagePrice() in booking.service.js, so the live preview here
+    // matches what the server will actually charge. Fixed-session packages
+    // (Breakfast Event, Wedding Ceremony, etc.) keep their own flat price.
+    const hallRate = state.hallOriginalPrice || 0;
+    state.hallBasePrice = pkg.calc_type === 'full_day' ? Math.round(hallRate)
+        : pkg.calc_type === 'half_day' ? Math.round(hallRate * 0.5)
+        : pkg.calc_type === 'hourly'   ? Math.round((hallRate / 8) * (pkg.included_hours || 1))
+        : Math.round(parseFloat(pkg.base_price) || 0);
+
+    if (pkg.default_setup_minutes   != null) document.getElementById('setupMinutes').value   = pkg.default_setup_minutes;
+    if (pkg.default_cleanup_minutes != null) document.getElementById('cleanupMinutes').value = pkg.default_cleanup_minutes;
+    if (pkg.default_cooloff_minutes != null) document.getElementById('cooloffMinutes').value = pkg.default_cooloff_minutes;
+
+    // A duration package's included_hours defines the booked span itself —
+    // the event's end time is derived from it (start + included_hours)
+    // rather than left free to drift out of sync with what was priced.
+    if (pkg.included_hours != null) {
+        const startInput = document.getElementById('startTime');
+        const endInput = document.getElementById('endTime');
+        if (startInput?.value) {
+            const [h, m] = startInput.value.split(':').map(Number);
+            const totalMin = ((h * 60 + m) + Math.round(pkg.included_hours * 60)) % 1440;
+            const newEnd = `${String(Math.floor(totalMin / 60)).padStart(2,'0')}:${String(totalMin % 60).padStart(2,'0')}`;
+            if (endInput) endInput.value = newEnd;
+            state.endTime = newEnd;
+        }
+    }
+
+    if (typeof recalcOperationalSchedule === 'function') recalcOperationalSchedule();
+    calculatePrice();
+}
+
+/* ── Catering — Catering Packages are reusable, Master Menu-backed templates.
+   Each staged "session" here (Lunch, High Tea, etc.) applies one package;
+   the booking is created first, then each staged session + its package is
+   persisted via the same session/apply-package API Booking Details uses —
+   one system end to end, not a separate flat-package model. ── */
+const SESSION_LABELS = {
+    welcome_drinks: 'Welcome Drinks', morning_tea: 'Morning Tea', breakfast: 'Breakfast',
+    lunch: 'Lunch', evening_snacks: 'Evening Snacks', high_tea: 'High Tea',
+    dinner: 'Dinner', midnight_refreshments: 'Midnight Refreshments',
+};
 let cateringPackages = [];
 
 async function loadCateringPackages() {
-    const list = document.getElementById('cateringPkgList');
+    const sel = document.getElementById('csbPackageId');
     try {
         const res = await API.catering.packages();
-        cateringPackages = res.data?.packages || res.data || [];
+        cateringPackages = (res.data || []).filter(p => p.is_active);
+        sel.innerHTML = cateringPackages.map(p => `<option value="${p.package_id}">${p.package_name} — ${Utils.formatCurrency(p.price_per_plate)}/plate</option>`).join('') || '<option value="">No catering packages available</option>';
     } catch (err) {
-        list.innerHTML = `<div class="col-12"><div class="form-text text-danger">Could not load catering packages: ${getErrorMessage(err, 'unknown error')}</div></div>`;
+        sel.innerHTML = '<option value="">Failed to load packages</option>';
+    }
+}
+
+function addStagedCateringSession() {
+    const sessionType = document.getElementById('csbSessionType').value;
+    const servingTime = document.getElementById('csbServingTime').value || null;
+    const packageId = parseInt(document.getElementById('csbPackageId').value, 10);
+    const pkg = cateringPackages.find(p => p.package_id === packageId);
+    if (!pkg) { Utils.toast('Select a catering package', 'error'); return; }
+
+    const guestCount = state.guestCount || 0;
+    const subtotal = Math.round((Number(pkg.price_per_plate) || 0) * guestCount);
+    state.stagedCateringSessions.push({
+        sessionType, servingTime, packageId, packageName: pkg.package_name, subtotal,
+    });
+    renderStagedCateringSessions();
+    calculatePrice();
+}
+
+function removeStagedCateringSession(index) {
+    state.stagedCateringSessions.splice(index, 1);
+    renderStagedCateringSessions();
+    calculatePrice();
+}
+
+function renderStagedCateringSessions() {
+    const list = document.getElementById('stagedCateringList');
+    state.cateringTotal = state.stagedCateringSessions.reduce((sum, s) => sum + s.subtotal, 0);
+    if (!state.stagedCateringSessions.length) {
+        list.innerHTML = '<div class="col-12"><div class="form-text">No catering sessions added yet — this booking will have none, or you can add sessions later from Booking Details.</div></div>';
         return;
     }
-    renderCateringPackages();
-}
-
-function renderCateringPackages() {
-    const list = document.getElementById('cateringPkgList');
-    const cards = [
-        `<div class="col-md-3 col-6">
-            <div class="pkg-card" onclick="selectPkg(null,0,'No Catering',this)">
-                <div style="font-weight:600;font-size:13px">No Catering</div>
-                <div style="font-size:12px;color:var(--text-muted)">Self-arranged</div>
-                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹0</div>
+    list.innerHTML = state.stagedCateringSessions.map((s, i) => `
+        <div class="col-12">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--border-color);border-radius:var(--radius-md)">
+                <div>
+                    <span style="font-weight:600">${SESSION_LABELS[s.sessionType] || s.sessionType}</span>
+                    ${s.servingTime ? `<span style="color:var(--text-muted)"> · ${s.servingTime}</span>` : ''}
+                    <span style="color:var(--text-muted)"> — ${s.packageName}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <strong>${Utils.formatCurrency(s.subtotal)}</strong>
+                    <button type="button" class="btn-ghost" style="color:var(--color-danger);padding:2px 8px" onclick="removeStagedCateringSession(${i})">Remove</button>
+                </div>
             </div>
-        </div>`,
-        ...cateringPackages.map(p => `
-        <div class="col-md-3 col-6">
-            <div class="pkg-card" onclick="selectPkg(${p.package_id},${p.price_per_plate},'${(p.package_name||'').replace(/'/g,"\\'")}',this)">
-                <div style="font-weight:600;font-size:13px">${p.package_name}</div>
-                <div style="font-size:12px;color:var(--text-muted)">${(p.package_type||'').replace('_',' ')} · min ${p.min_plates||0} plates</div>
-                <div style="font-weight:700;color:var(--brand-primary);margin-top:6px">₹${Number(p.price_per_plate).toFixed(0)}/plate</div>
-            </div>
-        </div>`),
-    ];
-    list.innerHTML = cards.join('');
-}
-
-function selectPkg(id, ppp, name, cardEl) {
-    state.cateringPkgId = id;
-    state.cateringName  = name;
-    state.cateringPPP   = ppp;
-    document.querySelectorAll('.pkg-card').forEach(c => c.classList.remove('selected'));
-    cardEl?.classList.add('selected');
-    const wrap = document.getElementById('cateringPlateInput');
-    if (id) {
-        wrap.style.display = '';
-        const plateInput = document.getElementById('plateCount');
-        plateInput.value = state.guestCount || '';
-        refreshCateringBill();
-    } else {
-        wrap.style.display = 'none';
-        document.getElementById('cateringBillSummary').style.display = 'none';
-        state.cateringTotal = 0;
-        state.cateringPricePerPlate = null;
-        state.cateringTaxAmount = null;
-        calculatePrice();
-    }
-}
-
-function onPlateCountChange() { refreshCateringBill(); }
-
-/* Fetches the real per-plate price/tax/total from the Master Menu-backed package —
-   this is the "pricing/tax populate automatically" requirement, not a manual multiply. */
-async function refreshCateringBill() {
-    if (!state.cateringPkgId) return;
-    const plates = parseInt(document.getElementById('plateCount').value) || 0;
-    if (!plates) return;
-    try {
-        const res  = await API.catering.bill(state.cateringPkgId, { guest_count: plates });
-        const bill = res.data || {};
-        state.plateCount            = plates;
-        state.cateringTotal         = Number(bill.total_bill) || 0;
-        state.cateringTaxAmount     = Number(bill.total_tax) || 0;
-        state.cateringPricePerPlate = Number(bill.computed_price_per_plate) || 0;
-
-        document.getElementById('cateringBillSummary').style.display = '';
-        document.getElementById('cbsPPP').textContent   = Utils.formatCurrency(bill.computed_price_per_plate || 0);
-        document.getElementById('cbsTax').textContent   = Utils.formatCurrency(bill.computed_tax_per_plate || 0);
-        document.getElementById('cbsPlates').textContent = plates;
-        document.getElementById('cbsTotal').textContent = Utils.formatCurrency(state.cateringTotal);
-        calculatePrice();
-    } catch (err) {
-        Utils.toast(getErrorMessage(err, 'Could not calculate catering pricing'), 'error');
-    }
+        </div>`).join('');
 }
 
 /* ── Inventory Allocation — auto-recommended from guest count + live stock,
    remains fully editable before the booking is submitted (resources[] is
    sent as-is at creation and enforced/overallocation-checked server-side). ── */
+let allInventoryItems = [];
+
 async function loadInventoryRecommendations() {
     const wrap = document.getElementById('inventoryAllocList');
     if (!state.guestCount || !state.eventDate) {
@@ -1309,8 +1371,11 @@ async function loadInventoryRecommendations() {
         return;
     }
     try {
-        const res = await API.resources.recommendations({ guest_count: state.guestCount, event_date: state.eventDate });
-        const rows = res.data || [];
+        const [recRes, allRes] = await Promise.all([
+            API.resources.recommendations({ guest_count: state.guestCount, event_date: state.eventDate }),
+            API.resources.list(),
+        ]);
+        const rows = recRes.data || [];
         state.resourceAllocations = rows.map(r => ({
             resourceId:   r.resource_id,
             resourceName: r.resource_name,
@@ -1318,10 +1383,38 @@ async function loadInventoryRecommendations() {
             quantity:     r.recommended_quantity,
             available:    r.available,
         }));
+        allInventoryItems = allRes.data || [];
         renderInventoryAllocations();
+        renderAddInventorySelect();
     } catch (err) {
         wrap.innerHTML = `<div class="form-text text-danger">Could not load inventory recommendations: ${getErrorMessage(err, 'unknown error')}</div>`;
     }
+}
+
+function renderAddInventorySelect() {
+    const sel = document.getElementById('addInventoryItemSelect');
+    if (!sel) return;
+    const allocatedIds = new Set(state.resourceAllocations.map(a => a.resourceId));
+    const available = allInventoryItems.filter(r => !allocatedIds.has(r.resource_id));
+    sel.innerHTML = '<option value="">— Add another item —</option>' +
+        available.map(r => `<option value="${r.resource_id}">${r.resource_name} (${Utils.titleCase ? Utils.titleCase(r.category) : r.category}) — ${r.quantity_available ?? 0} available</option>`).join('');
+}
+
+function addInventoryItem() {
+    const sel = document.getElementById('addInventoryItemSelect');
+    const id = parseInt(sel.value, 10);
+    if (!id) return;
+    const item = allInventoryItems.find(r => r.resource_id === id);
+    if (!item) return;
+    state.resourceAllocations.push({
+        resourceId:   item.resource_id,
+        resourceName: item.resource_name,
+        category:     item.category,
+        quantity:     1,
+        available:    item.quantity_available ?? 0,
+    });
+    renderInventoryAllocations();
+    renderAddInventorySelect();
 }
 
 function renderInventoryAllocations() {
@@ -1536,7 +1629,9 @@ function renderSummaryPanel() {
     setKpi('sumKpiGuests', state.guestCount ? Utils.formatNumber(state.guestCount) : '');
 
     document.getElementById('sumCustomer').textContent = state.customerName || 'Not selected';
-    document.getElementById('sumCatering').textContent = state.cateringPkgId ? `${state.cateringName} (${state.plateCount||0} plates)` : 'None';
+    document.getElementById('sumCatering').textContent = state.stagedCateringSessions.length
+        ? state.stagedCateringSessions.map(s => SESSION_LABELS[s.sessionType] || s.sessionType).join(', ')
+        : 'None';
     document.getElementById('sumDecor').textContent     = Utils.formatCurrency(state.decorationAmt);
     document.getElementById('sumServices').textContent  = Utils.formatCurrency(state.servicesTotal);
     document.getElementById('sumInventory').textContent = state.resourceAllocations.length ? `${state.resourceAllocations.length} item(s)` : 'None';
@@ -1663,6 +1758,7 @@ async function submitBooking() {
 
             // The update endpoint only accepts these fields (see booking.validator.js updateSchema)
             const payload = {
+                packageId:  state.packageId,
                 eventName:  state.eventName      || undefined,
                 eventType:  state.eventTypeName   || undefined,
                 guestCount: state.guestCount      || undefined,
@@ -1713,6 +1809,7 @@ async function submitBooking() {
         // Payload keys must match the Joi createSchema (camelCase, stripUnknown: true)
         const payload = {
             hallId:         state.hallId,
+            packageId:      state.packageId || undefined,
             customerId:     state.customerId,
             eventDate:      state.eventDate,
             eventTimeStart: state.startTime,
@@ -1733,9 +1830,6 @@ async function submitBooking() {
             cooloffMinutes:   state.cooloffMinutes,
             cleanupCharge:    state.cleanupCharge,
             lateExitCharge:   state.lateExitCharge,
-            cateringPackageId:     state.cateringPkgId          || undefined,
-            cateringPricePerPlate: state.cateringPricePerPlate  || undefined,
-            cateringTaxAmount:     state.cateringTaxAmount      || undefined,
             resources: state.resourceAllocations
                 .filter(a => a.quantity > 0)
                 .map(a => ({ resourceId: a.resourceId, quantity: a.quantity })),
@@ -1743,6 +1837,24 @@ async function submitBooking() {
         const res = await API.bookings.create(payload);
         const ref = res.data?.booking_ref;
         const id  = res.data?.booking_id;
+
+        // Catering sessions require a real booking_id (they're per-booking
+        // records), so each staged session + its package template is
+        // persisted right after creation via the same session/apply-package
+        // API Booking Details uses — never a separate flat-package path.
+        if (id && state.stagedCateringSessions.length) {
+            for (const s of state.stagedCateringSessions) {
+                try {
+                    const sessRes = await API.bookings.catering.addSession(id, {
+                        sessionType: s.sessionType, servingTime: s.servingTime, guestCount: state.guestCount,
+                    });
+                    const sessionId = sessRes.data?.session_id;
+                    if (sessionId) await API.bookings.catering.applyPackage(id, sessionId, s.packageId);
+                } catch (cateringErr) {
+                    Utils.toast(getErrorMessage(cateringErr, `Booking created, but the "${s.packageName}" catering session couldn't be added — add it from Booking Details.`), 'warning');
+                }
+            }
+        }
         document.getElementById('successRef').textContent = ref || '';
         document.getElementById('viewBookingBtn').href   = id ? `detail.html?id=${id}` : 'index.html';
         new bootstrap.Modal(document.getElementById('successModal')).show();
@@ -1821,6 +1933,10 @@ async function loadExistingBooking(id) {
         document.getElementById('specialRequests').value = state.specialRequests;
         document.getElementById('theme').value = b.theme || '';
         selectCustomer(state.customerId, state.customerName);
+        state.packageId = b.package_id || null;
+        document.getElementById('bookingPackageSelect').value = b.package_id || '';
+        state.hallOriginalPrice = parseFloat(b.hall_base_price) || 0;
+        state.hallBasePrice = b.package_id && b.package_base_price != null ? parseFloat(b.package_base_price) : state.hallOriginalPrice;
 
         // Pre-fill operational fields
         document.getElementById('staffCount').value     = b.staff_count      || '';
@@ -1909,6 +2025,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderServices();
     loadCateringPackages();
+    loadBookingPackages();
 
     const params = new URLSearchParams(location.search);
     const id   = params.get('id');

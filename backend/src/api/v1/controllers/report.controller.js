@@ -6,7 +6,7 @@
 const svc      = require('../../../services/report.service');
 const response = require('../../../utils/response');
 const { sendExport } = require('../../../utils/exporter');
-const actor    = (req) => ({ companyId: req.companyId, branchId: req.user.branch_id, userId: req.user.user_id });
+const actor    = (req) => ({ companyId: req.companyId, branchId: req.user.branch_id, userId: req.user.user_id, roleSlug: req.user.role_slug });
 
 const REVENUE_COLUMNS  = [
     { key: 'period_label',     label: 'Period' },

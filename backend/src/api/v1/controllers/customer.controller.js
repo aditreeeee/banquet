@@ -5,7 +5,7 @@
 
 const svc      = require('../../../services/customer.service');
 const response = require('../../../utils/response');
-const actor    = (req) => ({ companyId: req.companyId, branchId: req.user.branch_id, userId: req.user.user_id });
+const actor    = (req) => ({ companyId: req.companyId, branchId: req.user.branch_id, userId: req.user.user_id, roleSlug: req.user.role_slug });
 
 const getAll  = async (req, res) => { const { rows, meta, stats } = await svc.getAll(req.query, actor(req)); return response.success(res, { customers: rows, meta, stats }); };
 const getById = async (req, res) => response.success(res, await svc.getById(parseInt(req.params.id, 10), req.companyId));

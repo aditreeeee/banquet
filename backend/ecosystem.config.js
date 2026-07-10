@@ -4,7 +4,16 @@ module.exports = {
             name:            'banquetpro-api',
             script:          'server.js',
             cwd:             __dirname,
-            instances:       1,
+            // Cluster mode spreads load across every CPU core instead of a
+            // single Node process — needed for the concurrency this app
+            // targets. Trade-off: dashboard.service.js's in-memory NodeCache
+            // is per-worker, so invalidateDashboardCache() on a write only
+            // clears that worker's copy — other workers can serve dashboard
+            // data up to its 5-minute TTL stale. Acceptable for now (same
+            // cache already had a TTL-bounded staleness window pre-cluster);
+            // move it to a shared store (e.g. Redis) if that window matters.
+            instances:       'max',
+            exec_mode:       'cluster',
             autorestart:     true,
             watch:           false,
             max_restarts:    10,

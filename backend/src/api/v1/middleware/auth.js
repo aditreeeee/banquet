@@ -47,12 +47,9 @@ const authenticate = async (req, res, next) => {
 
         const token = authHeader.slice(7);
 
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-        } catch (err) {
-            throw err; // Let global handler map JWT errors to 401
-        }
+        // JWT errors (expired/invalid signature) propagate to the outer
+        // catch below, which the global error handler maps to 401.
+        const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
         // Load user (lightweight query)
         const result = await executeQuery(

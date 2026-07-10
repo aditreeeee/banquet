@@ -1253,7 +1253,7 @@ const UpcomingList = ({ bookings, selected, onOpenBooking, now }) => {
     <div className="scroll-y" style={{flex:1,minHeight:0}}>
       {list.length===0&&(
         <div style={{textAlign:'center',padding:'32px 0',color:'#9ca3af',fontSize:13}}>
-          No bookings for {dL(selected)}
+          {selected ? `No bookings for ${dL(selected)}` : 'No upcoming bookings'}
         </div>
       )}
       {list.map(b=>{

@@ -201,12 +201,29 @@ async function submitTenant() {
     const btn = document.getElementById('confirmTenantBtn');
     Utils.showLoader(btn, 'Saving…');
     try {
-        if (id) await API.companies.update(id, data);
-        else    await API.companies.create(data);
+        if (id) {
+            await API.companies.update(id, data);
+            Utils.hideLoader(btn);
+            bootstrap.Modal.getInstance(document.getElementById('tenantModal'))?.hide();
+            Utils.toast('Property updated', 'success');
+            loadTenants();
+            return;
+        }
+        const res = await API.companies.create(data);
         Utils.hideLoader(btn);
         bootstrap.Modal.getInstance(document.getElementById('tenantModal'))?.hide();
-        Utils.toast(id ? 'Property updated' : 'Property created', 'success');
-        loadTenants();
+        // A brand-new property has no bookings/customers/invoices/anything —
+        // it's genuinely empty, not seeded with demo data. But without
+        // impersonating it, every other page a Super Admin opens next
+        // silently falls back to company_id=1 (scopeToCompany's write-safe
+        // default) and shows THAT company's real, populated data instead —
+        // easy to mistake for "my new property has demo data in it" when
+        // it's actually just still looking at company 1. Drop straight into
+        // impersonating the new property so the very next page really is
+        // its own empty dashboard.
+        API.Impersonation.set(res.data.company_id, res.data.company_name);
+        Utils.toast('Property created — now viewing it', 'success');
+        window.location.href = '../dashboard/index.html';
     } catch (err) {
         Utils.hideLoader(btn);
         Utils.toast(err.message || 'Failed to save property', 'error');

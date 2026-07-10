@@ -1182,7 +1182,14 @@ const MiniCalendar = ({ selected, onSelect, onOpenBooking }) => {
    UPCOMING BOOKINGS
    ════════════════════════════════════════════════════════════════ */
 const UpcomingList = ({ bookings, selected, onOpenBooking, now }) => {
-  const list = selected ? bookings.filter(b=>b.date===selected) : bookings;
+  // "Upcoming" always means soonest-first regardless of whatever sort the
+  // Bookings Table (which shares this same filtered list) currently has
+  // selected — and excludes anything already in the past, which the shared
+  // list doesn't filter out on its own.
+  const list = useMemo(() => {
+    const base = selected ? bookings.filter(b=>b.date===selected) : bookings.filter(b=>!b.date || b.date>=TODAY);
+    return [...base].sort((a,b) => new Date(a.date) - new Date(b.date));
+  }, [bookings, selected]);
   // Fills the card's remaining height (the card is a flex column — see the
   // Upcoming Bookings <Card> above) instead of a fixed maxHeight that left
   // blank space below a short list whenever the neighboring card was taller.

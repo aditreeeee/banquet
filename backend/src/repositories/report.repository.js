@@ -26,14 +26,14 @@ const getRevenueReport = async ({ companyId, branchId, fromDate, toDate, groupBy
             COUNT(CASE WHEN status = 'cancelled' THEN 1 END)         AS cancellations,
             ISNULL(SUM(CASE WHEN status = 'cancelled' THEN total_amount ELSE 0 END), 0)   AS cancelled_amount
          FROM Bookings
-         WHERE company_id = @companyId
+         WHERE (@companyId IS NULL OR company_id = @companyId)
            AND (@branchId IS NULL OR branch_id = @branchId)
            AND event_date BETWEEN @fromDate AND @toDate
            AND status NOT IN ('draft')
          GROUP BY ${groupExpr}, ${labelExpr}
          ORDER BY period_date`,
         {
-            companyId,
+            companyId: companyId || null,
             branchId: branchId || null,
             fromDate: new Date(fromDate),
             toDate:   new Date(toDate),
@@ -151,7 +151,7 @@ const getOccupancyReport = async ({ companyId, branchId, fromDate, toDate }) => 
                 SELECT d FROM dates
                 WHERE d BETWEEN b.event_date AND ISNULL(b.event_end_date, b.event_date)
             ) dt
-            WHERE b.company_id = @companyId AND b.status NOT IN ('draft', 'cancelled')
+            WHERE (@companyId IS NULL OR b.company_id = @companyId) AND b.status NOT IN ('draft', 'cancelled')
             GROUP BY b.hall_id
          ),
          blocked AS (
@@ -180,7 +180,7 @@ const getOccupancyReport = async ({ companyId, branchId, fromDate, toDate }) => 
              AND b.status NOT IN ('draft', 'cancelled')
          LEFT JOIN occ     ON occ.hall_id     = h.hall_id
          LEFT JOIN blocked ON blocked.hall_id = h.hall_id
-         WHERE h.company_id = @companyId
+         WHERE (@companyId IS NULL OR h.company_id = @companyId)
            AND (@branchId IS NULL OR h.branch_id = @branchId)
            AND h.is_active = 1
          GROUP BY h.hall_id, h.hall_name, h.capacity, bq.banquet_name,
@@ -189,7 +189,7 @@ const getOccupancyReport = async ({ companyId, branchId, fromDate, toDate }) => 
          ORDER BY occupancy_pct DESC
          OPTION (MAXRECURSION 366)`,
         {
-            companyId,
+            companyId: companyId || null,
             branchId: branchId || null,
             fromDate: new Date(fromDate),
             toDate:   new Date(toDate),
@@ -306,12 +306,12 @@ const getSummaryStats = async ({ companyId, branchId, fromDate, toDate }) => {
             ISNULL(SUM(CASE WHEN status <> 'cancelled' THEN total_amount - ISNULL(amount_paid,0) ELSE 0 END), 0) AS pending_amount,
             ISNULL(AVG(CAST(guest_count AS DECIMAL(10,2))), 0)     AS avg_guest_count
          FROM Bookings
-         WHERE company_id = @companyId
+         WHERE (@companyId IS NULL OR company_id = @companyId)
            AND (@branchId IS NULL OR branch_id = @branchId)
            AND event_date BETWEEN @fromDate AND @toDate
            AND status NOT IN ('draft')`,
         {
-            companyId,
+            companyId: companyId || null,
             branchId: branchId || null,
             fromDate: new Date(fromDate),
             toDate:   new Date(toDate),

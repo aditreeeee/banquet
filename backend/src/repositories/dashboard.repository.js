@@ -58,10 +58,10 @@ const getNewCustomers = async ({ companyId, branchId, period = 'month' }) => {
     const rows = await executeQuery(
         `SELECT COUNT(*) AS new_customers
          FROM Customers
-         WHERE company_id = @companyId
+         WHERE (@companyId IS NULL OR company_id = @companyId)
            AND (@branchId IS NULL OR branch_id = @branchId)
            AND CAST(created_at AS DATE) BETWEEN @fromDate AND @toDate`,
-        { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+        { companyId: companyId || null, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
     );
     return rows[0]?.new_customers || 0;
 };
@@ -79,11 +79,11 @@ const getStatusDistribution = async ({ companyId, branchId, period = 'month' }) 
     const rows = await executeQuery(
         `SELECT status, COUNT(*) AS count
          FROM Bookings
-         WHERE company_id = @companyId
+         WHERE (@companyId IS NULL OR company_id = @companyId)
            AND (@branchId IS NULL OR branch_id = @branchId)
            AND event_date BETWEEN @fromDate AND @toDate
          GROUP BY status`,
-        { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+        { companyId: companyId || null, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
     );
     return rows;
 };
@@ -99,12 +99,12 @@ const getUpcomingBookings = async ({ companyId, branchId, limit = 10 }) => {
          FROM Bookings b
          JOIN Halls     h ON h.hall_id     = b.hall_id
          JOIN Customers c ON c.customer_id = b.customer_id
-         WHERE b.company_id = @companyId
+         WHERE (@companyId IS NULL OR b.company_id = @companyId)
            AND (@branchId IS NULL OR b.branch_id = @branchId)
            AND b.event_date BETWEEN CAST(GETUTCDATE() AS DATE) AND DATEADD(DAY, 30, CAST(GETUTCDATE() AS DATE))
            AND b.status NOT IN ('cancelled', 'draft')
          ORDER BY b.event_date ASC, b.event_time_start ASC`,
-        { companyId, branchId: branchId || null, limit }
+        { companyId: companyId || null, branchId: branchId || null, limit }
     );
     return rows;
 };
@@ -129,9 +129,9 @@ const getRecentActivity = async ({ companyId, limit = 15 }) => {
          LEFT JOIN Bookings b  ON al.entity_type = 'booking' AND b.booking_id = TRY_CAST(al.entity_id AS INT)
          LEFT JOIN Customers c ON c.customer_id = b.customer_id
          LEFT JOIN Halls h     ON h.hall_id = b.hall_id
-         WHERE al.company_id = @companyId
+         WHERE (@companyId IS NULL OR al.company_id = @companyId)
          ORDER BY al.created_at DESC`,
-        { companyId, limit }
+        { companyId: companyId || null, limit }
     );
     return rows;
 };
@@ -146,12 +146,12 @@ const getBookingsByDate = async ({ companyId, branchId, date }) => {
          FROM Bookings b
          JOIN Halls     h ON h.hall_id     = b.hall_id
          JOIN Customers c ON c.customer_id = b.customer_id
-         WHERE b.company_id = @companyId
+         WHERE (@companyId IS NULL OR b.company_id = @companyId)
            AND (@branchId IS NULL OR b.branch_id = @branchId)
            AND CAST(b.event_date AS DATE) = @date
            AND b.status NOT IN ('draft')
          ORDER BY b.event_time_start`,
-        { companyId, branchId: branchId || null, date: new Date(date) }
+        { companyId: companyId || null, branchId: branchId || null, date: new Date(date) }
     );
     return rows;
 };

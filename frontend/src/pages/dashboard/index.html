@@ -1436,18 +1436,17 @@ const DashboardView = ({ period, searchQuery }) => {
 
   return (
     <>
-      {/* Super Admin, no tenant selected — the Booking Calendar and Command
-          Center below already show every tenant's bookings/halls, but the
-          KPI cards and charts are still a single tenant's numbers (rewiring
-          those cross-tenant is a larger change — see the Platform Dashboard
-          for real all-tenant totals in the meantime). */}
+      {/* Super Admin, no tenant selected — every widget on this page (KPIs,
+          charts, Booking Calendar, Command Center) already aggregates every
+          tenant (see resolveCompanyScope in utils/branchScope.js). Just a
+          confirmation so it's not ambiguous — impersonate a tenant (Platform
+          → Tenants) to drill into one company's numbers instead. */}
       {isSuperAdmin && !isImpersonating && (
         <div className="fu fu-1" style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
           background:'rgba(124,58,237,.08)',border:'1px solid rgba(124,58,237,.25)',borderRadius:10,marginBottom:4}}>
           <span style={{fontSize:12.5,color:C.navy}}>
-            You're viewing one tenant's numbers. The Booking Calendar and Command Center below already
-            span every tenant — for all-tenant KPIs and revenue, use the{' '}
-            <a href="../platform/dashboard.html" style={{color:'#7C3AED',fontWeight:700,textDecoration:'none'}}>Platform Dashboard</a>.
+            Showing data across every tenant. To view one company's numbers instead, impersonate it from{' '}
+            <a href="../platform/tenants.html" style={{color:'#7C3AED',fontWeight:700,textDecoration:'none'}}>Platform → Tenants</a>.
           </span>
         </div>
       )}

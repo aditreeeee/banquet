@@ -522,6 +522,20 @@ const updateStatus = async (bookingId, newStatus, actor) => {
         );
     }
 
+    // 'completed' means the event happened AND the customer settled up —
+    // the state machine allows the transition from 'advance_paid' as well
+    // as 'fully_paid' (status labels drift from the real payment total
+    // whenever staff forget to flip it after a payment lands), so check the
+    // actual balance here rather than trusting the status label alone.
+    if (newStatus === 'completed') {
+        const balanceDue = (existing.total_amount || 0) - (existing.amount_paid || 0);
+        if (balanceDue > 0.01) {
+            throw new ValidationError(
+                `Cannot mark this booking completed — ₹${balanceDue.toFixed(2)} is still outstanding. Record the remaining payment first.`
+            );
+        }
+    }
+
     const booking = await bookingRepo.updateStatus(bookingId, actor.companyId, newStatus, actor.userId);
     dashService.invalidateDashboardCache(actor.companyId);
 

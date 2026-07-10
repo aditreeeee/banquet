@@ -289,6 +289,21 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
 <script src="../../../public/assets/js/dashboard-nav.js"></script>
+<script>
+  // A Super Admin viewing this per-tenant Overview with no tenant selected
+  // would otherwise silently see company_id=1's data (scopeToCompany's
+  // fallback — see backend/src/api/v1/middleware/auth.js) mislabeled as
+  // "their" dashboard. Send them to the Platform Dashboard (all-tenant
+  // aggregate) instead, before React ever mounts or fires a single API
+  // call — this only fires when NOT impersonating a specific tenant;
+  // impersonation keeps the normal per-tenant view intact.
+  (function () {
+    if (typeof Auth === 'undefined' || typeof API === 'undefined') return;
+    if (!Auth.isSuperAdmin || !Auth.isSuperAdmin()) return;
+    if (API.Impersonation && API.Impersonation.get()) return;
+    window.location.replace('../platform/dashboard.html');
+  })();
+</script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
 <script type="text/babel">

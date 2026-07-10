@@ -115,6 +115,14 @@ const Auth = (() => {
     function getDefaultPage() {
         const role = getRole();
         if (role === ROLES.CUSTOMER) return resolvePage('dashboard/index.html');
+        // Super Admin lands on the cross-tenant Platform Dashboard by default
+        // (dashboard/index.html itself also redirects here — see its own
+        // guard script — but sending them here directly on login skips that
+        // extra bounce). Once impersonating a tenant, the per-tenant
+        // dashboard/index.html is reachable normally via the sidebar.
+        if (role === ROLES.SUPER_ADMIN && !(API.Impersonation && API.Impersonation.get())) {
+            return resolvePage('platform/dashboard.html');
+        }
         return resolvePage('dashboard/index.html');
     }
 

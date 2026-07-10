@@ -20,6 +20,39 @@ const SESSION_TYPES = [
     'high_tea', 'dinner', 'midnight_refreshments',
 ];
 
+// event_time_start/end come back from the mssql driver as native JS Date
+// objects on a 1970-01-01 epoch (already-JSON-serialized HTTP responses see
+// ISO strings instead, since res.json() always renders Dates in UTC — but
+// this runs on the raw repository row, before that serialization happens).
+// String(dateObject) formats in the *server's local timezone*, not UTC —
+// on this server (IST, UTC+5:30) that silently shifted every window by
+// 5.5 hours. Always go through toISOString() for a real Date first.
+const clockTime = (t) => {
+    if (!t) return null;
+    const iso = t instanceof Date ? t.toISOString() : String(t);
+    const m = iso.match(/(\d{2}):(\d{2})/);
+    return m ? `${m[1]}:${m[2]}` : null;
+};
+
+// Handles overnight bookings (endTime < startTime, e.g. 20:00-02:00) by
+// treating the window as wrapping past midnight instead of a plain range —
+// the UI-side validation in create.html/detail.html uses the same logic.
+const isWithinEventWindow = (servingTime, startTime, endTime) => {
+    if (!servingTime || !startTime || !endTime) return true; // nothing to validate against
+    return startTime <= endTime
+        ? servingTime >= startTime && servingTime <= endTime
+        : servingTime >= startTime || servingTime <= endTime;
+};
+
+const validateServingTime = (servingTime, booking) => {
+    if (!servingTime) return;
+    const startTime = clockTime(booking.event_time_start);
+    const endTime = clockTime(booking.event_time_end);
+    if (!isWithinEventWindow(servingTime, startTime, endTime)) {
+        throw new ValidationError(`Serving time must be within the event's ${startTime} – ${endTime} window`);
+    }
+};
+
 const getBooking = async (bookingId, companyId) => {
     const booking = await bookingRepo.findById(bookingId, companyId);
     if (!booking) throw new NotFoundError('Booking');
@@ -67,9 +100,11 @@ const addSession = async (bookingId, data, actor) => {
     if (!SESSION_TYPES.includes(sessionType)) {
         throw new ValidationError(`sessionType must be one of: ${SESSION_TYPES.join(', ')}`);
     }
+    const servingTime = data.servingTime || data.serving_time;
+    validateServingTime(servingTime, booking);
     const session = await bookingCateringRepo.createSession(bookingId, actor.companyId, {
         sessionType,
-        servingTime: data.servingTime || data.serving_time,
+        servingTime,
         guestCount:  data.guestCount  ?? data.guest_count,
         notes:       data.notes,
     });
@@ -93,10 +128,12 @@ const updateSession = async (bookingId, sessionId, data, actor) => {
     if (sessionType && !SESSION_TYPES.includes(sessionType)) {
         throw new ValidationError(`sessionType must be one of: ${SESSION_TYPES.join(', ')}`);
     }
+    const servingTime = data.servingTime || data.serving_time;
+    validateServingTime(servingTime, booking);
 
     const updated = await bookingCateringRepo.updateSession(sessionId, actor.companyId, {
         sessionType,
-        servingTime: data.servingTime || data.serving_time,
+        servingTime,
         guestCount:  data.guestCount  ?? data.guest_count,
         notes:       data.notes,
     });

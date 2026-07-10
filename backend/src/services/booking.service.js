@@ -323,11 +323,17 @@ const getOccupancySlots = async (masterBookingId, companyId) => {
  *   Cleaning End → Cool-Off End (= Hall Released)
  */
 const getOccupancyTimeline = (booking) => {
-    // event_time_start/end come back as full datetimes on a 1970-01-01 epoch
-    // (or plain 'HH:MM:SS' strings) — extract just the clock time, same
-    // parsing the frontend already does for display (see dashboard's fmtTime).
+    // event_time_start/end come back from the mssql driver as native JS Date
+    // objects on a 1970-01-01 epoch. String(dateObject) formats in the
+    // *server's local timezone*, not UTC (unlike an already-JSON-serialized
+    // HTTP response, where res.json() always renders Dates as UTC ISO) — on
+    // a server whose local timezone isn't UTC, that silently shifted every
+    // timeline timestamp below by the server's UTC offset. Always go through
+    // toISOString() for a real Date first.
     const parseClock = (t) => {
-        const m = String(t).match(/(\d{2}):(\d{2})/);
+        if (!t) return { h: 0, m: 0 };
+        const iso = t instanceof Date ? t.toISOString() : String(t);
+        const m = iso.match(/(\d{2}):(\d{2})/);
         return m ? { h: parseInt(m[1], 10), m: parseInt(m[2], 10) } : { h: 0, m: 0 };
     };
     const eventDateOnly = new Date(booking.event_date).toISOString().slice(0, 10);

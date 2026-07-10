@@ -956,6 +956,35 @@ function renderSteps() {
     });
 
     renderSummaryPanel();
+    syncCateringTimeConstraint();
+}
+
+/* Keeps the Catering step's Serving Time input inside the booking's actual
+   event window (state.startTime/endTime from Step 1) — a session served
+   before the event starts or after it ends doesn't make sense, and nothing
+   was stopping that before. Overnight events (end time past midnight, e.g.
+   20:00-02:00) can't be expressed as a native <input type="time"> min/max
+   range, so those are left unconstrained here and caught instead by the
+   isTimeWithinBookingWindow() check in addStagedCateringSession(). */
+function syncCateringTimeConstraint() {
+    const el = document.getElementById('csbServingTime');
+    if (!el || !state.startTime || !state.endTime) return;
+    if (state.startTime <= state.endTime) {
+        el.min = state.startTime;
+        el.max = state.endTime;
+    } else {
+        el.removeAttribute('min');
+        el.removeAttribute('max');
+    }
+}
+
+/* True if `time` (HH:MM) falls within [startTime, endTime] — handles
+   overnight bookings where endTime < startTime by treating the window as
+   wrapping past midnight instead of a normal range. */
+function isTimeWithinBookingWindow(time, startTime, endTime) {
+    if (!time || !startTime || !endTime) return true; // nothing to validate against
+    if (startTime <= endTime) return time >= startTime && time <= endTime;
+    return time >= startTime || time <= endTime;
 }
 
 /* â”€â”€ Navigation â”€â”€ */
@@ -1326,6 +1355,10 @@ function addStagedCateringSession() {
     const packageId = parseInt(document.getElementById('csbPackageId').value, 10);
     const pkg = cateringPackages.find(p => p.package_id === packageId);
     if (!pkg) { Utils.toast('Select a catering package', 'error'); return; }
+    if (servingTime && !isTimeWithinBookingWindow(servingTime, state.startTime, state.endTime)) {
+        Utils.toast(`Serving time must be within the event's ${Utils.formatTime(state.startTime)} – ${Utils.formatTime(state.endTime)} window`, 'error');
+        return;
+    }
 
     const guestCount = state.guestCount || 0;
     const subtotal = Math.round((Number(pkg.price_per_plate) || 0) * guestCount);

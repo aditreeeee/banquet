@@ -733,9 +733,39 @@ async function loadCateringSessions() {
     }
 }
 
+/* MSSQL TIME columns come back as full datetimes on a 1970-01-01 epoch
+   ("1970-01-01T20:00:00.000Z") — extract just the HH:MM clock time. */
+const clockTime = t => {
+    const m = t && String(t).match(/(\d{2}):(\d{2})/);
+    return m ? `${m[1]}:${m[2]}` : null;
+};
+
+/* True if `time` (HH:MM) falls within [startTime, endTime] — handles
+   overnight bookings where endTime < startTime by treating the window as
+   wrapping past midnight instead of a normal range. */
+function isTimeWithinBookingWindow(time, startTime, endTime) {
+    if (!time || !startTime || !endTime) return true; // nothing to validate against
+    if (startTime <= endTime) return time >= startTime && time <= endTime;
+    return time >= startTime || time <= endTime;
+}
+
 function openCateringSessionModal() {
     document.getElementById('csServingTime').value = '';
     document.getElementById('csGuestCount').value = '';
+    // Keep the picker itself inside the event window where that's
+    // expressible as a plain min/max range — overnight events (end time
+    // past midnight) are left unconstrained here and caught instead by the
+    // isTimeWithinBookingWindow() check in submitCateringSession().
+    const startTime = clockTime(booking?.event_time_start);
+    const endTime    = clockTime(booking?.event_time_end);
+    const timeInput  = document.getElementById('csServingTime');
+    if (startTime && endTime && startTime <= endTime) {
+        timeInput.min = startTime;
+        timeInput.max = endTime;
+    } else {
+        timeInput.removeAttribute('min');
+        timeInput.removeAttribute('max');
+    }
     new bootstrap.Modal(document.getElementById('cateringSessionModal')).show();
 }
 
@@ -743,6 +773,10 @@ async function submitCateringSession() {
     const sessionType = document.getElementById('csSessionType').value;
     const servingTime = document.getElementById('csServingTime').value || null;
     const guestCountRaw = document.getElementById('csGuestCount').value;
+    if (servingTime && !isTimeWithinBookingWindow(servingTime, clockTime(booking?.event_time_start), clockTime(booking?.event_time_end))) {
+        Utils.toast(`Serving time must be within the event's ${Utils.formatTime(booking.event_time_start)} – ${Utils.formatTime(booking.event_time_end)} window`, 'error');
+        return;
+    }
     const btn = document.getElementById('confirmCateringSessionBtn');
     Utils.showLoader(btn, 'Adding…');
     try {

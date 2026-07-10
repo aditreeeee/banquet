@@ -12,6 +12,12 @@ const { USER_ROLES } = require('../../../constants');
 
 const router = Router();
 
+// Readable by any authenticated user (not Super-Admin-gated below) — the
+// Settings -> Security page shows every tenant's admin the current
+// platform-wide session timeout, even though only a Super Admin can change
+// it. Must be registered before the requireRole(SUPER_ADMIN) gate.
+router.get('/settings/session-timeout',     ctrl.getSessionTimeout);
+
 router.use(requireRole(USER_ROLES.SUPER_ADMIN));
 
 router.get('/overview',                    ctrl.getOverview);
@@ -20,5 +26,7 @@ router.get('/trends',                      ctrl.getTrends);
 router.get('/tenants/:companyId/dashboard', ctrl.getTenantDashboard);
 router.get('/tenants/:companyId/reports',   ctrl.getTenantReports);
 router.get('/users',                        ctrl.getAllUsers);
+
+router.patch('/settings/session-timeout',   ctrl.updateSessionTimeout);
 
 module.exports = router;

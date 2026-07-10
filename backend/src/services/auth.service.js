@@ -50,7 +50,7 @@ const buildTokenPayload = (user) => ({
 const issueTokens = async (user, meta = {}, extended = false) => {
     const payload = buildTokenPayload(user);
 
-    const { accessTokenMinutes } = await settingsService.getSessionPolicy(user.company_id);
+    const { accessTokenMinutes } = await settingsService.getSessionPolicy();
     const accessToken  = signAccessToken(payload, `${accessTokenMinutes}m`);
     const refreshPlain = generateToken(32);                    // 64-char hex
     const refreshHash  = hashToken(refreshPlain);

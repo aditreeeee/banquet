@@ -450,10 +450,20 @@ let chargesLoaded = false;
 
         const general = res.data?.general || {};
         if (general.currency) document.getElementById('currency').value = general.currency;
-
-        const session = res.data?.session || {};
-        if (session.access_token_minutes) document.getElementById('sessionTimeoutMinutes').value = session.access_token_minutes;
     } catch (_) { /* leave fields at their HTML defaults — non-fatal */ }
+
+    // Session Timeout is platform-wide, not part of the per-tenant
+    // /settings payload above — every tenant admin can see the current
+    // value, but only a Super Admin can change it (see platform.routes.js).
+    try {
+        const res = await API.platform.getSessionTimeout();
+        if (res.data?.accessTokenMinutes) document.getElementById('sessionTimeoutMinutes').value = res.data.accessTokenMinutes;
+    } catch (_) { /* non-fatal — leave the field at its HTML default */ }
+    if (!Auth.isSuperAdmin()) {
+        const el = document.getElementById('sessionTimeoutMinutes');
+        el.disabled = true;
+        el.title = 'Only a Super Admin can change the platform-wide session timeout';
+    }
 })();
 function switchTab(tab) {
     activeTab = tab;
@@ -467,6 +477,19 @@ async function saveCurrentTab() {
     if (activeTab === 'charges') { return saveCharges(); }
     Utils.showLoader(btn, 'Saving…');
     try {
+        // Session Timeout is platform-wide (see platform.routes.js), not a
+        // per-tenant CompanySettings row — goes through its own endpoint,
+        // and only a Super Admin is allowed to change it.
+        if (activeTab === 'security') {
+            if (!Auth.isSuperAdmin()) {
+                Utils.toast('Only a Super Admin can change the platform-wide session timeout', 'error');
+                return;
+            }
+            const minutes = parseInt(document.getElementById('sessionTimeoutMinutes').value, 10);
+            await API.platform.setSessionTimeout(minutes);
+            Utils.toast('Settings saved!', 'success');
+            return;
+        }
         const data = collectTabData(activeTab);
         for (const [key, { value, group }] of Object.entries(data)) {
             await API.settings.update(key, value, group || activeTab);
@@ -598,9 +621,6 @@ function collectTabData(tab) {
         smtp_port:     { value: document.getElementById('smtpPort').value },
         sender_email:  { value: document.getElementById('senderEmail').value },
         smtp_password: { value: document.getElementById('smtpPassword').value },
-    };
-    if (tab === 'security') return {
-        access_token_minutes: { value: document.getElementById('sessionTimeoutMinutes').value, group: 'session' },
     };
     return {};
 }

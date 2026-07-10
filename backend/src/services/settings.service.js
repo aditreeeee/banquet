@@ -12,6 +12,17 @@ const auditLogRepo = require('../repositories/auditLog.repository');
 
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 
+// Session/token policy is platform-wide, not per-tenant — different
+// companies having different logout timings doesn't make sense for a
+// shared JWT signing config, and "make settings global" was explicit
+// feedback after this was first built as a per-company setting. There's no
+// separate global-settings table, so this anchors every session-policy
+// read/write to company_id=1's CompanySettings row regardless of which
+// tenant is actually asking — writable only via the Super-Admin-gated
+// /platform/settings/session-timeout route (see platform.routes.js), not
+// the regular per-tenant /settings/:key endpoint.
+const PLATFORM_SETTINGS_COMPANY_ID = 1;
+
 // Currency symbols for the handful of currency codes selectable in Settings.
 // general.currency (code) already existed as a seeded setting; only the
 // symbol lookup is new.
@@ -35,9 +46,8 @@ const DEFAULTS = {
     'catering.min_plate_policy':         'warn',
     // How long a login stays active before the access token expires and the
     // user is signed out (matches the previous hardcoded JWT_ACCESS_EXPIRES
-    // default of 15 minutes). Configurable per company from Settings ->
-    // Security; a Super Admin with no company (company_id null) always gets
-    // this default, since there's no single tenant's policy to apply.
+    // default of 15 minutes). Platform-wide, not per-company — see
+    // PLATFORM_SETTINGS_COMPANY_ID/getSessionPolicy below.
     'session.access_token_minutes':      '15',
 };
 
@@ -117,12 +127,23 @@ const getCateringPolicy = async (companyId) => {
     return ['warn', 'block', 'off'].includes(policy) ? policy : 'warn';
 };
 
-/** How many minutes an access token stays valid for this company's users
-    before they're signed out — see session.access_token_minutes above. */
-const getSessionPolicy = async (companyId) => {
-    const flat = await getFlatWithDefaults(companyId);
+/** How many minutes an access token stays valid before a user is signed
+    out — platform-wide (see PLATFORM_SETTINGS_COMPANY_ID above), so every
+    tenant's logins are governed by the same one value. */
+const getSessionPolicy = async () => {
+    const flat = await getFlatWithDefaults(PLATFORM_SETTINGS_COMPANY_ID);
     const minutes = parseInt(flat['session.access_token_minutes'], 10);
     return { accessTokenMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : 15 };
+};
+
+/** Super-Admin-only write path for the platform-wide session policy — goes
+    through the same cache-invalidating update() below, anchored to
+    PLATFORM_SETTINGS_COMPANY_ID rather than whichever tenant the caller
+    happens to be scoped to, so the change is visible on the very next read
+    (login or the automatic background token refresh — see auth.js's
+    silent refresh — whichever happens first for a currently-active user). */
+const updateSessionPolicy = async (accessTokenMinutes, actor) => {
+    await update(PLATFORM_SETTINGS_COMPANY_ID, 'access_token_minutes', accessTokenMinutes, 'session', actor);
 };
 
 const getCurrency = async (companyId) => {
@@ -148,4 +169,4 @@ const update = async (companyId, key, value, group, actor) => {
     });
 };
 
-module.exports = { getAll, getAllWithDefaults, getFlatWithDefaults, getOne, getBookingDefaults, getTaxRates, getCateringPolicy, getSessionPolicy, getCurrency, update };
+module.exports = { getAll, getAllWithDefaults, getFlatWithDefaults, getOne, getBookingDefaults, getTaxRates, getCateringPolicy, getSessionPolicy, updateSessionPolicy, getCurrency, update };

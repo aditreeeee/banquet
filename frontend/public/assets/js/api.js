@@ -210,6 +210,8 @@ const API = (() => {
             tenantDashboard: (companyId, p) => request('GET', `/platform/tenants/${companyId}/dashboard`, { params: p }),
             tenantReports:   (companyId, p) => request('GET', `/platform/tenants/${companyId}/reports`,   { params: p }),
             users:           (p) => request('GET', '/platform/users', { params: p }),
+            getSessionTimeout: ()      => request('GET',   '/platform/settings/session-timeout'),
+            setSessionTimeout: (mins)  => request('PATCH', '/platform/settings/session-timeout', { body: { accessTokenMinutes: mins } }),
         },
 
         banquets: {

@@ -9,7 +9,8 @@
 <link href="../../../public/assets/css/theme.css" rel="stylesheet">
 <link href="../../../public/assets/css/app.css"   rel="stylesheet">
 <style>
-.tenant-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:16px }
+.tenant-card { background:var(--bg-surface);border:1px solid var(--border-color);border-left:4px solid var(--tenant-color,transparent);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:16px }
+.tenant-swatch { width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0 }
 .tenant-icon { width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0 }
 .tenant-icon.active   { background:#D1FAE5;color:#059669 }
 .tenant-icon.inactive { background:#FEE2E2;color:#DC2626 }
@@ -96,6 +97,18 @@
 <script>
 Auth.requireAuth('../auth/login.html');
 
+// Super-Admin-only tenant color coding — company_id % palette.length so
+// every tenant gets a distinct color (guaranteed no collision until tenant
+// count exceeds the palette size, unlike hashing the name — two tenant
+// names can and did hash to the same slot). Same id -> color mapping as
+// the Platform Dashboard's Revenue by Tenant table and the impersonation
+// banner, so a given tenant reads as the same color everywhere a Super
+// Admin sees it. Regular tenant users never see another tenant, so
+// there's nothing to color for them — this only exists on Super-Admin-
+// facing pages.
+const TENANT_PALETTE = ['#2563EB', '#14B8A6', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#64748B', '#8B5CF6'];
+const tenantColor = companyId => TENANT_PALETTE[Math.abs(companyId || 0) % TENANT_PALETTE.length];
+
 let allTenants = [];
 
 async function loadTenants() {
@@ -118,10 +131,11 @@ function renderTenants(rows) {
     const wrap = document.getElementById('tenantList');
     if (!rows.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No tenants found</div>'; return; }
     wrap.innerHTML = rows.map(t => `
-    <div class="tenant-card" style="margin-bottom:10px">
+    <div class="tenant-card" style="margin-bottom:10px;--tenant-color:${tenantColor(t.company_id)}">
         <div class="tenant-icon ${t.is_active ? 'active' : 'inactive'}"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M4 20V9l8-5 8 5v11"></path></svg></div>
         <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px">
+                <span class="tenant-swatch" style="background:${tenantColor(t.company_id)}" title="${t.company_name}"></span>
                 <span style="font-weight:700;font-size:14px">${t.company_name}</span>
                 <span class="badge-status ${t.is_active ? 'badge-confirmed' : 'badge-cancelled'}">${t.is_active ? 'Active' : 'Suspended'}</span>
                 <span style="font-size:11px;color:var(--text-muted);text-transform:capitalize">${t.subscription_plan}</span>

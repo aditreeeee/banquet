@@ -104,6 +104,17 @@
 <script>
 Auth.requireAuth('../auth/login.html');
 
+// Super-Admin-only tenant color coding — company_id % palette.length, same
+// scheme as platform/tenants.html's tenantColor() (id-based, not a name
+// hash, so it can't collide between two tenants the way a name hash did)
+// and the impersonation banner in app.js, so a given tenant reads as the
+// same color on every Super-Admin-facing page. Not used anywhere a
+// regular tenant user can see (they never see another tenant to begin
+// with).
+const TENANT_PALETTE = ['#2563EB', '#14B8A6', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#64748B', '#8B5CF6'];
+const tenantColor = companyId => TENANT_PALETTE[Math.abs(companyId || 0) % TENANT_PALETTE.length];
+const tenantSwatch = companyId => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${tenantColor(companyId)};margin-right:6px;flex-shrink:0"></span>`;
+
 async function loadPlatformDashboard() {
     try {
         const [overviewRes, revenueRes, trendsRes] = await Promise.all([
@@ -127,16 +138,16 @@ async function loadPlatformDashboard() {
         document.getElementById('kpiStaff').textContent = Utils.formatNumber(o.totals.total_staff);
 
         document.getElementById('revenueByTenantBody').innerHTML = o.revenueByTenant.map(x => `
-            <tr><td>${x.company_name} ${x.is_active ? '' : '<span class="badge-status badge-cancelled">Suspended</span>'}</td><td>${x.bookings_count}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
+            <tr><td>${tenantSwatch(x.company_id)}${x.company_name} ${x.is_active ? '' : '<span class="badge-status badge-cancelled">Suspended</span>'}</td><td>${x.bookings_count}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
 
         document.getElementById('paymentStatusBody').innerHTML = o.paymentStatus.map(x => `
             <tr><td>${Utils.titleCase(x.status)}</td><td>${x.count}</td><td class="text-end">${Utils.formatCurrency(x.total_value)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
 
         document.getElementById('revenueByBanquetBody').innerHTML = r.byBanquet.slice(0, 10).map(x => `
-            <tr><td>${x.banquet_name}</td><td>${x.company_name}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
+            <tr><td>${x.banquet_name}</td><td>${tenantSwatch(x.company_id)}${x.company_name}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
 
         document.getElementById('revenueByHallBody').innerHTML = r.byHall.slice(0, 10).map(x => `
-            <tr><td>${x.hall_name}</td><td>${x.company_name}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
+            <tr><td>${x.hall_name}</td><td>${tenantSwatch(x.company_id)}${x.company_name}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';
 
         document.getElementById('bookingTrendsBody').innerHTML = t.bookingTrends.map(x => `
             <tr><td>${x.period_label}</td><td>${x.bookings_count}</td><td class="text-end">${Utils.formatCurrency(x.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-center">No data</td></tr>';

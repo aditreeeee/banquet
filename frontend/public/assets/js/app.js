@@ -30,13 +30,23 @@
        "viewing as" a tenant (see api.js's Impersonation helper). Purely
        client-side: no server session, just a header attached to requests
        until the admin clicks Exit. ── */
+    // Same company_id % palette.length scheme as platform/tenants.html's
+    // tenantColor() (id-based, not a name hash — two tenant names hashed to
+    // the same slot, which company_id can't do until tenant count exceeds
+    // the palette size) — a given tenant reads as the same color
+    // everywhere a Super Admin sees it. This banner itself only ever
+    // renders while impersonating, which is inherently a Super-Admin-only
+    // state — regular tenant users never trigger it.
+    const TENANT_PALETTE = ['#2563EB', '#14B8A6', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#64748B', '#8B5CF6'];
+    const tenantColor = companyId => TENANT_PALETTE[Math.abs(companyId || 0) % TENANT_PALETTE.length];
+
     function initImpersonationBanner() {
         if (typeof API === 'undefined' || !API.Impersonation) return;
         const state = API.Impersonation.get();
         if (!state) return;
         const bar = document.createElement('div');
         bar.style.cssText = 'position:sticky;top:0;z-index:1000;background:#7C3AED;color:white;padding:8px 16px;text-align:center;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px';
-        bar.innerHTML = `<span>Viewing as tenant: ${state.companyName}</span><button style="background:white;color:#7C3AED;border:none;border-radius:6px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer">Exit</button>`;
+        bar.innerHTML = `<span>Viewing as tenant: <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${tenantColor(state.companyName)};margin:0 5px 0 4px;vertical-align:middle"></span>${state.companyName}</span><button style="background:white;color:#7C3AED;border:none;border-radius:6px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer">Exit</button>`;
         bar.querySelector('button').onclick = () => {
             API.Impersonation.clear();
             window.location.href = '../platform/tenants.html';

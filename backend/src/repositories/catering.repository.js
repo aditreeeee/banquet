@@ -11,8 +11,8 @@ const { executeQuery } = require('../config/database');
 const listPackages = async (companyId) => {
     return executeQuery(
         `SELECT package_id, package_name, package_type, description, price_per_plate, min_plates, is_active
-         FROM CateringPackages WHERE company_id = @companyId AND is_active = 1 ORDER BY package_name`,
-        { companyId }
+         FROM CateringPackages WHERE (@companyId IS NULL OR company_id = @companyId) AND is_active = 1 ORDER BY package_name`,
+        { companyId: companyId || null }
     );
 };
 

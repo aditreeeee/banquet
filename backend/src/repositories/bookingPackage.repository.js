@@ -17,14 +17,16 @@ const COLUMNS = `
 
 const listPackages = async (companyId, { category, isActive } = {}) => {
     const where = [
-        'company_id = @companyId',
+        // NULL companyId means "every tenant" — see resolveCompanyScope in
+        // utils/branchScope.js (Super Admin, not impersonating).
+        '(@companyId IS NULL OR company_id = @companyId)',
         'deleted_at IS NULL',
         '(@category IS NULL OR package_category = @category)',
         '(@isActive IS NULL OR is_active = @isActive)',
     ].join(' AND ');
     return executeQuery(
         `SELECT ${COLUMNS} FROM BookingPackages WHERE ${where} ORDER BY package_category, base_price`,
-        { companyId, category: category || null, isActive: isActive != null ? isActive : null }
+        { companyId: companyId || null, category: category || null, isActive: isActive != null ? isActive : null }
     );
 };
 

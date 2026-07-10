@@ -5,9 +5,14 @@
 
 const cateringService = require('../../../services/catering.service');
 const response = require('../../../utils/response');
+const { resolveCompanyScope } = require('../../../utils/branchScope');
 
+// A Super Admin not currently impersonating a tenant sees every tenant's
+// catering packages here too — same resolveCompanyScope fix applied to
+// bookingPackage.controller.js.
 const listPackages = async (req, res) => {
-    const packages = await cateringService.listPackages(req.companyId);
+    const companyId = resolveCompanyScope({ companyId: req.companyId, roleSlug: req.user.role_slug, isImpersonating: req.isImpersonating });
+    const packages = await cateringService.listPackages(companyId);
     return response.success(res, packages);
 };
 

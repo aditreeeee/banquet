@@ -190,7 +190,7 @@ body {
     flex: 1;
     letter-spacing: .01em;
 }
-.sidebar.collapsed .sidebar-text { opacity: 1; font-family: 'Times New Roman', Times, serif; }
+.sidebar.collapsed .sidebar-text { opacity: 0; }
 
 /* Accordion nav groups (Sidebar component) */
 .nav-group-header {

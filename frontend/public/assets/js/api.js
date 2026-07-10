@@ -27,6 +27,28 @@ const API = (() => {
         clear: () => sessionStorage.removeItem(IMPERSONATE_KEY),
     };
 
+    /* ── Cross-page/cross-tab booking-change notifications — bookings module,
+       Command Center, dashboard calendar, and occupancy/availability widgets
+       all read from the same Bookings API, so a single broadcast after any
+       create/update/cancel/clone/delete lets every open view refresh without
+       a full page reload. Falls back to a same-tab CustomEvent where
+       BroadcastChannel isn't available. ── */
+    const BOOKINGS_CHANNEL = 'banquet-bookings-changed';
+    const bc = (() => { try { return new BroadcastChannel(BOOKINGS_CHANNEL); } catch { return null; } })();
+    const notifyBookingsChanged = (detail = {}) => {
+        try { bc?.postMessage(detail); } catch {}
+        try { window.dispatchEvent(new CustomEvent(BOOKINGS_CHANNEL, { detail })); } catch {}
+    };
+    const onBookingsChanged = (handler) => {
+        const wrapped = (e) => handler(e.data ?? e.detail);
+        bc?.addEventListener('message', wrapped);
+        window.addEventListener(BOOKINGS_CHANNEL, wrapped);
+        return () => {
+            bc?.removeEventListener('message', wrapped);
+            window.removeEventListener(BOOKINGS_CHANNEL, wrapped);
+        };
+    };
+
     /* ── Build headers ── */
     function headers(extra = {}) {
         const h = { 'Content-Type': 'application/json', ...extra };
@@ -417,6 +439,8 @@ const API = (() => {
         setToken,
         clearToken,
         Impersonation,
+        notifyBookingsChanged,
+        onBookingsChanged,
     };
 })();
 

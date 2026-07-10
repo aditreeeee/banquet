@@ -353,6 +353,7 @@ async function runBulk(ids, actionFn, verb) {
         failed === 0 ? 'success' : 'warning'
     );
     clearSelection();
+    if (ok > 0) API.notifyBookingsChanged({ type:'bulk', verb });
     loadBookings(currentPage);
 }
 
@@ -437,6 +438,7 @@ async function updateBookingStatus(id, newStatus, selectEl) {
     selectEl.disabled = true;
     try {
         await API.bookings.status(id, newStatus);
+        API.notifyBookingsChanged({ type:'status', id });
         Utils.toast('Booking status updated', 'success');
         loadBookings(currentPage);
     } catch (err) {
@@ -488,6 +490,7 @@ async function confirmCancel() {
             refundAmount,
         });
         cancelModal?.hide();
+        API.notifyBookingsChanged({ type:'cancel', id });
         Utils.toast('Booking cancelled successfully', 'success');
         loadBookings(currentPage);
     } catch (err) {
@@ -662,7 +665,7 @@ async function runImport() {
     const successCount = importRows.filter(r => r.status === 'success').length;
     const failedCount  = importRows.filter(r => r.status === 'failed').length;
     document.getElementById('importSummary').innerHTML = `Import complete — ${successCount} succeeded, ${failedCount} failed.`;
-    if (successCount) loadBookings(currentPage);
+    if (successCount) { API.notifyBookingsChanged({ type:'import' }); loadBookings(currentPage); }
 }
 
 function getErrorMessage(err) {

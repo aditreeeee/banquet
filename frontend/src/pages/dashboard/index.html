@@ -221,10 +221,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 .spill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:9999px;font-size:11.5px;font-weight:600}
 
 /* ── Calendar ────────────────────────────────────────────────── */
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.cal-hdr{font-size:11px;font-weight:700;color:var(--text-muted);text-align:center;padding:6px 0}
-.cal-day{width:100%;height:44px;border-radius:8px;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;cursor:pointer;font-size:12.5px;font-weight:500;
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-hdr{font-size:12px;font-weight:700;color:var(--text-muted);text-align:center;padding:7px 0}
+.cal-day{width:100%;height:52px;border-radius:9px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;cursor:pointer;font-size:15px;font-weight:600;
   transition:all .15s ease;position:relative;color:var(--text-primary);border:none;background:transparent}
 .cal-day:hover{background:rgba(26,43,74,.07)}
 .cal-day.today{background:linear-gradient(135deg,#1A2B4A 0%,#243756 100%);color:white}
@@ -251,6 +251,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 
 /* ── Animations ──────────────────────────────────────────────── */
 @keyframes skeletonPulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
 .skel{background:linear-gradient(90deg,rgba(26,43,74,.07) 25%,rgba(26,43,74,.13) 37%,rgba(26,43,74,.07) 63%);
   background-size:400% 100%;border-radius:8px;animation:skeletonPulse 1.4s ease-in-out infinite}
 
@@ -608,6 +609,39 @@ const paymentStatusOf = b => {
   if (b.paid>0) return { label:'Partially Paid', color:C.amber };
   return { label:'Unpaid', color:C.red };
 };
+/* Single row-mapping used by every booking fetch on this page (period-based
+   table/upcoming feed and the calendar's own range fetch) so the shapes
+   consumed by the widgets never drift apart. */
+const mapBookingRow = b => ({
+  id:       b.booking_id??b.id,
+  ref:      b.booking_ref||b.ref||b.id,
+  customer: b.customer_name||b.customer,
+  event:    b.event_name||b.event,
+  hall:     b.hall_name||b.hall,
+  date:     (b.event_date||b.date||'').substring(0,10),
+  endDate:  (b.event_end_date||b.endDate||b.event_date||b.date||'').substring(0,10),
+  time:     fmtTime(b.event_time_start||b.start_time||b.time),
+  endTime:  fmtTime(b.event_time_end||b.end_time||b.endTime),
+  status:   b.booking_status||b.status||'confirmed',
+  paymentStatus: b.payment_status||b.paymentStatus||null,
+  amt:      parseFloat(b.total_amount||b.amt)||0,
+  paid:     parseFloat(b.amount_paid??b.paid)||0,
+  guests:   parseInt(b.guest_count??b.guests)||0,
+  isPriority: Boolean(b.is_priority??b.isPriority),
+  staffCount: parseInt(b.staff_count??b.staffCount)||0,
+  setupMinutes:   parseInt(b.setup_minutes??b.setupMinutes)||0,
+  cleanupMinutes: parseInt(b.cleanup_minutes??b.cleanupMinutes)||0,
+  cooloffMinutes: parseInt(b.cooloff_minutes??b.cooloffMinutes)||0,
+});
+/* Every calendar day a booking touches — spans multi-day bookings (event_end_date)
+   across each date in between, clipped to [rangeStart, rangeEnd]. */
+const datesTouchedBy = (b, rangeStart, rangeEnd) => {
+  const out = [];
+  let d = new Date(Math.max(new Date(b.date+'T00:00:00'), new Date(rangeStart+'T00:00:00')));
+  const end = new Date(Math.min(new Date((b.endDate||b.date)+'T00:00:00'), new Date(rangeEnd+'T00:00:00')));
+  while (d<=end) { out.push(iso(d.getFullYear(),d.getMonth()+1,d.getDate())); d.setDate(d.getDate()+1); }
+  return out;
+};
 const OCC_FILTERS = [{k:'today',l:'Today'},{k:'next30',l:'Coming 30 Days'},{k:'last30',l:'Last 30 Days'}];
 const inOccRange = (dateStr, filterKey, now) => {
   const d = new Date(dateStr+'T00:00:00');
@@ -940,39 +974,55 @@ const StatusDonut = ({ data }) => {
 /* ════════════════════════════════════════════════════════════════
    MINI CALENDAR
    ════════════════════════════════════════════════════════════════ */
-const DayPopover = ({ events, style }) => (
-  <div style={{position:'absolute',zIndex:80,width:300,maxHeight:340,overflowY:'auto',
-    background:'var(--surface-strong)',border:'1px solid var(--border-color)',borderRadius:12,
-    boxShadow:'0 16px 40px rgba(0,0,0,.2)',padding:12,pointerEvents:'none',...style}}>
-    <div style={{fontWeight:700,fontSize:12.5,color:C.navy,marginBottom:8}}>
+/* Rendered via a portal straight onto <body> in *fixed* viewport coordinates —
+   the KPI card it's triggered from clips overflow (it has to, to keep a fixed
+   460px height), so an absolutely-positioned popover confined to that card
+   would get cut off. Escaping to the body lets it float freely over
+   whatever else is on the page, using all the space outside the card. */
+const DayPopover = ({ events, style, onEnter, onLeave, onOpenBooking }) => ReactDOM.createPortal(
+  <div onMouseEnter={onEnter} onMouseLeave={onLeave}
+    style={{position:'fixed',zIndex:1000,width:320,maxHeight:380,overflowY:'auto',
+    background:'var(--surface-strong)',border:'1px solid var(--border-color)',borderRadius:14,
+    boxShadow:'0 20px 48px rgba(0,0,0,.25)',padding:14,pointerEvents:'auto',...style}}>
+    <div style={{fontWeight:700,fontSize:14,color:C.navy,marginBottom:10}}>
       {events.length} booking{events.length===1?'':'s'} on {dL(events[0].date)}
     </div>
-    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+    <div style={{display:'flex',flexDirection:'column',gap:12}}>
       {events.map((b,i)=>{
         const pay = paymentStatusOf(b);
         const cap = hallCapacity(b.hall);
         const occPct = cap ? Math.min(100,Math.round((b.guests/cap)*100)) : null;
         return (
-          <div key={i} style={{borderLeft:`3px solid ${sC(b.status)}`,paddingLeft:9}}>
+          <div key={i} onClick={()=>onOpenBooking(b.id)}
+            style={{borderLeft:`3px solid ${sC(b.status)}`,paddingLeft:10,cursor:'pointer'}}>
             <div style={{display:'flex',justifyContent:'space-between',gap:6}}>
-              <span style={{fontWeight:700,fontSize:12.5,color:C.navy}}>{b.event}</span>
-              <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:10}}>{sL(b.status)}</span>
+              <span style={{fontWeight:700,fontSize:13.5,color:C.navy}}>{b.event}</span>
+              <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:10.5}}>{sL(b.status)}</span>
             </div>
-            <div style={{fontSize:11.5,color:'#6b7280',marginTop:2}}>{b.customer} · {b.hall}</div>
-            <div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>{b.time}{b.endTime?` – ${b.endTime}`:''}{b.guests?` · ${b.guests} guests`:''}</div>
-            <div style={{display:'flex',gap:8,marginTop:3,flexWrap:'wrap'}}>
-              {occPct!=null && <span style={{fontSize:10.5,color:occC(occPct)}}>● {occPct}% capacity</span>}
-              <span style={{fontSize:10.5,color:pay.color}}>● {pay.label}</span>
+            <div style={{fontSize:11.5,color:'#9ca3af',marginTop:2}}>Booking #{b.ref}</div>
+            <div style={{fontSize:12.5,color:'#6b7280',marginTop:3}}>{b.customer} · {b.hall}</div>
+            <div style={{fontSize:12,color:'#9ca3af',marginTop:2}}>{b.time}{b.endTime?` – ${b.endTime}`:''}{b.guests?` · ${b.guests} guests`:''}</div>
+            <div style={{display:'flex',gap:9,marginTop:4,flexWrap:'wrap'}}>
+              {occPct!=null && <span style={{fontSize:11,color:occC(occPct)}}>● {occPct}% capacity</span>}
+              <span style={{fontSize:11,color:pay.color}}>● {pay.label}</span>
             </div>
           </div>
         );
       })}
     </div>
-  </div>
+  </div>,
+  document.body
 );
 
-const MiniCalendar = ({ selected, onSelect, eventsByDate }) => {
+/* Booking Calendar — fetches directly from the live Bookings API (same
+   source of truth as bookings/index.html, Command Center, Occupancy Reports)
+   for whatever month is currently visible, instead of relying on the
+   dashboard's period-limited feed. Re-fetches on month/year navigation and
+   whenever another module reports a booking change. */
+const MiniCalendar = ({ selected, onSelect, onOpenBooking }) => {
   const [cur, setCur] = useState(new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
+  const [monthBookings, setMonthBookings] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [hoverDate, setHoverDate] = useState(null);
   const [hoverPos, setHoverPos] = useState({left:0,top:0});
   const gridWrapRef = React.useRef(null);
@@ -986,26 +1036,82 @@ const MiniCalendar = ({ selected, onSelect, eventsByDate }) => {
   for(let d=1;d<=dim;d++) cells.push(d);
   while(cells.length%7!==0) cells.push(null);
 
+  const rangeStart = iso(y,m+1,1);
+  const rangeEnd   = iso(y,m+1,dim);
+
+  const fetchMonth = useCallback(() => {
+    let dead = false;
+    (async () => {
+      setLoading(true);
+      try {
+        if (typeof API === 'undefined') return;
+        const res = await API.bookings.list({ from_date: rangeStart, to_date: rangeEnd, limit: 500 }).catch(() => null);
+        const raw = Array.isArray(res?.data?.bookings) ? res.data.bookings : (Array.isArray(res?.data) ? res.data : []);
+        if (!dead) setMonthBookings(raw.map(mapBookingRow));
+      } finally {
+        if (!dead) setLoading(false);
+      }
+    })();
+    return () => { dead = true; };
+  }, [rangeStart, rangeEnd]);
+
+  useEffect(() => fetchMonth(), [fetchMonth]);
+
+  // Cross-module live sync: bookings/index.html and bookings/detail.html
+  // broadcast on create/edit/cancel/clone/delete (see notifyBookingsChanged
+  // in api.js) so the calendar reflects changes without a page reload.
+  useEffect(() => {
+    if (typeof API === 'undefined' || !API.onBookingsChanged) return;
+    return API.onBookingsChanged(fetchMonth);
+  }, [fetchMonth]);
+
+  // Spans multi-day bookings (setup/cleanup/cooloff live on the same day as
+  // the event, only event_end_date extends the booking across calendar days)
+  // across every date they touch within the visible month.
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    monthBookings.forEach(b => {
+      if (!b.date) return;
+      datesTouchedBy(b, rangeStart, rangeEnd).forEach(s => {
+        (map[s] = map[s] || []).push(b);
+      });
+    });
+    return map;
+  }, [monthBookings, rangeStart, rangeEnd]);
+
   const handleEnter = (e, s) => {
     if (!eventsByDate[s]?.length) return;
-    const wrapRect = gridWrapRef.current.getBoundingClientRect();
     const cellRect = e.currentTarget.getBoundingClientRect();
-    let left = cellRect.left - wrapRect.left;
-    left = Math.max(0, Math.min(left, wrapRect.width - 300));
-    setHoverPos({ left, top: cellRect.bottom - wrapRect.top + 6 });
+    const POPOVER_W = 320, POPOVER_MAX_H = 380, MARGIN = 10;
+    let left = Math.max(MARGIN, Math.min(cellRect.left, window.innerWidth - POPOVER_W - MARGIN));
+    // Flip above the cell when there isn't room below, so it never runs off
+    // the bottom of the viewport (this can render far outside the KPI card).
+    const spaceBelow = window.innerHeight - cellRect.bottom;
+    const top = spaceBelow >= POPOVER_MAX_H + MARGIN || spaceBelow >= cellRect.top
+      ? cellRect.bottom + 6
+      : Math.max(MARGIN, cellRect.top - POPOVER_MAX_H - 6);
+    setHoverPos({ left, top });
     setHoverDate(s);
   };
 
+  const goToday = () => setCur(new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
+
   return (
     <div style={{position:'relative'}} ref={gridWrapRef}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-        <button onClick={()=>setCur(new Date(y,m-1,1))} className="tb-btn" style={{width:28,height:28,borderRadius:7}}>
-          {I.chevronLeft()}
-        </button>
-        <span style={{fontWeight:700,fontSize:13.5,color:C.navy}}>{MON[m]} {y}</span>
-        <button onClick={()=>setCur(new Date(y,m+1,1))} className="tb-btn" style={{width:28,height:28,borderRadius:7}}>
-          {I.chevronRight()}
-        </button>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,gap:4}}>
+        <div style={{display:'flex',alignItems:'center',gap:2}}>
+          <button onClick={()=>setCur(new Date(y-1,m,1))} className="tb-btn" title="Previous year" style={{width:26,height:26,borderRadius:7,fontSize:11,fontWeight:700}}>«</button>
+          <button onClick={()=>setCur(new Date(y,m-1,1))} className="tb-btn" title="Previous month" style={{width:26,height:26,borderRadius:7}}>{I.chevronLeft()}</button>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:9}}>
+          <span style={{fontWeight:700,fontSize:16,color:C.navy}}>{MON[m]} {y}</span>
+          <button onClick={goToday} className="tb-btn" title="Jump to today" style={{fontSize:11.5,fontWeight:700,padding:'4px 10px',borderRadius:999,color:C.gold}}>Today</button>
+          {loading && <span style={{width:11,height:11,border:'2px solid rgba(197,160,89,.35)',borderTopColor:C.gold,borderRadius:'50%',display:'inline-block',animation:'spin .7s linear infinite'}}/>}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:2}}>
+          <button onClick={()=>setCur(new Date(y,m+1,1))} className="tb-btn" title="Next month" style={{width:26,height:26,borderRadius:7}}>{I.chevronRight()}</button>
+          <button onClick={()=>setCur(new Date(y+1,m,1))} className="tb-btn" title="Next year" style={{width:26,height:26,borderRadius:7,fontSize:11,fontWeight:700}}>»</button>
+        </div>
       </div>
       <div className="cal-grid">{DAYS.map(d=><div key={d} className="cal-hdr">{d}</div>)}</div>
       <div className="cal-grid">
@@ -1027,34 +1133,25 @@ const MiniCalendar = ({ selected, onSelect, eventsByDate }) => {
           return (
             <button key={i} className={`cal-day${isT&&!isSel?' today':''}${isSel?' selected':''}`}
               style={hasEvents && !isT && !isSel ? {background:`${sC(statusSet[0])}12`,border:`1px solid ${sC(statusSet[0])}30`} : undefined}
-              onClick={()=>onSelect(isSel?null:s)}
+              onClick={()=>dayEvents.length===1 ? onOpenBooking(dayEvents[0].id) : onSelect(isSel?null:s)}
               onMouseEnter={(e)=>handleEnter(e,s)}
               onMouseLeave={()=>setHoverDate(null)}>
-              {/* Hall colour coding — one 3px-wide tick per distinct hall booked that day */}
+              {/* Hall colour coding — one tick per distinct hall booked that day (max 3, kept small so the date stays the focal point) */}
               {hallSet.length>0 && (
-                <span style={{position:'absolute',top:2,left:3,display:'flex',gap:2}}>
-                  {hallSet.map(h=>(
-                    <span key={h} title={h} style={{width:3,height:7,borderRadius:1,background:hallColor(h)}}/>
+                <span style={{position:'absolute',top:3,left:4,display:'flex',gap:2}}>
+                  {hallSet.slice(0,3).map(h=>(
+                    <span key={h} title={h} style={{width:4,height:8,borderRadius:1,background:hallColor(h)}}/>
                   ))}
                 </span>
               )}
               {dayEvents.length>1 && (
-                <span style={{position:'absolute',top:2,right:3,fontSize:9,fontWeight:800,lineHeight:1,
-                  color:isT||isSel?'white':C.gold}}>{dayEvents.length}</span>
+                <span style={{position:'absolute',top:3,right:4,fontSize:10,fontWeight:800,lineHeight:1,
+                  color:isT||isSel?'white':sC(statusSet[0])}}>{dayEvents.length}</span>
               )}
               {d}
-              {statusSet.length>0 && (
-                <span style={{position:'absolute',bottom:9,display:'flex',gap:3}}>
-                  {statusSet.map((st,k)=>(
-                    <span key={k} style={{width:7,height:7,borderRadius:'50%',background:isT||isSel?'white':sC(st),
-                      boxShadow:`0 0 5px ${sC(st)}a0`,border:isT||isSel?'none':`1px solid ${sC(st)}`}}/>
-                  ))}
-                  {dayEvents.length>3 && <span style={{fontSize:9,color:isT||isSel?'white':C.gold,fontWeight:700,marginLeft:1}}>+</span>}
-                </span>
-              )}
               {/* Occupancy indicator — thin fill bar along the cell's bottom edge */}
               {dayOccPct!=null && (
-                <span style={{position:'absolute',bottom:0,left:2,right:2,height:2,borderRadius:1,background:'rgba(0,0,0,.08)'}} title={`${dayOccPct}% occupancy`}>
+                <span style={{position:'absolute',bottom:2,left:5,right:5,height:2.5,borderRadius:1,background:'rgba(0,0,0,.08)'}} title={`${dayOccPct}% occupancy`}>
                   <span style={{display:'block',width:`${dayOccPct}%`,height:'100%',borderRadius:1,background:isT||isSel?'white':occC(dayOccPct)}}/>
                 </span>
               )}
@@ -1063,7 +1160,9 @@ const MiniCalendar = ({ selected, onSelect, eventsByDate }) => {
         })}
       </div>
       {hoverDate && eventsByDate[hoverDate]?.length>0 && (
-        <DayPopover events={eventsByDate[hoverDate]} style={hoverPos}/>
+        <DayPopover events={eventsByDate[hoverDate]} style={hoverPos}
+          onEnter={()=>setHoverDate(hoverDate)} onLeave={()=>setHoverDate(null)}
+          onOpenBooking={onOpenBooking}/>
       )}
       {selected&&(
         <button onClick={()=>onSelect(null)}
@@ -1261,22 +1360,7 @@ const DashboardView = ({ period, searchQuery }) => {
 
         const raw = Array.isArray(bookingsRes?.data) ? bookingsRes.data : (Array.isArray(bookingsRes?.data?.bookings) ? bookingsRes.data.bookings : []);
         if (raw.length) {
-          setBookings(raw.map(b => ({
-            id:       b.booking_id??b.id,
-            ref:      b.booking_ref||b.ref||b.id,
-            customer: b.customer_name||b.customer,
-            event:    b.event_name||b.event,
-            hall:     b.hall_name||b.hall,
-            date:     (b.event_date||b.date||'').substring(0,10),
-            time:     fmtTime(b.event_time_start||b.start_time||b.time),
-            endTime:  fmtTime(b.event_time_end||b.end_time||b.endTime),
-            status:   b.booking_status||b.status||'confirmed',
-            amt:      parseFloat(b.total_amount||b.amt)||0,
-            paid:     parseFloat(b.amount_paid??b.paid)||0,
-            guests:   parseInt(b.guest_count??b.guests)||0,
-            isPriority: Boolean(b.is_priority??b.isPriority),
-            staffCount: parseInt(b.staff_count??b.staffCount)||0,
-          })));
+          setBookings(raw.map(mapBookingRow));
         }
       } finally {
         if (!dead) setIsLoading(false);
@@ -1286,6 +1370,14 @@ const DashboardView = ({ period, searchQuery }) => {
   }, [period]);
 
   useEffect(() => loadAll(), [loadAll]);
+
+  // Refresh KPIs/table/upcoming list whenever a booking is created, edited,
+  // cancelled, cloned, or deleted anywhere else in the app (bookings module,
+  // Command Center, etc.) — see notifyBookingsChanged in api.js.
+  useEffect(() => {
+    if (typeof API === 'undefined' || !API.onBookingsChanged) return;
+    return API.onBookingsChanged(loadAll);
+  }, [loadAll]);
 
   const ViewAllLink = ({href}) => (
     <a href={href} style={{fontSize:12,color:C.gold,fontWeight:600,textDecoration:'none',display:'flex',alignItems:'center',gap:3}}>
@@ -1322,15 +1414,6 @@ const DashboardView = ({ period, searchQuery }) => {
 
   const visibleBookings = filteredBookings.slice(0, 6);
   const hallOptions = useMemo(() => ['all', ...new Set(bookings.map(b => b.hall).filter(Boolean))], [bookings]);
-
-  const eventsByDate = useMemo(() => {
-    const map = {};
-    bookings.forEach(b => {
-      if (!b.date) return;
-      (map[b.date] = map[b.date] || []).push(b);
-    });
-    return map;
-  }, [bookings]);
 
   const [occFilter, setOccFilter] = useState('next30');
   const hallStats = useMemo(() => {
@@ -1446,7 +1529,7 @@ const DashboardView = ({ period, searchQuery }) => {
             {selDate&&<span style={{fontWeight:500,fontSize:12,color:C.gold}}>· {dL(selDate)}</span>}
           </h3>
           <div style={{flex:1,minHeight:0,overflow:'hidden'}}>
-            {isLoading ? <Skeleton height="100%"/> : <MiniCalendar selected={selDate} onSelect={setSelDate} eventsByDate={eventsByDate}/>}
+            {isLoading ? <Skeleton height="100%"/> : <MiniCalendar selected={selDate} onSelect={setSelDate} onOpenBooking={openBookingDetail}/>}
           </div>
         </Card>
         <Card hover style={{padding:'12px 16px',display:'flex',flexDirection:'column',height:460}}>

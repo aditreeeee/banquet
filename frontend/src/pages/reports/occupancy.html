@@ -227,6 +227,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('monthPicker').value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     loadBranchOptions();
     loadReport();
+    // Same Bookings API backs the calendar, Command Center, and this report —
+    // refresh here too whenever a booking is created/edited/cancelled/cloned
+    // elsewhere so occupancy numbers never go stale without a page reload.
+    if (typeof API !== 'undefined' && API.onBookingsChanged) API.onBookingsChanged(loadReport);
 });
 </script>
 </body>

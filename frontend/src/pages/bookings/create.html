@@ -6,9 +6,14 @@
 <title>New Booking | Banquet System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
 <link href="../../../public/assets/css/theme.css" rel="stylesheet">
 <link href="../../../public/assets/css/app.css"   rel="stylesheet">
 <style>
+/* ── Flatpickr time picker — match existing .form-control styling ── */
+.flatpickr-input.form-control { background:var(--surface-strong,#fff); }
+.flatpickr-time input { font-family:inherit; }
+.flatpickr-calendar.hasTime .flatpickr-time { height:70px; }
 /* â”€â”€ Wizard layout â”€â”€ */
 .wizard-container {
     max-width: 1220px; margin: 0 auto;
@@ -248,11 +253,11 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Start Time <span style="color:var(--color-danger)">*</span></label>
-                            <input type="time" class="form-control" id="startTime" value="08:00" required onchange="recalcOperationalSchedule()">
+                            <input type="text" class="form-control" id="startTime" value="08:00" required autocomplete="off">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">End Time <span style="color:var(--color-danger)">*</span></label>
-                            <input type="time" class="form-control" id="endTime" value="23:00" required onchange="recalcOperationalSchedule()">
+                            <input type="text" class="form-control" id="endTime" value="23:00" required autocomplete="off">
                         </div>
                         <div class="col-12">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -745,6 +750,7 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script src="../../../public/assets/js/config.js"></script>
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
@@ -1282,7 +1288,7 @@ function selectBookingPackage(packageId) {
             const [h, m] = startInput.value.split(':').map(Number);
             const totalMin = ((h * 60 + m) + Math.round(pkg.included_hours * 60)) % 1440;
             const newEnd = `${String(Math.floor(totalMin / 60)).padStart(2,'0')}:${String(totalMin % 60).padStart(2,'0')}`;
-            if (endInput) endInput.value = newEnd;
+            if (endInput) setTimeFieldValue('endTime', newEnd);
             state.endTime = newEnd;
         }
     }
@@ -1777,6 +1783,7 @@ async function submitBooking() {
                 cateringTaxAmount:     state.cateringTaxAmount      ?? undefined,
             };
             const res = await API.bookings.update(editBookingId, payload);
+            API.notifyBookingsChanged({ type:'update', id: editBookingId });
 
             // Sync inventory to whatever's shown in the Inventory Allocation section —
             // covers both a guest-count-driven recalculation and manual adjustments.
@@ -1837,6 +1844,7 @@ async function submitBooking() {
         const res = await API.bookings.create(payload);
         const ref = res.data?.booking_ref;
         const id  = res.data?.booking_id;
+        API.notifyBookingsChanged({ type:'create', id });
 
         // Catering sessions require a real booking_id (they're per-booking
         // records), so each staged session + its package template is
@@ -1914,14 +1922,14 @@ async function loadExistingBooking(id) {
         // Pre-fill Step 1 — editable unless the booking's status locks scheduling.
         document.getElementById('eventDate').value  = state.eventDate;
         document.getElementById('guestCount').value = state.guestCount;
-        document.getElementById('startTime').value  = state.startTime;
-        document.getElementById('endTime').value    = state.endTime;
+        setTimeFieldValue('startTime', state.startTime);
+        setTimeFieldValue('endTime',   state.endTime);
         document.getElementById('multiDayEvent').checked = state.isMultiDay;
         document.getElementById('eventEndDate').value = state.eventEndDate;
         toggleMultiDay();
         document.getElementById('eventDate').disabled     = state.scheduleLocked;
-        document.getElementById('startTime').disabled     = state.scheduleLocked;
-        document.getElementById('endTime').disabled       = state.scheduleLocked;
+        setTimeFieldDisabled('startTime', state.scheduleLocked);
+        setTimeFieldDisabled('endTime',   state.scheduleLocked);
         document.getElementById('multiDayEvent').disabled = state.scheduleLocked;
         document.getElementById('eventEndDate').disabled  = state.scheduleLocked;
 
@@ -2016,8 +2024,50 @@ function renderEditInventoryAllocations() {
 }
 
 /* â”€â”€ Init â”€â”€ */
+/* Start/End Time — Flatpickr time-only picker. altInput keeps a friendly
+   12-hour AM/PM display while the real #startTime/#endTime inputs (read by
+   every existing handler and submitted to the API) keep their original
+   24-hour "HH:MM" value, so no other booking logic/validation/payload code
+   needs to change. */
+const TIME_PICKER_CONFIG = {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: 'H:i',
+    altInput: true,
+    altFormat: 'h:i K',
+    time_24hr: false,
+    minuteIncrement: 5,
+    allowInput: true,
+    onChange: () => { if (typeof recalcOperationalSchedule === 'function') recalcOperationalSchedule(); },
+};
+
+/* Programmatic time updates (package durations, edit-mode pre-fill) must go
+   through the Flatpickr instance — writing el.value directly would desync
+   the picker's own display from the underlying field. */
+function setTimeFieldValue(id, hhmm) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el._flatpickr) el._flatpickr.setDate(hhmm, true);
+    else el.value = hhmm;
+}
+
+/* .disabled on the (now hidden) original input doesn't grey out or lock
+   Flatpickr's visible altInput — toggle both so scheduleLocked still reads
+   as disabled to the user. */
+function setTimeFieldDisabled(id, disabled) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = disabled;
+    if (el._flatpickr) {
+        el._flatpickr.altInput.disabled = disabled;
+        el._flatpickr.set('clickOpens', !disabled);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     Auth.requireAuth('../auth/login.html');
+    flatpickr('#startTime', TIME_PICKER_CONFIG);
+    flatpickr('#endTime',   TIME_PICKER_CONFIG);
     // Set minimum date to tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);

@@ -435,6 +435,7 @@ async function submitClone() {
             eventTimeEnd:   document.getElementById('cloneEnd').value,
         });
         cloneModal.hide();
+        API.notifyBookingsChanged({ type:'clone', id:res.data.booking_id });
         Utils.toast('Booking cloned successfully', 'success');
         setTimeout(() => { location.href = `detail.html?id=${res.data.booking_id}`; }, 800);
     } catch (err) {
@@ -1071,7 +1072,7 @@ function cancelBooking() {
     Utils.confirm('Cancel this booking? This cannot be undone.', { title:'Cancel Booking', danger:true }).then(ok => {
         if (!ok) return;
         API.bookings.cancel(booking.booking_id, 'customer_request')
-            .then(() => { Utils.toast('Booking cancelled', 'success'); setTimeout(() => location.href = 'index.html', 1200); })
+            .then(() => { API.notifyBookingsChanged({ type:'cancel', id:booking.booking_id }); Utils.toast('Booking cancelled', 'success'); setTimeout(() => location.href = 'index.html', 1200); })
             .catch(err => Utils.toast(err.message || 'Failed to cancel booking', 'error'));
     });
 }

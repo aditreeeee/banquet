@@ -46,7 +46,7 @@
         if (!state) return;
         const bar = document.createElement('div');
         bar.style.cssText = 'position:sticky;top:0;z-index:1000;background:#7C3AED;color:white;padding:8px 16px;text-align:center;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px';
-        bar.innerHTML = `<span>Viewing as tenant: <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${tenantColor(state.companyName)};margin:0 5px 0 4px;vertical-align:middle"></span>${state.companyName}</span><button style="background:white;color:#7C3AED;border:none;border-radius:6px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer">Exit</button>`;
+        bar.innerHTML = `<span>Viewing as property: <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${tenantColor(state.companyId)};margin:0 5px 0 4px;vertical-align:middle"></span>${state.companyName}</span><button style="background:white;color:#7C3AED;border:none;border-radius:6px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer">Exit</button>`;
         bar.querySelector('button').onclick = () => {
             API.Impersonation.clear();
             window.location.href = '../platform/tenants.html';

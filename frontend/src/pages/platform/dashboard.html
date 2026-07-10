@@ -25,12 +25,12 @@
 
     <main class="page-content">
         <div class="page-header">
-            <div><h1 class="page-title">Platform Dashboard</h1><p class="page-subtitle">Cross-tenant overview across every Business Owner on BanquetPro</p></div>
-            <a href="tenants.html" class="btn-primary-brand">Manage Tenants</a>
+            <div><h1 class="page-title">Platform Dashboard</h1><p class="page-subtitle">Cross-property overview across every Business Owner on BanquetPro</p></div>
+            <a href="tenants.html" class="btn-primary-brand">Manage Properties</a>
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
-            <div class="kpi-card"><div class="kpi-label">Total Tenants</div><div class="kpi-value" id="kpiTenants">—</div><div style="font-size:11px;color:var(--text-muted)"><span id="kpiActiveTenants">—</span> active · <span id="kpiInactiveTenants">—</span> suspended</div></div>
+            <div class="kpi-card"><div class="kpi-label">Total Properties</div><div class="kpi-value" id="kpiTenants">—</div><div style="font-size:11px;color:var(--text-muted)"><span id="kpiActiveTenants">—</span> active · <span id="kpiInactiveTenants">—</span> suspended</div></div>
             <div class="kpi-card"><div class="kpi-label">Platform Revenue</div><div class="kpi-value" id="kpiRevenue" style="color:var(--color-success)">—</div></div>
             <div class="kpi-card"><div class="kpi-label">Platform Bookings</div><div class="kpi-value" id="kpiBookings">—</div></div>
             <div class="kpi-card"><div class="kpi-label">Avg Occupancy</div><div class="kpi-value" id="kpiOccupancy">—</div></div>
@@ -45,8 +45,8 @@
         <div class="row g-3">
             <div class="col-lg-6">
                 <div class="report-card">
-                    <h6>Revenue by Tenant</h6>
-                    <table class="table table-sm"><thead><tr><th>Tenant</th><th>Bookings</th><th class="text-end">Revenue</th></tr></thead>
+                    <h6>Revenue by Property</h6>
+                    <table class="table table-sm"><thead><tr><th>Property</th><th>Bookings</th><th class="text-end">Revenue</th></tr></thead>
                     <tbody id="revenueByTenantBody"><tr><td colspan="3" class="text-center">Loading…</td></tr></tbody></table>
                 </div>
             </div>
@@ -60,14 +60,14 @@
             <div class="col-lg-6">
                 <div class="report-card">
                     <h6>Revenue by Banquet (Top 10)</h6>
-                    <table class="table table-sm"><thead><tr><th>Banquet</th><th>Tenant</th><th class="text-end">Revenue</th></tr></thead>
+                    <table class="table table-sm"><thead><tr><th>Banquet</th><th>Property</th><th class="text-end">Revenue</th></tr></thead>
                     <tbody id="revenueByBanquetBody"><tr><td colspan="3" class="text-center">Loading…</td></tr></tbody></table>
                 </div>
             </div>
             <div class="col-lg-6">
                 <div class="report-card">
                     <h6>Revenue by Hall (Top 10)</h6>
-                    <table class="table table-sm"><thead><tr><th>Hall</th><th>Tenant</th><th class="text-end">Revenue</th></tr></thead>
+                    <table class="table table-sm"><thead><tr><th>Hall</th><th>Property</th><th class="text-end">Revenue</th></tr></thead>
                     <tbody id="revenueByHallBody"><tr><td colspan="3" class="text-center">Loading…</td></tr></tbody></table>
                 </div>
             </div>

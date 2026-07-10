@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tenants | BanquetPro Platform</title>
+<title>Properties | BanquetPro Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="../../../public/assets/css/theme.css" rel="stylesheet">
@@ -23,7 +23,7 @@
 <div class="main-content" id="mainContent">
     <header class="topbar">
         <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
-        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Tenants</li></ol></nav>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Properties</li></ol></nav>
         <div class="topbar-actions">
             <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
             <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">Log Out</a></li></ul></div>
@@ -32,12 +32,12 @@
 
     <main class="page-content">
         <div class="page-header">
-            <div><h1 class="page-title">Tenants</h1><p class="page-subtitle">Manage every Business Owner organization on the platform</p></div>
-            <button class="btn-primary-brand" onclick="openCreateModal()">+ New Tenant</button>
+            <div><h1 class="page-title">Properties</h1><p class="page-subtitle">Manage every Business Owner organization on the platform</p></div>
+            <button class="btn-primary-brand" onclick="openCreateModal()">+ New Property</button>
         </div>
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-            <input type="text" class="form-control" id="tSearch" placeholder="Search tenants…" style="max-width:280px" oninput="handleSearch()">
+            <input type="text" class="form-control" id="tSearch" placeholder="Search properties…" style="max-width:280px" oninput="handleSearch()">
             <select class="form-select" id="statusFilter" onchange="loadTenants()" style="width:auto">
                 <option value="">All Status</option>
                 <option value="true">Active</option>
@@ -54,7 +54,7 @@
 <div class="modal fade" id="tenantModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title" id="tenantModalTitle">New Tenant</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-header"><h5 class="modal-title" id="tenantModalTitle">New Property</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
             <div class="modal-body">
                 <input type="hidden" id="tId">
                 <div class="row g-3">
@@ -122,14 +122,14 @@ async function loadTenants() {
         allTenants = res.data?.companies || [];
         renderTenants(allTenants);
     } catch (err) {
-        Utils.toast(err.message || 'Unable to load tenants', 'error');
-        wrap.innerHTML = `<div class="empty-state" style="padding:48px">Unable to load tenants.</div>`;
+        Utils.toast(err.message || 'Unable to load properties', 'error');
+        wrap.innerHTML = `<div class="empty-state" style="padding:48px">Unable to load properties.</div>`;
     }
 }
 
 function renderTenants(rows) {
     const wrap = document.getElementById('tenantList');
-    if (!rows.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No tenants found</div>'; return; }
+    if (!rows.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No properties found</div>'; return; }
     wrap.innerHTML = rows.map(t => `
     <div class="tenant-card" style="margin-bottom:10px;--tenant-color:${tenantColor(t.company_id)}">
         <div class="tenant-icon ${t.is_active ? 'active' : 'inactive'}"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M4 20V9l8-5 8 5v11"></path></svg></div>
@@ -158,7 +158,7 @@ function viewAsTenant(companyId, companyName) {
 }
 
 function openCreateModal() {
-    document.getElementById('tenantModalTitle').textContent = 'New Tenant';
+    document.getElementById('tenantModalTitle').textContent = 'New Property';
     document.getElementById('tId').value = '';
     ['tName','tLegalName','tEmail','tPhone','tAddress','tGst'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('tPlan').value = 'basic';
@@ -168,7 +168,7 @@ function openCreateModal() {
 }
 
 function openEditModal(t) {
-    document.getElementById('tenantModalTitle').textContent = 'Edit Tenant';
+    document.getElementById('tenantModalTitle').textContent = 'Edit Property';
     document.getElementById('tId').value = t.company_id;
     document.getElementById('tName').value = t.company_name || '';
     document.getElementById('tLegalName').value = t.legal_name || '';
@@ -205,36 +205,36 @@ async function submitTenant() {
         else    await API.companies.create(data);
         Utils.hideLoader(btn);
         bootstrap.Modal.getInstance(document.getElementById('tenantModal'))?.hide();
-        Utils.toast(id ? 'Tenant updated' : 'Tenant created', 'success');
+        Utils.toast(id ? 'Property updated' : 'Property created', 'success');
         loadTenants();
     } catch (err) {
         Utils.hideLoader(btn);
-        Utils.toast(err.message || 'Failed to save tenant', 'error');
+        Utils.toast(err.message || 'Failed to save property', 'error');
     }
 }
 
 async function toggleTenantStatus(id, isActive) {
     const action = isActive ? 'suspend' : 'activate';
-    const ok = await Utils.confirm(isActive ? 'Suspend this tenant? Their users will be unable to log in.' : 'Activate this tenant?', { danger: isActive });
+    const ok = await Utils.confirm(isActive ? 'Suspend this property? Their users will be unable to log in.' : 'Activate this property?', { danger: isActive });
     if (!ok) return;
     try {
         await API.companies[action](id);
-        Utils.toast(`Tenant ${action}d`, isActive ? 'warning' : 'success');
+        Utils.toast(`Property ${action}d`, isActive ? 'warning' : 'success');
         loadTenants();
     } catch (err) {
-        Utils.toast(err.message || `Failed to ${action} tenant`, 'error');
+        Utils.toast(err.message || `Failed to ${action} property`, 'error');
     }
 }
 
 async function deleteTenant(id) {
-    const ok = await Utils.confirm('Permanently delete this tenant? Blocked if it still has active users.', { title: 'Delete Tenant', danger: true });
+    const ok = await Utils.confirm('Permanently delete this property? Blocked if it still has active users.', { title: 'Delete Property', danger: true });
     if (!ok) return;
     try {
         await API.companies.delete(id);
-        Utils.toast('Tenant deleted', 'success');
+        Utils.toast('Property deleted', 'success');
         loadTenants();
     } catch (err) {
-        Utils.toast(err.message || 'Failed to delete tenant', 'error');
+        Utils.toast(err.message || 'Failed to delete property', 'error');
     }
 }
 

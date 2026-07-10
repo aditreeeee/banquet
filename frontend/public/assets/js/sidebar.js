@@ -74,7 +74,7 @@ const Sidebar = (() => {
         ]},
         { group: 'Platform', items: [
             { label: 'Platform Dashboard', href: '../platform/dashboard.html', icon: ICONS.analytics, perm: 'companies:read' },
-            { label: 'Tenants',            href: '../platform/tenants.html',   icon: ICONS.banquet,   perm: 'companies:read' },
+            { label: 'Properties',         href: '../platform/tenants.html',   icon: ICONS.banquet,   perm: 'companies:read' },
         ]},
     ];
 

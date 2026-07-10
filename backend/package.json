@@ -66,5 +66,18 @@
   "license": "UNLICENSED",
   "allowScripts": {
     "bcrypt@5.1.1": true
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "src/utils/encryption.js",
+      "src/api/v1/middleware/errorHandler.js",
+      "src/api/v1/validators/booking.validator.js",
+      "src/api/v1/validators/payment.validator.js",
+      "src/api/v1/validators/user.validator.js"
+    ]
   }
 }

@@ -745,6 +745,18 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
           if (!visibleItems.length) return null;
           const hasActive = visibleItems.some(it => isActiveNavHref(it.href));
           const isExpanded = expandedMap[sec.s] ?? hasActive;
+          // A single-item group (e.g. Settings) is just one destination —
+          // a flat link reads better than a 1-item accordion the user has
+          // to expand first to reach the only thing inside it.
+          if (visibleItems.length === 1) {
+            const item = visibleItems[0];
+            return (
+              <a key={sec.s} href={item.href} className={`sb-item ${isActiveNavHref(item.href)?'active':''}`} title={collapsed?sec.s:undefined}>
+                <span className="sb-icon">{item.icon()}</span>
+                <span className="sb-label">{sec.s}</span>
+              </a>
+            );
+          }
           return (
             <div key={sec.s} className="nav-group">
               <div className={`sb-group-header ${isExpanded?'expanded':''} ${hasActive?'has-active':''}`}

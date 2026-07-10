@@ -42,6 +42,8 @@ function getDashboardNav(I) {
         { s:'Administration', items:[
             { id:'users',    icon:I.user,           label:'Users',    href:'../users/index.html', perm:'users:read'    },
             { id:'staff',    icon:I.users,          label:'Staff Management', href:'../staff/index.html', perm:'users:read' },
+        ]},
+        { s:'Settings', items:[
             { id:'settings', icon:I.settings,       label:'Settings', href:'../settings/index.html', perm:'settings:read' },
         ]},
         { s:'Platform', items:[

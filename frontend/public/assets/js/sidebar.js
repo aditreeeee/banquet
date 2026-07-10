@@ -70,6 +70,8 @@ const Sidebar = (() => {
         { group: 'Administration', items: [
             { label: 'Users',            href: '../users/index.html',    icon: ICONS.users,    perm: 'users:read' },
             { label: 'Staff Management', href: '../staff/index.html',    icon: ICONS.staff,    perm: 'users:read' },
+        ]},
+        { group: 'Settings', items: [
             { label: 'Settings',         href: '../settings/index.html', icon: ICONS.settings, perm: 'settings:read' },
         ]},
         { group: 'Platform', items: [
@@ -111,6 +113,19 @@ const Sidebar = (() => {
             const hasActive = visibleItems.some(it => isActiveHref(it.href));
             if (hasActive) activeGroupIdx = gi;
             const isExpanded = expanded[g.group] ?? hasActive;
+
+            // A single-item group (e.g. Settings, promoted out of
+            // Administration) is just one destination — a flat top-level
+            // link reads better than a 1-item accordion the user has to
+            // expand first to reach the only thing inside it.
+            if (visibleItems.length === 1) {
+                const it = visibleItems[0];
+                return `
+                <a href="${it.href}" class="sidebar-link ${isActiveHref(it.href) ? 'active' : ''}" data-href="${it.href}">
+                    <span class="sidebar-icon">${svg(it.icon)}</span>
+                    <span class="sidebar-text">${g.group}</span>
+                </a>`;
+            }
 
             const itemsHtml = visibleItems.map(it => `
                 <a href="${it.href}" class="sidebar-link nav-child-link ${isActiveHref(it.href) ? 'active' : ''}" data-href="${it.href}">

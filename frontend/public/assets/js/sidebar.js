@@ -157,6 +157,18 @@ const Sidebar = (() => {
         const children = document.querySelector(`.nav-group[data-group="${CSS.escape(groupName)}"] .nav-group-children`);
         if (!header || !children) return;
 
+        // While collapsed, .nav-group-children is forced display:none by CSS
+        // regardless of the .expanded class — toggling it here is a silent
+        // no-op with no flyout to fall back on, so a multi-item group's icon
+        // was completely unclickable/undirected when collapsed. Navigate to
+        // the group's first item instead, same as a single-item group (which
+        // renders as a plain link and was never affected by this).
+        if (document.getElementById('sidebar')?.classList.contains('collapsed')) {
+            const firstLink = children.querySelector('.sidebar-link');
+            if (firstLink) window.location.href = firstLink.getAttribute('href');
+            return;
+        }
+
         // Read the *actual* current DOM state rather than re-deriving it from storage —
         // storage's "unset" case means "whatever render() decided" (active-group default),
         // which doesn't match a naive true/false fallback here and silently no-ops the

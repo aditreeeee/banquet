@@ -17,14 +17,36 @@ const defaultRange = (query) => ({
     toDate: query.to_date || new Date().toISOString().slice(0, 10),
 });
 
+// getPlatformTotals() (the headline KPI cards) is deliberately always
+// all-time with no date filter — so the breakdown tables it's shown
+// alongside (revenueByTenant/byBanquet/byHall, occupancy) must default to
+// all-time too, or the totals at the top of the page silently disagree with
+// the tables below them (e.g. "Platform Bookings: 60" above a "Revenue by
+// Tenant" table that only sums to 18, because that table was quietly scoped
+// to the trailing 6 months while the KPI card summed everything). Only
+// apply a range when the caller explicitly asks for one via from_date/
+// to_date — unlike defaultRange() below, this never fabricates a default
+// window. getTrends() is a genuine month-over-month trend chart and keeps
+// defaultRange()'s bounded default; only the overview/revenue-breakdown
+// totals needed to change.
+const explicitRangeOnly = (query) => ({
+    fromDate: query.from_date || null,
+    toDate:   query.to_date   || null,
+});
+
 const getOverview = async (query) => {
-    const { fromDate, toDate } = defaultRange(query);
+    // revenueByTenant must line up with getPlatformTotals() (always
+    // all-time) — occupancy is a genuinely period-based rate (booked-days /
+    // available-days over a window) and stays on the bounded default,
+    // there's no "all-time occupancy %" to reconcile it against.
+    const { fromDate, toDate } = explicitRangeOnly(query);
+    const { fromDate: occFromDate, toDate: occToDate } = defaultRange(query);
 
     const [tenantCounts, totals, revenueByTenant, occupancy, paymentStatus] = await Promise.all([
         platformRepo.getTenantCounts(),
         platformRepo.getPlatformTotals(),
         platformRepo.getRevenueByTenant({ fromDate, toDate }),
-        platformRepo.getPlatformOccupancy({ fromDate, toDate }),
+        platformRepo.getPlatformOccupancy({ fromDate: occFromDate, toDate: occToDate }),
         platformRepo.getPaymentStatusBreakdown(),
     ]);
 
@@ -39,7 +61,10 @@ const getOverview = async (query) => {
 };
 
 const getRevenueBreakdown = async (query) => {
-    const { fromDate, toDate } = defaultRange(query);
+    // Same reasoning as getOverview — byTenant/byBanquet/byHall are shown
+    // right next to (or on the same page as) the all-time platform totals,
+    // so they default to all-time too unless a range is explicitly requested.
+    const { fromDate, toDate } = explicitRangeOnly(query);
     const [byTenant, byBanquet, byHall] = await Promise.all([
         platformRepo.getRevenueByTenant({ fromDate, toDate }),
         platformRepo.getRevenueByBanquet({ fromDate, toDate }),

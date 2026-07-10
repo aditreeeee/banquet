@@ -10,6 +10,7 @@ const leadRepo = require('../repositories/lead.repository');
 const bookingService = require('./booking.service');
 const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
+const { resolveCompanyScope } = require('../utils/branchScope');
 
 // ─── Lead Scoring ───────────────────────────────────────────────────────────
 /**
@@ -53,7 +54,7 @@ const canTransition = (from, to) => {
 
 const list = (query, actor) => {
     return leadRepo.list({
-        companyId: actor.companyId,
+        companyId: resolveCompanyScope(actor),
         stage: query.stage || null,
         score: query.score || null,
         assignedTo: query.assigned_to ? parseInt(query.assigned_to, 10) : null,

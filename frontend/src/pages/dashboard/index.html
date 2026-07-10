@@ -289,21 +289,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
 <script src="../../../public/assets/js/dashboard-nav.js"></script>
-<script>
-  // A Super Admin viewing this per-tenant Overview with no tenant selected
-  // would otherwise silently see company_id=1's data (scopeToCompany's
-  // fallback — see backend/src/api/v1/middleware/auth.js) mislabeled as
-  // "their" dashboard. Send them to the Platform Dashboard (all-tenant
-  // aggregate) instead, before React ever mounts or fires a single API
-  // call — this only fires when NOT impersonating a specific tenant;
-  // impersonation keeps the normal per-tenant view intact.
-  (function () {
-    if (typeof Auth === 'undefined' || typeof API === 'undefined') return;
-    if (!Auth.isSuperAdmin || !Auth.isSuperAdmin()) return;
-    if (API.Impersonation && API.Impersonation.get()) return;
-    window.location.replace('../platform/dashboard.html');
-  })();
-</script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
 <script type="text/babel">
@@ -1446,8 +1431,26 @@ const DashboardView = ({ period, searchQuery }) => {
     avgOcc: hallStats.length ? Math.round(hallStats.reduce((s,h)=>s+h.occ,0)/hallStats.length) : 0,
   }), [hallStats]);
 
+  const isSuperAdmin = typeof Auth!=='undefined' && Auth.isSuperAdmin && Auth.isSuperAdmin();
+  const isImpersonating = typeof API!=='undefined' && API.Impersonation && !!API.Impersonation.get();
+
   return (
     <>
+      {/* Super Admin, no tenant selected — the Booking Calendar and Command
+          Center below already show every tenant's bookings/halls, but the
+          KPI cards and charts are still a single tenant's numbers (rewiring
+          those cross-tenant is a larger change — see the Platform Dashboard
+          for real all-tenant totals in the meantime). */}
+      {isSuperAdmin && !isImpersonating && (
+        <div className="fu fu-1" style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
+          background:'rgba(124,58,237,.08)',border:'1px solid rgba(124,58,237,.25)',borderRadius:10,marginBottom:4}}>
+          <span style={{fontSize:12.5,color:C.navy}}>
+            You're viewing one tenant's numbers. The Booking Calendar and Command Center below already
+            span every tenant — for all-tenant KPIs and revenue, use the{' '}
+            <a href="../platform/dashboard.html" style={{color:'#7C3AED',fontWeight:700,textDecoration:'none'}}>Platform Dashboard</a>.
+          </span>
+        </div>
+      )}
       {/* Greeting */}
       <div className="fu fu-1" style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
         <div>

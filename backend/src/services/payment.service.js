@@ -10,7 +10,7 @@ const auditLogRepo = require('../repositories/auditLog.repository');
 const settingsService = require('./settings.service');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
-const { resolveBranchScope } = require('../utils/branchScope');
+const { resolveBranchScope, resolveCompanyScope } = require('../utils/branchScope');
 const logger = require('../utils/logger');
 
 // Same formula as booking.service.js's calculateAdvanceAmount (not imported
@@ -41,7 +41,7 @@ const withAdvanceInfo = async (booking, companyId) => {
 const getAll = async (query, actor) => {
     const p = parsePagination(query, ['created_at', 'amount', 'status']);
     const { rows, total } = await payRepo.findAll({
-        companyId: actor.companyId,
+        companyId: resolveCompanyScope(actor),
         branchId:  resolveBranchScope(actor, query),
         status:    query.status   || null,
         method:    query.method   || null,
@@ -55,7 +55,7 @@ const getAll = async (query, actor) => {
     return { rows, meta: buildMeta(total, p) };
 };
 
-const getStats = async (actor) => payRepo.getStats(actor.companyId);
+const getStats = async (actor) => payRepo.getStats(resolveCompanyScope(actor));
 
 const getById = async (id, companyId) => {
     const p = await payRepo.findById(id, companyId);
@@ -80,7 +80,7 @@ const getRefundsForPayment = async (paymentId, companyId) => {
     return payRepo.getRefundsForPayment(paymentId, companyId);
 };
 
-const getAllRefunds = async (actor) => payRepo.findAllRefunds(actor.companyId);
+const getAllRefunds = async (actor) => payRepo.findAllRefunds(resolveCompanyScope(actor));
 
 const create = async (data, actor) => {
     // Accept both camelCase (programmatic) and snake_case (frontend form)
@@ -143,7 +143,7 @@ const create = async (data, actor) => {
 
 const getPending = async (query, actor) => {
     const daysAhead = parseInt(query.days_ahead, 10) || 30;
-    return payRepo.findPending(actor.companyId, daysAhead);
+    return payRepo.findPending(resolveCompanyScope(actor), daysAhead);
 };
 
 const refund = async (paymentId, { refundAmount, reason, method }, actor) => {

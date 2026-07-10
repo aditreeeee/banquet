@@ -228,6 +228,12 @@ const scopeToCompany = (req, res, next) => {
         // super admin starts impersonating, without appending a query param
         // to every single call. Falls back to company_id=1 so writes never
         // fail with null when no tenant context is selected at all.
+        //
+        // Reads that should show every tenant when NOT impersonating (Halls,
+        // Bookings, etc.) don't rely on this default — they call
+        // resolveCompanyScope(actor) instead (see utils/branchScope.js),
+        // which checks req.isImpersonating below and resolves to null
+        // ("every tenant") independently of the company_id=1 fallback here.
         const override = req.query.company_id || req.body?.company_id || req.headers['x-impersonate-company-id'];
         req.companyId = override ? parseInt(override, 10) : 1;
         req.isImpersonating = !!override;

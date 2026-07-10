@@ -41,7 +41,9 @@ const SORT_COLUMN_MAP = {
 
 const findAll = async ({ companyId, branchId, search, isActive, source, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'c.company_id = @companyId',
+        // NULL companyId means "every tenant" — see resolveCompanyScope in
+        // utils/branchScope.js (Super Admin, not impersonating).
+        '(@companyId IS NULL OR c.company_id = @companyId)',
         '(@branchId IS NULL OR c.branch_id = @branchId)',
         '(@isActive IS NULL OR c.is_active = @isActive)',
         '(@source IS NULL OR c.source = @source)',
@@ -81,19 +83,19 @@ const getStats = async ({ companyId, branchId }) => {
                 SELECT ISNULL(SUM(b.total_amount), 0) AS spend
                 FROM Customers c2
                 LEFT JOIN Bookings b ON b.customer_id = c2.customer_id AND b.status NOT IN ('draft','cancelled')
-                WHERE c2.company_id = @companyId AND (@branchId IS NULL OR c2.branch_id = @branchId)
+                WHERE (@companyId IS NULL OR c2.company_id = @companyId) AND (@branchId IS NULL OR c2.branch_id = @branchId)
                 GROUP BY c2.customer_id
             ) x) AS avg_spend,
             (SELECT COUNT(*) FROM (
                 SELECT b.customer_id, COUNT(*) AS booking_count
                 FROM Customers c3
                 JOIN Bookings b ON b.customer_id = c3.customer_id AND b.status NOT IN ('draft','cancelled')
-                WHERE c3.company_id = @companyId AND (@branchId IS NULL OR c3.branch_id = @branchId)
+                WHERE (@companyId IS NULL OR c3.company_id = @companyId) AND (@branchId IS NULL OR c3.branch_id = @branchId)
                 GROUP BY b.customer_id
                 HAVING COUNT(*) > 1
             ) y) AS repeat_customers
          FROM Customers c
-         WHERE c.company_id = @companyId AND (@branchId IS NULL OR c.branch_id = @branchId)`,
+         WHERE (@companyId IS NULL OR c.company_id = @companyId) AND (@branchId IS NULL OR c.branch_id = @branchId)`,
         { companyId, branchId: branchId || null }
     );
     const s = rows[0] || {};

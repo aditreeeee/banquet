@@ -5,7 +5,7 @@
 
 const svc      = require('../../../services/payment.service');
 const response = require('../../../utils/response');
-const actor    = (req) => ({ companyId: req.companyId, branchId: req.user.branch_id, userId: req.user.user_id, roleSlug: req.user.role_slug });
+const actor    = (req) => ({ companyId: req.companyId, branchId: req.user.branch_id, userId: req.user.user_id, roleSlug: req.user.role_slug, isImpersonating: req.isImpersonating });
 
 const getAll      = async (req, res) => {
     const a = actor(req);

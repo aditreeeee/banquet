@@ -265,7 +265,11 @@ const findById = async (bookingId, companyId = null) => {
  */
 const findAll = async ({ companyId, branchId, status, hallId, customerId, fromDate, toDate, search, isPriority, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'b.company_id = @companyId',
+        // NULL companyId means "every tenant" — only reachable via the
+        // Super-Admin-only company_id=all opt-in in scopeToCompany (see
+        // auth.js), used by the Dashboard/Command Center when not
+        // impersonating a specific tenant.
+        '(@companyId IS NULL OR b.company_id = @companyId)',
         '(@branchId IS NULL OR b.branch_id = @branchId)',
         '(@status IS NULL OR b.status = @status)',
         '(@hallId IS NULL OR b.hall_id = @hallId)',

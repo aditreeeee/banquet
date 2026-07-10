@@ -41,7 +41,9 @@ const findByBooking = async (bookingId, companyId) => {
 
 const findAll = async ({ companyId, branchId, status, method, bookingId, customerId, fromDate, toDate, search, offset, limit, sortBy, sortDir }) => {
     const where = [
-        'p.company_id = @companyId',
+        // NULL companyId means "every tenant" — see resolveCompanyScope in
+        // utils/branchScope.js (Super Admin, not impersonating).
+        '(@companyId IS NULL OR p.company_id = @companyId)',
         '(@branchId   IS NULL OR b.branch_id     = @branchId)',
         '(@status     IS NULL OR p.status        = @status)',
         '(@method     IS NULL OR p.payment_method = @method)',
@@ -260,12 +262,12 @@ const findPending = async (companyId, daysAhead = 30) => {
                 DATEDIFF(DAY, CAST(GETDATE() AS DATE), b.event_date) AS days_until_event
          FROM Bookings b
          JOIN Customers c ON c.customer_id = b.customer_id
-         WHERE b.company_id = @companyId
+         WHERE (@companyId IS NULL OR b.company_id = @companyId)
            AND b.status NOT IN ('cancelled', 'completed', 'draft')
            AND b.total_amount > ISNULL(b.amount_paid, 0)
            AND b.event_date BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(DAY, @daysAhead, CAST(GETDATE() AS DATE))
          ORDER BY b.event_date ASC`,
-        { companyId, daysAhead }
+        { companyId: companyId || null, daysAhead }
     );
     return rows;
 };
@@ -277,19 +279,19 @@ const getStats = async (companyId) => {
     const rows = await executeQuery(
         `SELECT
             (SELECT ISNULL(SUM(amount), 0) FROM Payments
-              WHERE company_id = @companyId AND status = 'completed'
+              WHERE (@companyId IS NULL OR company_id = @companyId) AND status = 'completed'
                 AND CAST(created_at AS DATE) = CAST(GETDATE() AS DATE)) AS today,
             (SELECT ISNULL(SUM(amount), 0) FROM Payments
-              WHERE company_id = @companyId AND status = 'completed'
+              WHERE (@companyId IS NULL OR company_id = @companyId) AND status = 'completed'
                 AND YEAR(created_at) = YEAR(GETDATE()) AND MONTH(created_at) = MONTH(GETDATE())) AS month,
-            (SELECT COUNT(*) FROM Payments WHERE company_id = @companyId) AS totalTransactions,
+            (SELECT COUNT(*) FROM Payments WHERE (@companyId IS NULL OR company_id = @companyId)) AS totalTransactions,
             (SELECT ISNULL(SUM(b.total_amount - ISNULL(b.amount_paid, 0)), 0)
                FROM Bookings b
-              WHERE b.company_id = @companyId
+              WHERE (@companyId IS NULL OR b.company_id = @companyId)
                 AND b.status NOT IN ('cancelled', 'completed', 'draft')
                 AND b.total_amount > ISNULL(b.amount_paid, 0)) AS pending
         `,
-        { companyId }
+        { companyId: companyId || null }
     );
     return rows[0];
 };
@@ -305,9 +307,9 @@ const findAllRefunds = async (companyId) => {
          FROM Refunds rf
          JOIN Bookings b  ON b.booking_id  = rf.booking_id
          JOIN Customers c ON c.customer_id = b.customer_id
-         WHERE rf.company_id = @companyId
+         WHERE (@companyId IS NULL OR rf.company_id = @companyId)
          ORDER BY rf.created_at DESC`,
-        { companyId }
+        { companyId: companyId || null }
     );
 };
 

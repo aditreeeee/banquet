@@ -20,7 +20,7 @@ const BASE_SELECT = `
 const list = async ({ companyId, stage, score, assignedTo }) => {
     return executeQuery(
         `${BASE_SELECT}
-         WHERE l.company_id = @companyId
+         WHERE (@companyId IS NULL OR l.company_id = @companyId)
            AND (@stage IS NULL OR l.stage = @stage)
            AND (@score IS NULL OR l.score = @score)
            AND (@assignedTo IS NULL OR l.assigned_to = @assignedTo)
@@ -28,7 +28,7 @@ const list = async ({ companyId, stage, score, assignedTo }) => {
             CASE l.score WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
             ISNULL(l.estimated_budget, 0) DESC,
             l.created_at DESC`,
-        { companyId, stage: stage || null, score: score || null, assignedTo: assignedTo || null }
+        { companyId: companyId || null, stage: stage || null, score: score || null, assignedTo: assignedTo || null }
     );
 };
 

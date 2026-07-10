@@ -11,6 +11,7 @@ const actor = (req) => ({
     companyId: req.companyId,
     branchId:  req.user.branch_id,
     roleSlug:  req.user.role_slug,
+    isImpersonating: req.isImpersonating,
 });
 
 const checkAvailability = async (req, res) => {

@@ -22,6 +22,7 @@ const dashService  = require('./dashboard.service');
 const notif        = require('./notification.service');
 const logger       = require('../utils/logger');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+const { resolveCompanyScope } = require('../utils/branchScope');
 const {
     NotFoundError,
     ConflictError,
@@ -380,13 +381,17 @@ const getAll = async (query, actor) => {
         ? query
         : { ...query, sort_by: 'created_at', sort_dir: query.sort_dir || 'desc' };
     const pagination = parsePagination(queryWithDefaultSort, ['event_date', 'created_at', 'total_amount', 'status']);
-    const { companyId, branchId, roleSlug } = actor;
+    const { branchId, roleSlug } = actor;
 
     // Branch managers only see their branch
     const effectiveBranchId = roleSlug === 'branch_manager' ? branchId : (query.branch_id || null);
 
+    // A Super Admin not currently impersonating a tenant sees bookings
+    // across every tenant (same resolveCompanyScope used by halls/banquets)
+    // rather than silently falling back to company_id=1 — that fallback
+    // exists only to keep writes from ever hitting a null company FK.
     const { rows, total, statusCounts } = await bookingRepo.findAll({
-        companyId,
+        companyId: resolveCompanyScope(actor),
         branchId:   effectiveBranchId,
         status:     query.status     || null,
         hallId:     query.hall_id    ? parseInt(query.hall_id, 10)    : null,

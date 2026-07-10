@@ -36,15 +36,24 @@ const getPlatformTotals = async () => {
     return rows[0];
 };
 
+// bookings_count includes cancelled bookings (excludes only draft) and
+// revenue/collected exclude cancelled via CASE WHEN — same convention as
+// report.repository.js's getSummaryStats (the per-tenant dashboard), so a
+// tenant's own KPI cards and this platform-wide breakdown agree on what
+// "N bookings" means. Filtering cancelled out of the JOIN entirely (the
+// previous version) zeroed the count AND the revenue together for any
+// tenant/banquet/hall whose only non-draft activity was a cancellation,
+// which also made this table's totals silently disagree with
+// getPlatformTotals() above it on the same page.
 const getRevenueByTenant = async ({ fromDate, toDate }) => {
     return executeQuery(
         `SELECT c.company_id, c.company_name, c.is_active,
                 COUNT(b.booking_id) AS bookings_count,
-                ISNULL(SUM(b.total_amount), 0) AS revenue,
-                ISNULL(SUM(b.amount_paid), 0) AS collected
+                ISNULL(SUM(CASE WHEN b.status <> 'cancelled' THEN b.total_amount ELSE 0 END), 0) AS revenue,
+                ISNULL(SUM(CASE WHEN b.status <> 'cancelled' THEN b.amount_paid ELSE 0 END), 0) AS collected
          FROM Companies c
          LEFT JOIN Bookings b ON b.company_id = c.company_id
-             AND b.status NOT IN ('draft','cancelled')
+             AND b.status NOT IN ('draft')
              AND (@fromDate IS NULL OR b.event_date BETWEEN @fromDate AND @toDate)
          WHERE c.deleted_at IS NULL
          GROUP BY c.company_id, c.company_name, c.is_active
@@ -57,12 +66,12 @@ const getRevenueByBanquet = async ({ fromDate, toDate, limit = 20 }) => {
     return executeQuery(
         `SELECT TOP (@limit) bq.banquet_id, bq.banquet_name, c.company_id, c.company_name,
                 COUNT(b.booking_id) AS bookings_count,
-                ISNULL(SUM(b.total_amount), 0) AS revenue
+                ISNULL(SUM(CASE WHEN b.status <> 'cancelled' THEN b.total_amount ELSE 0 END), 0) AS revenue
          FROM Banquets bq
          JOIN Companies c ON c.company_id = bq.company_id
          LEFT JOIN Halls h ON h.banquet_id = bq.banquet_id
          LEFT JOIN Bookings b ON b.hall_id = h.hall_id
-             AND b.status NOT IN ('draft','cancelled')
+             AND b.status NOT IN ('draft')
              AND (@fromDate IS NULL OR b.event_date BETWEEN @fromDate AND @toDate)
          WHERE bq.deleted_at IS NULL
          GROUP BY bq.banquet_id, bq.banquet_name, c.company_id, c.company_name
@@ -75,11 +84,11 @@ const getRevenueByHall = async ({ fromDate, toDate, limit = 20 }) => {
     return executeQuery(
         `SELECT TOP (@limit) h.hall_id, h.hall_name, c.company_id, c.company_name,
                 COUNT(b.booking_id) AS bookings_count,
-                ISNULL(SUM(b.total_amount), 0) AS revenue
+                ISNULL(SUM(CASE WHEN b.status <> 'cancelled' THEN b.total_amount ELSE 0 END), 0) AS revenue
          FROM Halls h
          JOIN Companies c ON c.company_id = h.company_id
          LEFT JOIN Bookings b ON b.hall_id = h.hall_id
-             AND b.status NOT IN ('draft','cancelled')
+             AND b.status NOT IN ('draft')
              AND (@fromDate IS NULL OR b.event_date BETWEEN @fromDate AND @toDate)
          WHERE h.deleted_at IS NULL
          GROUP BY h.hall_id, h.hall_name, c.company_id, c.company_name

@@ -321,7 +321,17 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
   const name = `${user.first_name} ${user.last_name}`;
   const canSee = (perm) => !perm || (typeof Auth==='undefined') || Auth.hasPermission(perm);
   const [expandedMap, setExpandedMap] = useState(loadSidebarExpanded);
-  const toggleGroup = (groupName, defaultOpen) => {
+  // #sidebar.collapsed .sb-group-children{display:none} forces the children
+  // hidden regardless of the expanded state while collapsed — toggling
+  // expandedMap there was a silent no-op with no flyout to fall back on, so
+  // a multi-item group's icon did nothing while collapsed (same bug fixed
+  // in sidebar.js's toggleGroup for every other page). Navigate to the
+  // group's first visible item instead when collapsed.
+  const toggleGroup = (groupName, defaultOpen, firstItemHref) => {
+    if (collapsed && !isMobile && firstItemHref) {
+      window.location.href = firstItemHref;
+      return;
+    }
     setExpandedMap(prev => {
       const current = prev[groupName] ?? defaultOpen;
       const next = { ...prev, [groupName]: !current };
@@ -349,7 +359,7 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
           return (
             <div key={sec.s} className="nav-group">
               <div className={`sb-group-header ${isExpanded?'expanded':''} ${hasActive?'has-active':''}`}
-                onClick={() => toggleGroup(sec.s, hasActive)} title={collapsed?sec.s:undefined}>
+                onClick={() => toggleGroup(sec.s, hasActive, visibleItems[0].href)} title={collapsed?sec.s:undefined}>
                 <span className="sb-icon">{visibleItems[0].icon()}</span>
                 <span className="sb-label">{sec.s}</span>
                 <span className="sb-group-chevron">{I.chevronRight({width:14,height:14})}</span>
@@ -1031,6 +1041,30 @@ const CommandCenterView = () => {
   );
 };
 
+/* This page renders its own sidebar/layout via React and never loads
+   app.js/sidebar.js — app.js's initImpersonationBanner() (the sticky purple
+   "Viewing as property: ..." bar every other page gets) never runs here.
+   Portaled to document.body, fixed to the viewport top, so it sits above
+   the whole app shell regardless of where in the DOM this renders. Same
+   company_id -> color mapping as platform/tenants.html's tenantColor() and
+   app.js's own copy, so a tenant reads as the same color everywhere. */
+const TENANT_PALETTE = ['#2563EB', '#14B8A6', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#64748B', '#8B5CF6'];
+const tenantColor = companyId => TENANT_PALETTE[Math.abs(companyId || 0) % TENANT_PALETTE.length];
+const ImpersonationBanner = ({ state }) => ReactDOM.createPortal(
+  <div style={{position:'fixed',top:0,left:0,right:0,zIndex:2000,background:'#7C3AED',color:'white',padding:'8px 16px',
+    textAlign:'center',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:12}}>
+    <span>Viewing as property:{' '}
+      <span style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:tenantColor(state.companyId),margin:'0 5px 0 4px',verticalAlign:'middle'}}/>
+      {state.companyName}
+    </span>
+    <button onClick={()=>{ API.Impersonation.clear(); window.location.href='../platform/tenants.html'; }}
+      style={{background:'white',color:'#7C3AED',border:'none',borderRadius:6,padding:'3px 12px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+      Exit
+    </button>
+  </div>,
+  document.body
+);
+
 const App = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
@@ -1065,8 +1099,11 @@ const App = () => {
   window.__closeSidebar=()=>setMobOpen(false);
   function onMenu(){ isMobile?setMobOpen(o=>!o):setCollapsed(c=>!c); }
 
+  const impersonationState = typeof API!=='undefined' && API.Impersonation ? API.Impersonation.get() : null;
+
   return (
     <>
+      {impersonationState && <ImpersonationBanner state={impersonationState}/>}
       <Sidebar collapsed={collapsed} onCollapse={()=>setCollapsed(c=>!c)} isMobile={isMobile} mobileOpen={mobOpen}/>
       <div id="main">
         <Topbar onMenu={onMenu} darkMode={darkMode} setDarkMode={setDarkMode}/>

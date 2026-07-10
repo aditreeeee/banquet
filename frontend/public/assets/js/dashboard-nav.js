@@ -46,7 +46,7 @@ function getDashboardNav(I) {
         ]},
         { s:'Platform', items:[
             { id:'platform-dashboard', icon:I.trendingUp, label:'Platform Dashboard', href:'../platform/dashboard.html', perm:'companies:read' },
-            { id:'platform-tenants',   icon:I.building,   label:'Tenants',            href:'../platform/tenants.html',   perm:'companies:read' },
+            { id:'platform-tenants',   icon:I.building,   label:'Properties',         href:'../platform/tenants.html',   perm:'companies:read' },
         ]},
     ];
 }

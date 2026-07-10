@@ -694,7 +694,17 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
   const canSee = (perm) => !perm || (typeof Auth==='undefined') || Auth.hasPermission(perm);
   const [expandedMap, setExpandedMap] = useState(loadSidebarExpanded);
 
-  const toggleGroup = (groupName, defaultOpen) => {
+  // #sidebar.collapsed .sb-group-children{display:none} forces the children
+  // hidden regardless of the expanded state while collapsed — toggling
+  // expandedMap there was a silent no-op with no flyout to fall back on, so
+  // a multi-item group's icon did nothing while collapsed (same bug fixed
+  // in sidebar.js's toggleGroup for every other page). Navigate to the
+  // group's first visible item instead when collapsed.
+  const toggleGroup = (groupName, defaultOpen, firstItemHref) => {
+    if (collapsed && !isMobile && firstItemHref) {
+      window.location.href = firstItemHref;
+      return;
+    }
     setExpandedMap(prev => {
       const current = prev[groupName] ?? defaultOpen;
       const next = { ...prev, [groupName]: !current };
@@ -730,7 +740,7 @@ const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
           return (
             <div key={sec.s} className="nav-group">
               <div className={`sb-group-header ${isExpanded?'expanded':''} ${hasActive?'has-active':''}`}
-                onClick={() => toggleGroup(sec.s, hasActive)} title={collapsed?sec.s:undefined}>
+                onClick={() => toggleGroup(sec.s, hasActive, visibleItems[0].href)} title={collapsed?sec.s:undefined}>
                 <span className="sb-icon">{visibleItems[0].icon()}</span>
                 <span className="sb-label">{sec.s}</span>
                 <span className="sb-group-chevron">{I.chevronRight({width:14,height:14})}</span>
@@ -974,6 +984,32 @@ const StatusDonut = ({ data }) => {
 /* ════════════════════════════════════════════════════════════════
    MINI CALENDAR
    ════════════════════════════════════════════════════════════════ */
+/* This page renders its own sidebar/layout via React and never loads
+   app.js/sidebar.js — app.js's initImpersonationBanner() (the sticky purple
+   "Viewing as property: ..." bar every other page gets) never runs here, so
+   a Super Admin impersonating a tenant saw no indication of it on the very
+   first page they land on after "View As". Portaled to document.body so it
+   sits above the whole app shell exactly like app.js's document.body.prepend,
+   rather than being confined inside whatever container renders it. Same
+   company_id -> color mapping as platform/tenants.html's tenantColor() and
+   app.js's own copy, so a tenant reads as the same color everywhere. */
+const TENANT_PALETTE = ['#2563EB', '#14B8A6', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#64748B', '#8B5CF6'];
+const tenantColor = companyId => TENANT_PALETTE[Math.abs(companyId || 0) % TENANT_PALETTE.length];
+const ImpersonationBanner = ({ state }) => ReactDOM.createPortal(
+  <div style={{position:'fixed',top:0,left:0,right:0,zIndex:2000,background:'#7C3AED',color:'white',padding:'8px 16px',
+    textAlign:'center',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:12}}>
+    <span>Viewing as property:{' '}
+      <span style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:tenantColor(state.companyId),margin:'0 5px 0 4px',verticalAlign:'middle'}}/>
+      {state.companyName}
+    </span>
+    <button onClick={()=>{ API.Impersonation.clear(); window.location.href='../platform/tenants.html'; }}
+      style={{background:'white',color:'#7C3AED',border:'none',borderRadius:6,padding:'3px 12px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+      Exit
+    </button>
+  </div>,
+  document.body
+);
+
 /* Rendered via a portal straight onto <body> in *fixed* viewport coordinates —
    the KPI card it's triggered from clips overflow (it has to, to keep a fixed
    460px height), so an absolutely-positioned popover confined to that card
@@ -1439,10 +1475,12 @@ const DashboardView = ({ period, searchQuery }) => {
   }), [hallStats]);
 
   const isSuperAdmin = typeof Auth!=='undefined' && Auth.isSuperAdmin && Auth.isSuperAdmin();
-  const isImpersonating = typeof API!=='undefined' && API.Impersonation && !!API.Impersonation.get();
+  const impersonationState = typeof API!=='undefined' && API.Impersonation ? API.Impersonation.get() : null;
+  const isImpersonating = !!impersonationState;
 
   return (
     <>
+      {isImpersonating && <ImpersonationBanner state={impersonationState}/>}
       {/* Super Admin, no tenant selected — every widget on this page (KPIs,
           charts, Booking Calendar, Command Center) already aggregates every
           tenant (see resolveCompanyScope in utils/branchScope.js). Just a

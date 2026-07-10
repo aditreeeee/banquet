@@ -17,10 +17,16 @@ const verifyPassword = (plain, hash)  => bcrypt.compare(plain, hash);
 // ─── JWT ─────────────────────────────────────────────────────────────────────
 /**
  * Sign an access token (short-lived)
+ * @param {Object} payload
+ * @param {string} [expiresIn] - overrides JWT_ACCESS_EXPIRES/the 15m default;
+ *   auth.service.js passes the caller's Settings -> Security
+ *   session.access_token_minutes value here (see settings.service.js's
+ *   getSessionPolicy) so admins can configure logout timing without a
+ *   redeploy, instead of it only ever coming from a fixed env var.
  */
-const signAccessToken = (payload) =>
+const signAccessToken = (payload, expiresIn) =>
     jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
-        expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m',
+        expiresIn: expiresIn || process.env.JWT_ACCESS_EXPIRES || '15m',
         issuer:    'banquetpro',
         audience:  'banquetpro-api',
     });

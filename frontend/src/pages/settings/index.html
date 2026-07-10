@@ -305,11 +305,12 @@
                 <div><label class="toggle-switch"><input type="checkbox" id="enforce2FA" checked><span class="toggle-slider"></span></label></div>
             </div>
             <div class="settings-row">
-                <div><div class="settings-label">Session Timeout</div><div class="settings-desc">Auto-logout after inactivity</div></div>
+                <div><div class="settings-label">Session Timeout</div><div class="settings-desc">How long a login stays active before the access token expires and the user is signed out</div></div>
                 <div>
-                    <select class="form-select" style="max-width:200px">
+                    <select class="form-select" id="sessionTimeoutMinutes" style="max-width:200px">
+                        <option value="15" selected>15 minutes</option>
                         <option value="30">30 minutes</option>
-                        <option value="60" selected>1 hour</option>
+                        <option value="60">1 hour</option>
                         <option value="120">2 hours</option>
                         <option value="480">8 hours</option>
                     </select>
@@ -449,6 +450,9 @@ let chargesLoaded = false;
 
         const general = res.data?.general || {};
         if (general.currency) document.getElementById('currency').value = general.currency;
+
+        const session = res.data?.session || {};
+        if (session.access_token_minutes) document.getElementById('sessionTimeoutMinutes').value = session.access_token_minutes;
     } catch (_) { /* leave fields at their HTML defaults — non-fatal */ }
 })();
 function switchTab(tab) {
@@ -594,6 +598,9 @@ function collectTabData(tab) {
         smtp_port:     { value: document.getElementById('smtpPort').value },
         sender_email:  { value: document.getElementById('senderEmail').value },
         smtp_password: { value: document.getElementById('smtpPassword').value },
+    };
+    if (tab === 'security') return {
+        access_token_minutes: { value: document.getElementById('sessionTimeoutMinutes').value, group: 'session' },
     };
     return {};
 }

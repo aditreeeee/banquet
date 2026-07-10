@@ -33,6 +33,12 @@ const DEFAULTS = {
     // save; 'block' rejects saving a session whose ordered plates fall short
     // of the guest count/package minimum; 'off' disables the check entirely.
     'catering.min_plate_policy':         'warn',
+    // How long a login stays active before the access token expires and the
+    // user is signed out (matches the previous hardcoded JWT_ACCESS_EXPIRES
+    // default of 15 minutes). Configurable per company from Settings ->
+    // Security; a Super Admin with no company (company_id null) always gets
+    // this default, since there's no single tenant's policy to apply.
+    'session.access_token_minutes':      '15',
 };
 
 const cacheKey = (companyId) => `settings_${companyId}`;
@@ -111,6 +117,14 @@ const getCateringPolicy = async (companyId) => {
     return ['warn', 'block', 'off'].includes(policy) ? policy : 'warn';
 };
 
+/** How many minutes an access token stays valid for this company's users
+    before they're signed out — see session.access_token_minutes above. */
+const getSessionPolicy = async (companyId) => {
+    const flat = await getFlatWithDefaults(companyId);
+    const minutes = parseInt(flat['session.access_token_minutes'], 10);
+    return { accessTokenMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : 15 };
+};
+
 const getCurrency = async (companyId) => {
     const flat = await getFlatWithDefaults(companyId);
     const code = flat['general.currency'] || 'INR';
@@ -134,4 +148,4 @@ const update = async (companyId, key, value, group, actor) => {
     });
 };
 
-module.exports = { getAll, getAllWithDefaults, getFlatWithDefaults, getOne, getBookingDefaults, getTaxRates, getCateringPolicy, getCurrency, update };
+module.exports = { getAll, getAllWithDefaults, getFlatWithDefaults, getOne, getBookingDefaults, getTaxRates, getCateringPolicy, getSessionPolicy, getCurrency, update };

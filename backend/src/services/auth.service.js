@@ -6,6 +6,7 @@
 'use strict';
 
 const authRepo = require('../repositories/auth.repository');
+const settingsService = require('./settings.service');
 const {
     verifyPassword,
     hashPassword,
@@ -49,7 +50,8 @@ const buildTokenPayload = (user) => ({
 const issueTokens = async (user, meta = {}, extended = false) => {
     const payload = buildTokenPayload(user);
 
-    const accessToken  = signAccessToken(payload);
+    const { accessTokenMinutes } = await settingsService.getSessionPolicy(user.company_id);
+    const accessToken  = signAccessToken(payload, `${accessTokenMinutes}m`);
     const refreshPlain = generateToken(32);                    // 64-char hex
     const refreshHash  = hashToken(refreshPlain);
 

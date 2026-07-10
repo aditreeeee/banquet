@@ -384,15 +384,9 @@ VALUES
     (1, 1, 'Terrace Lounge', 'TL-001', 3, 'terrace', 150, 250, 3500.00, 0, 1, 0, 0, 0, 1);
 GO
 
--- Hall Pricing
-INSERT INTO hall_pricing (hall_id, pricing_name, pricing_type, base_price, weekend_multiplier, min_booking_hours, advance_percentage, is_active)
-VALUES
-    (1, 'Standard Rate', 'per_day', 150000.00, 1.25, 8, 25.00, 1),
-    (2, 'Standard Rate', 'per_day',  90000.00, 1.25, 8, 25.00, 1),
-    (3, 'Standard Rate', 'per_day', 100000.00, 1.30, 8, 25.00, 1),
-    (4, 'Standard Rate', 'per_day',  35000.00, 1.20, 4, 25.00, 1),
-    (5, 'Standard Rate', 'per_day',  45000.00, 1.20, 4, 25.00, 1);
-GO
+-- Hall Pricing lived in its own table pre-migration-014; that table was
+-- dropped as unused (pricing now lives directly on Halls.base_price, already
+-- seeded above), so there is nothing left to insert here.
 
 -- Tax Config
 INSERT INTO tax_config (company_id, tax_name, tax_type, rate, applies_to, effective_from)

@@ -1,8 +1,27 @@
 -- =============================================================================
--- SEED DATA: Demo Data (500+ records)
+-- SEED DATA: Demo Data (500+ records) — DEV/STAGING ONLY, NEVER PRODUCTION.
 -- Run AFTER 001_seed_data.sql
 -- Generates: 50 customers, 5 halls, 200+ bookings, payments, invoices, reviews
+--
+-- WARNING: every demo customer/user account inserted below shares one
+-- identical bcrypt password hash — running this against a production
+-- database would leave ~50 accounts unlockable with a single known
+-- password. This file is not invoked by any app script (backend/scripts
+-- /setup.js seeds its own demo data independently) — it exists only for
+-- restoring a raw-SQL demo dataset by hand via sqlcmd, so the guard below
+-- is the only thing standing between an operator and running it by mistake.
+--
+-- Run with the confirmation flag on a non-production database only:
+--   sqlcmd -S <server> -d BanquetDB -v CONFIRM_DEMO_SEED="YES" -i 002_seed_demo_data.sql
 -- =============================================================================
+:on error exit
+:setvar CONFIRM_DEMO_SEED "NO"
+IF ('$(CONFIRM_DEMO_SEED)' <> 'YES')
+BEGIN
+    RAISERROR('Refusing to run 002_seed_demo_data.sql: pass -v CONFIRM_DEMO_SEED="YES" to confirm this is NOT a production database (see file header).', 16, 1);
+END
+GO
+
 USE BanquetDB;
 GO
 
@@ -52,16 +71,8 @@ VALUES
     (3, 1, 'Sapphire Lawn',     'SL-001', 0, 'lawn',        250, 450,  7000.00, 0, 1, 1, 0, 1, 1);
 GO
 
--- Pricing for new halls
-INSERT INTO hall_pricing (hall_id, pricing_name, pricing_type, base_price, weekend_multiplier, min_booking_hours, advance_percentage, is_active)
-VALUES
-    (6, 'Standard Rate',  'per_day',  120000.00, 1.30, 8, 30.00, 1),
-    (7, 'Standard Rate',  'per_day',   80000.00, 1.25, 6, 25.00, 1),
-    (8, 'Standard Rate',  'per_day',   25000.00, 1.20, 4, 25.00, 1),
-    (9, 'Standard Rate',  'per_day',   95000.00, 1.25, 8, 25.00, 1),
-    (10,'Standard Rate',  'per_day',   20000.00, 1.15, 4, 25.00, 1),
-    (11,'Standard Rate',  'per_day',   65000.00, 1.20, 6, 25.00, 1);
-GO
+-- hall_pricing was dropped in migration 014 (pricing now lives directly on
+-- Halls.base_price, already seeded above) — nothing to insert here anymore.
 
 -- =============================================================================
 -- 50 DEMO CUSTOMERS (realistic Indian names)

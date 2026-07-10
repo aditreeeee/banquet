@@ -190,7 +190,23 @@ body {
     flex: 1;
     letter-spacing: .01em;
 }
-.sidebar.collapsed .sidebar-text { opacity: 0; }
+.sidebar.collapsed .sidebar-text { opacity: 0; flex: 0; width: 0; overflow: hidden; }
+
+/* Collapsed rail is icon-only — .sidebar-text keeping flex:1 (just
+   invisible) still reserved its full width, so the icon sat at the left
+   edge of the 72px rail instead of centered in it. Zeroing the label's
+   flex/width above lets justify-content:center here actually center the
+   icon, and the same needs doing to any other sibling that stays in flow
+   (chevron, badge) or their reserved width offsets the centering too. */
+.sidebar.collapsed .sidebar-link,
+.sidebar.collapsed .nav-group-header {
+    justify-content: center;
+    gap: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+.sidebar.collapsed .nav-group-chevron { flex: 0; width: 0; margin: 0; }
+.sidebar.collapsed .nav-badge { flex: 0; width: 0; margin: 0; padding: 0; }
 
 /* Accordion nav groups (Sidebar component) */
 .nav-group-header {

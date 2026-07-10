@@ -58,7 +58,13 @@ app.use(cors({
     },
     credentials:    true,
     methods:        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-CSRF-Token'],
+    // X-Impersonate-Company-Id is the Super Admin "View As Tenant" header
+    // (see auth.js's scopeToCompany + frontend api.js's Impersonation
+    // helper) — omitting it here means the browser's CORS preflight
+    // silently blocks every single API call the moment impersonation is
+    // active, on any deployment where the frontend and backend aren't on
+    // the exact same origin.
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-CSRF-Token', 'X-Impersonate-Company-Id'],
     exposedHeaders: ['X-Request-ID', 'X-Rate-Limit-Remaining'],
 }));
 

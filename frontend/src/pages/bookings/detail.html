@@ -6,6 +6,7 @@
 <title>Booking Detail | Banquet System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
 <link href="../../../public/assets/css/theme.css" rel="stylesheet">
 <link href="../../../public/assets/css/app.css"   rel="stylesheet">
 <style>
@@ -319,9 +320,13 @@
                             <option value="midnight_refreshments">Midnight Refreshments</option>
                         </select>
                     </div>
+                    <div class="col-6" id="csServingDateWrap" style="display:none">
+                        <label class="form-label">Day</label>
+                        <input type="date" class="form-control" id="csServingDate">
+                    </div>
                     <div class="col-6">
                         <label class="form-label">Serving Time</label>
-                        <input type="time" class="form-control" id="csServingTime">
+                        <input type="text" class="form-control" id="csServingTime" autocomplete="off">
                     </div>
                     <div class="col-6">
                         <label class="form-label">Guest Count Override</label>
@@ -406,6 +411,7 @@
 <button id="scrollTop">↑</button>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script src="../../../public/assets/js/config.js"></script>
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
@@ -710,6 +716,7 @@ async function loadCateringSessions() {
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <div>
                         <span style="font-weight:700;color:var(--text-primary)">${SESSION_LABELS[s.session_type] || s.session_type}</span>
+                        ${s.serving_date ? `<span style="color:var(--text-muted)"> · ${Utils.formatDate(s.serving_date)}</span>` : ''}
                         ${s.serving_time ? `<span style="color:var(--text-muted)"> · ${s.serving_time.substring(0,5)}</span>` : ''}
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
@@ -749,6 +756,13 @@ function isTimeWithinBookingWindow(time, startTime, endTime) {
     return time >= startTime || time <= endTime;
 }
 
+/* event_date/event_end_date come back as full datetimes too — same
+   extraction idea as clockTime() but slicing out YYYY-MM-DD instead. */
+const clockDate = d => {
+    const s = d && String(d);
+    return s ? s.slice(0, 10) : null;
+};
+
 function openCateringSessionModal() {
     document.getElementById('csServingTime').value = '';
     document.getElementById('csGuestCount').value = '';
@@ -759,29 +773,50 @@ function openCateringSessionModal() {
     const startTime = clockTime(booking?.event_time_start);
     const endTime    = clockTime(booking?.event_time_end);
     const timeInput  = document.getElementById('csServingTime');
-    if (startTime && endTime && startTime <= endTime) {
-        timeInput.min = startTime;
-        timeInput.max = endTime;
-    } else {
-        timeInput.removeAttribute('min');
-        timeInput.removeAttribute('max');
+    if (timeInput._flatpickr) {
+        timeInput._flatpickr.set('minTime', startTime && endTime && startTime <= endTime ? startTime : null);
+        timeInput._flatpickr.set('maxTime', startTime && endTime && startTime <= endTime ? endTime : null);
+        timeInput._flatpickr.clear();
     }
+
+    // Multi-day booking — show the Day field and default/clamp it to the
+    // event's own date span, same as the booking wizard's Catering step.
+    const eventDate = clockDate(booking?.event_date);
+    const eventEndDate = clockDate(booking?.event_end_date) || eventDate;
+    const isMultiDay = eventEndDate && eventEndDate !== eventDate;
+    const dateWrap = document.getElementById('csServingDateWrap');
+    const dateEl = document.getElementById('csServingDate');
+    dateWrap.style.display = isMultiDay ? '' : 'none';
+    if (isMultiDay) {
+        dateEl.min = eventDate;
+        dateEl.max = eventEndDate;
+        dateEl.value = eventDate;
+    }
+
     new bootstrap.Modal(document.getElementById('cateringSessionModal')).show();
 }
 
 async function submitCateringSession() {
     const sessionType = document.getElementById('csSessionType').value;
     const servingTime = document.getElementById('csServingTime').value || null;
+    const servingDateEl = document.getElementById('csServingDateWrap');
+    const servingDate = servingDateEl.style.display !== 'none' ? document.getElementById('csServingDate').value || null : null;
     const guestCountRaw = document.getElementById('csGuestCount').value;
     if (servingTime && !isTimeWithinBookingWindow(servingTime, clockTime(booking?.event_time_start), clockTime(booking?.event_time_end))) {
         Utils.toast(`Serving time must be within the event's ${Utils.formatTime(booking.event_time_start)} – ${Utils.formatTime(booking.event_time_end)} window`, 'error');
+        return;
+    }
+    const eventDate = clockDate(booking?.event_date);
+    const eventEndDate = clockDate(booking?.event_end_date) || eventDate;
+    if (servingDate && (servingDate < eventDate || servingDate > eventEndDate)) {
+        Utils.toast(`Day must be within the event's ${Utils.formatDate(eventDate)} – ${Utils.formatDate(eventEndDate)} span`, 'error');
         return;
     }
     const btn = document.getElementById('confirmCateringSessionBtn');
     Utils.showLoader(btn, 'Adding…');
     try {
         await API.bookings.catering.addSession(booking.booking_id, {
-            sessionType, servingTime, guestCount: guestCountRaw ? parseInt(guestCountRaw, 10) : null,
+            sessionType, servingDate, servingTime, guestCount: guestCountRaw ? parseInt(guestCountRaw, 10) : null,
         });
         Utils.hideLoader(btn);
         bootstrap.Modal.getInstance(document.getElementById('cateringSessionModal'))?.hide();
@@ -1120,7 +1155,17 @@ function sendConfirmation() {
 function editBooking()  { location.href = `create.html?id=${booking.booking_id}&mode=edit`; }
 function printBooking() { window.print(); }
 
-document.addEventListener('DOMContentLoaded', loadBooking);
+document.addEventListener('DOMContentLoaded', () => {
+    loadBooking();
+    // Same 12-hour Flatpickr picker as the booking wizard's Start/End Time
+    // and Catering step — altInput shows h:mm AM/PM while #csServingTime
+    // itself keeps a plain 24-hour "HH:MM" value for submitCateringSession().
+    flatpickr('#csServingTime', {
+        enableTime: true, noCalendar: true, dateFormat: 'H:i',
+        altInput: true, altFormat: 'h:i K', time_24hr: false,
+        minuteIncrement: 5, allowInput: true,
+    });
+});
 </script>
 </body>
 </html>

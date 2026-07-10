@@ -426,7 +426,7 @@
                     <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Optional — add one or more catering sessions (e.g. Lunch, High Tea). Each session applies a Master Menu-based Catering Package as a reusable template; you can still add/remove individual items afterward from the Booking Details page.</p>
 
                     <div class="row g-3 align-items-end" style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border-color)">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">Session</label>
                             <select class="form-select" id="csbSessionType">
                                 <option value="welcome_drinks">Welcome Drinks</option>
@@ -439,9 +439,13 @@
                                 <option value="midnight_refreshments">Midnight Refreshments</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2" id="csbServingDateWrap" style="display:none">
+                            <label class="form-label">Day</label>
+                            <input type="date" class="form-control" id="csbServingDate">
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label">Serving Time</label>
-                            <input type="time" class="form-control" id="csbServingTime">
+                            <input type="text" class="form-control" id="csbServingTime" autocomplete="off">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Catering Package</label>
@@ -968,13 +972,28 @@ function renderSteps() {
    isTimeWithinBookingWindow() check in addStagedCateringSession(). */
 function syncCateringTimeConstraint() {
     const el = document.getElementById('csbServingTime');
-    if (!el || !state.startTime || !state.endTime) return;
-    if (state.startTime <= state.endTime) {
-        el.min = state.startTime;
-        el.max = state.endTime;
-    } else {
-        el.removeAttribute('min');
-        el.removeAttribute('max');
+    if (el && state.startTime && state.endTime) {
+        if (state.startTime <= state.endTime && el._flatpickr) {
+            el._flatpickr.set('minTime', state.startTime);
+            el._flatpickr.set('maxTime', state.endTime);
+        } else if (el._flatpickr) {
+            el._flatpickr.set('minTime', null);
+            el._flatpickr.set('maxTime', null);
+        }
+    }
+
+    // Multi-day bookings need to say which day a session is for — the Day
+    // field only appears once Step 1's "multi-day event" checkbox is on.
+    const dateWrap = document.getElementById('csbServingDateWrap');
+    const dateEl = document.getElementById('csbServingDate');
+    if (!dateWrap || !dateEl) return;
+    dateWrap.style.display = state.isMultiDay ? '' : 'none';
+    if (state.isMultiDay && state.eventDate && state.eventEndDate) {
+        dateEl.min = state.eventDate;
+        dateEl.max = state.eventEndDate;
+        if (!dateEl.value || dateEl.value < state.eventDate || dateEl.value > state.eventEndDate) {
+            dateEl.value = state.eventDate;
+        }
     }
 }
 
@@ -1351,10 +1370,16 @@ async function loadCateringPackages() {
 
 function addStagedCateringSession() {
     const sessionType = document.getElementById('csbSessionType').value;
+    const servingDate = state.isMultiDay ? (document.getElementById('csbServingDate').value || null) : null;
     const servingTime = document.getElementById('csbServingTime').value || null;
     const packageId = parseInt(document.getElementById('csbPackageId').value, 10);
     const pkg = cateringPackages.find(p => p.package_id === packageId);
     if (!pkg) { Utils.toast('Select a catering package', 'error'); return; }
+    if (state.isMultiDay && !servingDate) { Utils.toast('Select which day this session is for', 'error'); return; }
+    if (servingDate && (servingDate < state.eventDate || servingDate > state.eventEndDate)) {
+        Utils.toast(`Day must be within the event's ${Utils.formatDate(state.eventDate)} – ${Utils.formatDate(state.eventEndDate)} span`, 'error');
+        return;
+    }
     if (servingTime && !isTimeWithinBookingWindow(servingTime, state.startTime, state.endTime)) {
         Utils.toast(`Serving time must be within the event's ${Utils.formatTime(state.startTime)} – ${Utils.formatTime(state.endTime)} window`, 'error');
         return;
@@ -1363,7 +1388,7 @@ function addStagedCateringSession() {
     const guestCount = state.guestCount || 0;
     const subtotal = Math.round((Number(pkg.price_per_plate) || 0) * guestCount);
     state.stagedCateringSessions.push({
-        sessionType, servingTime, packageId, packageName: pkg.package_name, subtotal,
+        sessionType, servingDate, servingTime, packageId, packageName: pkg.package_name, subtotal,
     });
     renderStagedCateringSessions();
     calculatePrice();
@@ -1387,6 +1412,7 @@ function renderStagedCateringSessions() {
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--border-color);border-radius:var(--radius-md)">
                 <div>
                     <span style="font-weight:600">${SESSION_LABELS[s.sessionType] || s.sessionType}</span>
+                    ${s.servingDate ? `<span style="color:var(--text-muted)"> · ${Utils.formatDate(s.servingDate)}</span>` : ''}
                     ${s.servingTime ? `<span style="color:var(--text-muted)"> · ${s.servingTime}</span>` : ''}
                     <span style="color:var(--text-muted)"> — ${s.packageName}</span>
                 </div>
@@ -1887,7 +1913,7 @@ async function submitBooking() {
             for (const s of state.stagedCateringSessions) {
                 try {
                     const sessRes = await API.bookings.catering.addSession(id, {
-                        sessionType: s.sessionType, servingTime: s.servingTime, guestCount: state.guestCount,
+                        sessionType: s.sessionType, servingDate: s.servingDate, servingTime: s.servingTime, guestCount: state.guestCount,
                     });
                     const sessionId = sessRes.data?.session_id;
                     if (sessionId) await API.bookings.catering.applyPackage(id, sessionId, s.packageId);
@@ -2101,6 +2127,10 @@ document.addEventListener('DOMContentLoaded', () => {
     Auth.requireAuth('../auth/login.html');
     flatpickr('#startTime', TIME_PICKER_CONFIG);
     flatpickr('#endTime',   TIME_PICKER_CONFIG);
+    // Same 12-hour picker as Start/End Time above, minus the
+    // recalcOperationalSchedule() side effect (that's specific to the
+    // event's own start/end, not a catering session's serving time).
+    flatpickr('#csbServingTime', { ...TIME_PICKER_CONFIG, onChange: () => {} });
     // Set minimum date to tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);

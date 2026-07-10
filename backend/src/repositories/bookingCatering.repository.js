@@ -8,13 +8,13 @@
 const { executeQuery } = require('../config/database');
 
 const SESSION_SELECT = `
-    SELECT session_id, booking_id, company_id, session_type, serving_time, guest_count, notes, created_at, updated_at
+    SELECT session_id, booking_id, company_id, session_type, serving_date, serving_time, guest_count, notes, created_at, updated_at
     FROM BookingCateringSessions
 `;
 
 const listSessionsForBooking = async (bookingId, companyId) => {
     return executeQuery(
-        `${SESSION_SELECT} WHERE booking_id = @bookingId AND company_id = @companyId ORDER BY serving_time, session_id`,
+        `${SESSION_SELECT} WHERE booking_id = @bookingId AND company_id = @companyId ORDER BY serving_date, serving_time, session_id`,
         { bookingId, companyId }
     );
 };
@@ -27,14 +27,15 @@ const findSessionById = async (sessionId, companyId) => {
     return rows[0] || null;
 };
 
-const createSession = async (bookingId, companyId, { sessionType, servingTime, guestCount, notes }) => {
+const createSession = async (bookingId, companyId, { sessionType, servingDate, servingTime, guestCount, notes }) => {
     const result = await executeQuery(
-        `INSERT INTO BookingCateringSessions (booking_id, company_id, session_type, serving_time, guest_count, notes, created_at, updated_at)
+        `INSERT INTO BookingCateringSessions (booking_id, company_id, session_type, serving_date, serving_time, guest_count, notes, created_at, updated_at)
          OUTPUT INSERTED.session_id AS id
-         VALUES (@bookingId, @companyId, @sessionType, @servingTime, @guestCount, @notes, SYSUTCDATETIME(), SYSUTCDATETIME())`,
+         VALUES (@bookingId, @companyId, @sessionType, @servingDate, @servingTime, @guestCount, @notes, SYSUTCDATETIME(), SYSUTCDATETIME())`,
         {
             bookingId, companyId,
             sessionType: sessionType,
+            servingDate: servingDate || null,
             servingTime: servingTime || null,
             guestCount:  guestCount != null ? guestCount : null,
             notes:       notes || null,
@@ -43,10 +44,11 @@ const createSession = async (bookingId, companyId, { sessionType, servingTime, g
     return findSessionById(result[0].id, companyId);
 };
 
-const updateSession = async (sessionId, companyId, { sessionType, servingTime, guestCount, notes }) => {
+const updateSession = async (sessionId, companyId, { sessionType, servingDate, servingTime, guestCount, notes }) => {
     await executeQuery(
         `UPDATE BookingCateringSessions
          SET session_type = ISNULL(@sessionType, session_type),
+             serving_date  = ISNULL(@servingDate, serving_date),
              serving_time  = ISNULL(@servingTime, serving_time),
              guest_count   = ISNULL(@guestCount,  guest_count),
              notes         = ISNULL(@notes,       notes),
@@ -55,6 +57,7 @@ const updateSession = async (sessionId, companyId, { sessionType, servingTime, g
         {
             sessionId, companyId,
             sessionType: sessionType || null,
+            servingDate: servingDate || null,
             servingTime: servingTime || null,
             guestCount:  guestCount != null ? guestCount : null,
             notes:       notes != null ? notes : null,

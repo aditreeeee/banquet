@@ -916,6 +916,13 @@ const seedExtendedDemoData = async (pool) => {
             );
             CREATE INDEX IX_bcs_booking ON BookingCateringSessions(booking_id);
         END
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BookingCateringSessions') AND name = 'serving_date')
+            -- Multi-day bookings (event_date..event_end_date) previously had
+            -- no way to say which day a session belonged to — serving_time
+            -- alone is ambiguous once an event spans more than one day.
+            -- NULL means "the booking's (start) event_date", so existing
+            -- single-day sessions don't need backfilling.
+            ALTER TABLE BookingCateringSessions ADD serving_date DATE NULL;
     `);
     await pool.request().batch(`
         IF OBJECT_ID(N'dbo.BookingCateringItems', N'U') IS NULL

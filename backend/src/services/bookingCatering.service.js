@@ -53,6 +53,31 @@ const validateServingTime = (servingTime, booking) => {
     }
 };
 
+// Same Date-vs-string timezone hazard as clockTime() above — always go
+// through toISOString() for a real Date before slicing out YYYY-MM-DD.
+const clockDate = (d) => {
+    if (!d) return null;
+    const iso = d instanceof Date ? d.toISOString() : String(d);
+    return iso.slice(0, 10);
+};
+
+// Multi-day bookings (event_end_date set and after event_date) can take a
+// catering session on any day within that span — single-day bookings only
+// ever have one valid date (event_date), so a mismatched date there is
+// always a mistake rather than a legitimate choice.
+const validateServingDate = (servingDate, booking) => {
+    if (!servingDate) return;
+    const start = clockDate(booking.event_date);
+    const end = clockDate(booking.event_end_date) || start;
+    if (servingDate < start || servingDate > end) {
+        throw new ValidationError(
+            end !== start
+                ? `Serving date must be within the event's ${start} – ${end} span`
+                : `Serving date must be the event date (${start}) — this booking isn't multi-day`
+        );
+    }
+};
+
 const getBooking = async (bookingId, companyId) => {
     const booking = await bookingRepo.findById(bookingId, companyId);
     if (!booking) throw new NotFoundError('Booking');
@@ -101,9 +126,12 @@ const addSession = async (bookingId, data, actor) => {
         throw new ValidationError(`sessionType must be one of: ${SESSION_TYPES.join(', ')}`);
     }
     const servingTime = data.servingTime || data.serving_time;
+    const servingDate = data.servingDate || data.serving_date;
     validateServingTime(servingTime, booking);
+    validateServingDate(servingDate, booking);
     const session = await bookingCateringRepo.createSession(bookingId, actor.companyId, {
         sessionType,
+        servingDate,
         servingTime,
         guestCount:  data.guestCount  ?? data.guest_count,
         notes:       data.notes,
@@ -129,10 +157,13 @@ const updateSession = async (bookingId, sessionId, data, actor) => {
         throw new ValidationError(`sessionType must be one of: ${SESSION_TYPES.join(', ')}`);
     }
     const servingTime = data.servingTime || data.serving_time;
+    const servingDate = data.servingDate || data.serving_date;
     validateServingTime(servingTime, booking);
+    validateServingDate(servingDate, booking);
 
     const updated = await bookingCateringRepo.updateSession(sessionId, actor.companyId, {
         sessionType,
+        servingDate,
         servingTime,
         guestCount:  data.guestCount  ?? data.guest_count,
         notes:       data.notes,

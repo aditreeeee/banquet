@@ -743,7 +743,15 @@ function populateBuilderFromQuotation(q, mode) {
         } else if (category === 'Charge' && !['Service Charge', 'Priority Booking', 'Late Booking'].includes(detail)) {
             qState.additionalCharges.push({ label, amount: item.unit_price });
         } else if (detail === 'Service Charge') {
-            document.getElementById('qServiceChargePct').value = item.unit_price;
+            // The line item stores the computed RUPEE amount (unit_price), not
+            // the percentage — the percentage only survives in the label text
+            // ("Service Charge (8%)"), so it has to be parsed back out of
+            // there. Using unit_price directly here was a real bug: it fed a
+            // four/five-figure rupee amount into a field computeTotals()
+            // treats as a percent, inflating the service charge (and every
+            // total downstream of it) by ~100x.
+            const pctMatch = /\(([\d.]+)%\)/.exec(label);
+            document.getElementById('qServiceChargePct').value = pctMatch ? pctMatch[1] : 0;
         } else if (detail === 'Priority Booking') {
             document.getElementById('qPriorityCharge').value = item.unit_price;
         } else if (detail === 'Late Booking') {

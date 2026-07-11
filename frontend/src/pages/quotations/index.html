@@ -12,7 +12,7 @@
 /* ── List cards ── */
 .quo-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:16px;transition:box-shadow .2s }
 .quo-card:hover { box-shadow:var(--shadow-md) }
-.quo-icon { width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0 }
+.quo-icon { width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.35) }
 .quo-icon.draft       { background:#F1F5F9;color:#64748B }
 .quo-icon.sent        { background:#DBEAFE;color:#2563EB }
 .quo-icon.accepted    { background:#D1FAE5;color:#059669 }
@@ -27,45 +27,97 @@
 .quo-badge.expired     { background:#FEF3C7;color:#B45309 }
 .quo-badge.converted   { background:#EDE9FE;color:#6D28D9 }
 
-/* ── Builder shell ── */
-.qb-wrap { display:flex; gap:18px; align-items:flex-start; height:100%; }
-.qb-left { flex:1; min-width:0; overflow-y:auto; padding:4px 18px 4px 4px; height:100%; }
-.qb-right { width:340px; flex-shrink:0; position:sticky; top:0; height:100%; overflow-y:auto; }
+/* ── Builder shell ──────────────────────────────────────────────────────
+   Times New Roman everywhere inside the builder — headings, labels, inputs,
+   buttons, staged rows — nothing in here falls back to the app's default
+   Inter/Playfair fonts. */
+#builderModal, #builderModal input, #builderModal select, #builderModal textarea,
+#builderModal button, #builderModal .form-label, #builderModal .form-text {
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.qb-wrap { display:flex; gap:20px; align-items:flex-start; height:100%; }
+.qb-left { flex:1; min-width:0; overflow-y:auto; padding:6px 20px 6px 4px; height:100%; }
+.qb-right { width:350px; flex-shrink:0; position:sticky; top:0; height:100%; overflow-y:auto; }
 @media (max-width: 992px) { .qb-wrap { flex-direction:column; height:auto; } .qb-right { width:100%; position:static; } }
 
-.qb-section { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); margin-bottom:16px; overflow:hidden; }
-.qb-section-head { display:flex; align-items:center; justify-content:space-between; padding:13px 18px; cursor:pointer; user-select:none; }
-.qb-section-head h6 { margin:0; font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:8px; }
-.qb-section-head .qb-chevron { transition:transform .18s; color:var(--text-muted); }
+.qb-section {
+    background:var(--bg-surface);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-lg);
+    margin-bottom:16px;
+    overflow:hidden;
+    box-shadow:0 1px 3px rgba(15,28,56,.05);
+    transition:box-shadow .2s, border-color .2s;
+}
+.qb-section:hover { box-shadow:0 4px 14px rgba(15,28,56,.08); }
+.qb-section.collapsed { box-shadow:0 1px 2px rgba(15,28,56,.04); }
+.qb-section-head { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; cursor:pointer; user-select:none; border-bottom:1px solid transparent; }
+.qb-section:not(.collapsed) .qb-section-head { border-bottom-color:var(--border-color); background:var(--bg-surface-2); }
+.qb-section-head h6 { margin:0; font-size:14.5px; font-weight:700; display:flex; align-items:center; gap:12px; letter-spacing:.01em; }
+.qb-section-head h6 svg:first-child {
+    width:30px; height:30px; padding:6px; border-radius:9px;
+    background:var(--brand-primary-20, rgba(124,58,237,.14)); color:var(--brand-primary);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+    flex-shrink:0;
+}
+.qb-section-head .qb-chevron { display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; transition:transform .18s, background .15s; color:var(--text-muted); }
+.qb-section-head:hover .qb-chevron { background:var(--bg-surface); }
 .qb-section.collapsed .qb-chevron { transform:rotate(-90deg); }
-.qb-section-body { padding:0 18px 18px; }
+.qb-section-body { padding:20px; }
 .qb-section.collapsed .qb-section-body { display:none; }
+.qb-section-body .form-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); }
 
-.qb-summary-card { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:18px; }
-.qb-summary-row { display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0; color:var(--text-secondary); }
-.qb-summary-row.total { font-size:16px; font-weight:800; color:var(--text-primary); border-top:1px solid var(--border-color); margin-top:8px; padding-top:10px; }
+.qb-summary-card {
+    background:linear-gradient(160deg, rgba(255,255,255,.7) 0%, rgba(255,255,255,.4) 100%);
+    backdrop-filter:blur(18px) saturate(180%);
+    -webkit-backdrop-filter:blur(18px) saturate(180%);
+    border:1px solid rgba(255,255,255,.7);
+    border-radius:var(--radius-lg);
+    padding:20px;
+    box-shadow:0 10px 32px rgba(15,28,56,.10), 0 2px 8px rgba(0,0,0,.05);
+    position:relative;
+    overflow:hidden;
+}
+.qb-summary-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg, var(--brand-primary), var(--border-gold, #C5A059)); }
+.qb-summary-card h6 { letter-spacing:.02em; }
+.qb-summary-row { display:flex; justify-content:space-between; font-size:12.5px; padding:6px 0; color:var(--text-secondary); }
+.qb-summary-row.total { font-size:18px; font-weight:800; color:var(--text-primary); border-top:1px dashed var(--border-color); margin-top:10px; padding-top:12px; }
 .qb-summary-row.discount { color:var(--color-success); }
 
-.staged-row { display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border:1px solid var(--border-color); border-radius:var(--radius-md); margin-bottom:7px; font-size:12.5px; }
+.staged-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:11px 14px; background:var(--bg-surface-2); border:1px solid var(--border-color);
+    border-radius:var(--radius-md); margin-bottom:8px; font-size:12.5px;
+    transition:border-color .15s;
+}
+.staged-row:hover { border-color:var(--brand-primary); }
 .staged-row .warn { color:var(--color-danger); font-size:11px; }
 
-.venue-card { border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px 12px; cursor:pointer; transition:border-color .15s, box-shadow .15s; position:relative; }
-.venue-card:hover { border-color:var(--brand-primary); }
-.venue-card.selected { border-color:var(--brand-primary); box-shadow:0 0 0 2px var(--brand-primary-20, rgba(124,58,237,.18)); }
+.venue-card {
+    border:1.5px solid var(--border-color); border-radius:var(--radius-md); padding:12px 14px;
+    cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .15s; position:relative;
+    background:var(--bg-surface);
+}
+.venue-card:hover:not(.unavailable) { border-color:var(--brand-primary); transform:translateY(-1px); box-shadow:0 4px 12px rgba(15,28,56,.08); }
+.venue-card.selected { border-color:var(--brand-primary); background:var(--brand-primary-08, rgba(124,58,237,.06)); box-shadow:0 0 0 2px var(--brand-primary-20, rgba(124,58,237,.18)); }
 .venue-card.unavailable { opacity:.5; cursor:not-allowed; }
-.venue-card .vc-name { font-weight:700; font-size:12.5px; }
-.venue-card .vc-meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.venue-card .vc-name { font-weight:700; font-size:13px; }
+.venue-card .vc-meta { font-size:11.5px; color:var(--text-muted); margin-top:3px; }
 
-.cust-summary { background:var(--bg-surface-2); border-radius:var(--radius-md); padding:12px 14px; font-size:12px; margin-top:10px; }
-.cust-summary .row-line { display:flex; justify-content:space-between; padding:2px 0; }
+.cust-summary { background:var(--bg-surface-2); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:14px 16px; font-size:12.5px; margin-top:10px; }
+.cust-summary .row-line { display:flex; justify-content:space-between; padding:3px 0; }
+.cust-summary .row-line strong { color:var(--text-primary); }
 
-#customerSuggestions .dropdown-item:hover { background:var(--bg-surface-2); }
+#customerSuggestions .dropdown-item:hover, #cloneCustomerSuggestions .dropdown-item:hover { background:var(--bg-surface-2); }
 
 .item-row { display:grid;grid-template-columns:1fr 90px 110px 90px 32px;gap:8px;align-items:center;margin-bottom:8px }
-.avail-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; }
+.avail-badge { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:9999px; }
 .avail-badge.ok   { background:#D1FAE5; color:#047857; }
 .avail-badge.bad  { background:#FEE2E2; color:#B91C1C; }
 .avail-badge.wait { background:#F1F5F9; color:#64748B; }
+
+.qb-add-row { background:var(--bg-surface-2); border:1px dashed var(--border-color); border-radius:var(--radius-md); padding:14px; margin-bottom:14px; }
 
 @media print {
     body * { visibility:hidden; }
@@ -231,7 +283,7 @@
             <div class="qb-section" data-section="catering">
                 <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 2v7c0 1.1.9 2 2 2h1v11"></path><path d="M9 2v20"></path><path d="M15 2c-1 2-1 5 0 7 .6 1 1.5 1.5 1.5 2.5V22"></path></svg> Catering Sessions</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
                 <div class="qb-section-body">
-                    <div class="row g-2 align-items-end">
+                    <div class="qb-add-row row g-2 align-items-end">
                         <div class="col-md-3"><label class="form-label">Session</label>
                             <select class="form-select form-select-sm" id="csSessionType">
                                 <option value="breakfast">Breakfast</option>
@@ -249,7 +301,7 @@
                         <div class="col-md-2"><label class="form-label">Expected Plates</label><input type="number" class="form-control form-control-sm" id="csExpectedPlates" min="1"></div>
                         <div class="col-md-1"><button type="button" class="btn-primary-brand" style="padding:6px 10px;width:100%" onclick="addQuoCateringSession()">+</button></div>
                     </div>
-                    <div id="qCateringList" style="margin-top:12px"></div>
+                    <div id="qCateringList"></div>
                 </div>
             </div>
 
@@ -257,12 +309,12 @@
             <div class="qb-section" data-section="inventory">
                 <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8l9 5 9-5Z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path></svg> Inventory</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
                 <div class="qb-section-body">
-                    <div class="row g-2 align-items-end">
+                    <div class="qb-add-row row g-2 align-items-end">
                         <div class="col-md-6"><label class="form-label">Item</label><select class="form-select form-select-sm" id="invItemSelect"><option value="">Loading…</option></select></div>
                         <div class="col-md-2"><label class="form-label">Quantity</label><input type="number" class="form-control form-control-sm" id="invQty" min="1" value="1"></div>
                         <div class="col-md-2"><button type="button" class="btn-primary-brand" style="padding:6px 10px;width:100%" onclick="addQuoInventoryItem()">+ Add</button></div>
                     </div>
-                    <div id="qInventoryList" style="margin-top:12px"></div>
+                    <div id="qInventoryList"></div>
                 </div>
             </div>
 
@@ -270,7 +322,7 @@
             <div class="qb-section" data-section="staff">
                 <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Staff Estimate</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
                 <div class="qb-section-body">
-                    <div class="row g-2 align-items-end">
+                    <div class="qb-add-row row g-2 align-items-end">
                         <div class="col-md-6"><label class="form-label">Role</label>
                             <select class="form-select form-select-sm" id="staffRole">
                                 <option>Wedding Manager</option><option>Catering Manager</option><option>Security</option>
@@ -281,7 +333,7 @@
                         <div class="col-md-3"><label class="form-label">Estimated Cost</label><input type="number" class="form-control form-control-sm" id="staffCost" min="0" value="0"></div>
                         <div class="col-md-3"><button type="button" class="btn-primary-brand" style="padding:6px 10px;width:100%" onclick="addQuoStaff()">+ Add</button></div>
                     </div>
-                    <div id="qStaffList" style="margin-top:12px"></div>
+                    <div id="qStaffList"></div>
                 </div>
             </div>
 
@@ -521,7 +573,7 @@ function renderQuotations(rows) {
     if (!rows.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No quotations found</div>'; return; }
     wrap.innerHTML = rows.map(q => `
     <div class="quo-card" style="margin-bottom:10px;cursor:pointer" onclick="openDetailModal(${q.quotation_id})">
-        <div class="quo-icon ${q.status}"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z"></path></svg></div>
+        <div class="quo-icon ${q.status}">${ICON.note}</div>
         <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
                 <span style="font-weight:700;font-size:13px;font-family:var(--font-mono);color:var(--brand-primary)">${q.quotation_number}</span>

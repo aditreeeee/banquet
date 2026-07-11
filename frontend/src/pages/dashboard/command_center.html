@@ -6,6 +6,7 @@
 <title>Command Center | BanquetPro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="../../../public/assets/css/kpi-typography.css" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {
@@ -442,7 +443,7 @@ const KPICard = ({ IconEl, label, value, color, sub, onClick }) => (
     <div className="kpi-icon-wrap" style={{background:`${color}1A`,color,marginBottom:10}}><IconEl/></div>
     <div className="kpi-val">{value}</div>
     <div className="kpi-label">{label}</div>
-    {sub && <div style={{fontSize:10.5,color:'var(--text-muted)',marginTop:5}}>{sub}</div>}
+    {sub && <div className="kpi-sub" style={{fontSize:10.5,color:'var(--text-muted)',marginTop:5}}>{sub}</div>}
   </Card>
 );
 

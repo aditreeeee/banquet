@@ -1,0 +1,103 @@
+/**
+ * KPI Card Typography — Times New Roman
+ * ──────────────────────────────────────────────────────────────────────────
+ * Single shared stylesheet controlling the font family for every KPI /
+ * metric card across the app: titles, values, descriptions, trend
+ * indicators, percentage changes, secondary stats, and footer text.
+ *
+ * Deliberately excluded: dashboard/index.html. That page does not load
+ * this stylesheet at all, so nothing here can reach it.
+ *
+ * Covers every KPI/metric card variant currently in use:
+ *   - Shared app.css component (banquets, invoices, payments,
+ *     platform/dashboard, reports/bookings, reports/occupancy, users, …):
+ *     .kpi-card > .kpi-label / .kpi-value / .kpi-delta
+ *   - Command Center's KPI cards (own <Card> wrapper): .kpi-val / .kpi-label / .kpi-sub
+ *   - reports/revenue.html's local KPI text classes: .kpi-small-label / .kpi-big / .kpi-change
+ *   - reports/owner-analytics.html's metric cards: .metric-card > .metric-label / .metric-value / .metric-sub
+ *   - bookings/index.html + inventory/index.html's stat strip: .stat-mini > .num / .lbl
+ *   - customers/index.html's per-row mini stats: .cust-stat > .val / .lbl
+ *   - customers/detail.html's hero stat row: .hero-stat-val / .hero-stat-lbl
+ *   - bookings/create.html's booking summary panel: .summary-kpi > .k-label / .k-value
+ *
+ * NOTE: deliberately does NOT include banquets/index.html's inline
+ * per-listing facts (.banquet-stat / .banquet-stat-val — halls/seats/rating
+ * shown inline within each banquet's card). Those aren't a KPI card (no
+ * title+value+trend tile, no card wrapper) — they're metadata inline in a
+ * sentence, so forcing a serif font there would look inconsistent rather
+ * than matching the KPI typography this file establishes.
+ *
+ * Adding a new KPI/dashboard-style page: reuse the .kpi-card (+ .kpi-label/
+ * .kpi-value/.kpi-delta) component from app.css wherever possible — it
+ * inherits Times New Roman automatically via the rule below, so no new CSS
+ * is needed here. Only add a new selector if a page truly needs its own
+ * markup pattern.
+ */
+
+:root {
+    --kpi-font-family: 'Times New Roman', Times, serif;
+}
+
+/* Card wrappers — font-family is set once here and inherited by every
+   descendant (including unclassed footer/sub text), so new elements added
+   inside a card later don't need their own rule. */
+.kpi-card,
+.metric-card,
+.stat-mini,
+.cust-stat,
+.hero-stat,
+.summary-kpi {
+    font-family: var(--kpi-font-family);
+}
+
+/* Command Center's KPI cards use a generic <Card> wrapper (not .kpi-card),
+   so its text elements are targeted directly. .num/.lbl/.val are common
+   generic class names reused elsewhere in the app for non-KPI purposes, so
+   those are scoped to their specific card wrapper instead of used bare. */
+.kpi-val,
+.kpi-label,
+.kpi-sub,
+.stat-mini .num,
+.stat-mini .lbl,
+.cust-stat .val,
+.cust-stat .lbl,
+.hero-stat-val,
+.hero-stat-lbl,
+.summary-kpi .k-label,
+.summary-kpi .k-value {
+    font-family: var(--kpi-font-family);
+}
+
+/* ── Typography hierarchy ──────────────────────────────────────────────── */
+
+/* KPI values — large, bold */
+.kpi-value,
+.kpi-val,
+.kpi-big,
+.metric-value,
+.stat-mini .num,
+.cust-stat .val,
+.hero-stat-val,
+.summary-kpi .k-value {
+    font-weight: 700;
+}
+
+/* KPI titles/labels — medium, bold */
+.kpi-label,
+.kpi-small-label,
+.metric-label,
+.stat-mini .lbl,
+.cust-stat .lbl,
+.hero-stat-lbl,
+.summary-kpi .k-label {
+    font-weight: 700;
+}
+
+/* Descriptions, trend indicators, percentage changes, secondary stats —
+   regular weight, italic to visually subordinate them to titles/values. */
+.kpi-delta,
+.kpi-change,
+.kpi-sub,
+.metric-sub {
+    font-style: italic;
+}

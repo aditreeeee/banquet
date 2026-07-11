@@ -515,7 +515,12 @@ body {
 }
 
 .kpi-value {
-    font-family: var(--font-display);
+    /* Times New Roman per the KPI typography spec — see
+       kpi-typography.css, which every KPI-bearing page except
+       dashboard/index.html loads. Declared directly here (not just left to
+       inherit from .kpi-card) because font-family on a specific selector
+       always wins over an inherited value, regardless of load order. */
+    font-family: 'Times New Roman', Times, serif;
     font-size: 28px;
     font-weight: 700;
     color: var(--text-primary);

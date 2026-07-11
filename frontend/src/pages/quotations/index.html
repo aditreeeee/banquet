@@ -9,16 +9,69 @@
 <link href="../../../public/assets/css/theme.css" rel="stylesheet">
 <link href="../../../public/assets/css/app.css"   rel="stylesheet">
 <style>
+/* ── List cards ── */
 .quo-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:16px;transition:box-shadow .2s }
 .quo-card:hover { box-shadow:var(--shadow-md) }
 .quo-icon { width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0 }
-.quo-icon.draft     { background:#F1F5F9;color:#64748B }
-.quo-icon.sent      { background:#DBEAFE;color:#2563EB }
-.quo-icon.accepted  { background:#D1FAE5;color:#059669 }
-.quo-icon.rejected  { background:#FEE2E2;color:#DC2626 }
-.quo-icon.expired   { background:#FEF3C7;color:#D97706 }
-.quo-icon.converted { background:#EDE9FE;color:#7C3AED }
+.quo-icon.draft       { background:#F1F5F9;color:#64748B }
+.quo-icon.sent        { background:#DBEAFE;color:#2563EB }
+.quo-icon.accepted    { background:#D1FAE5;color:#059669 }
+.quo-icon.rejected    { background:#FEE2E2;color:#DC2626 }
+.quo-icon.expired     { background:#FEF3C7;color:#D97706 }
+.quo-icon.converted   { background:#EDE9FE;color:#7C3AED }
+.quo-badge { padding:2px 9px;border-radius:9999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em }
+.quo-badge.draft       { background:#F1F5F9;color:#475569 }
+.quo-badge.sent        { background:#DBEAFE;color:#1D4ED8 }
+.quo-badge.accepted    { background:#D1FAE5;color:#047857 }
+.quo-badge.rejected    { background:#FEE2E2;color:#B91C1C }
+.quo-badge.expired     { background:#FEF3C7;color:#B45309 }
+.quo-badge.converted   { background:#EDE9FE;color:#6D28D9 }
+
+/* ── Builder shell ── */
+.qb-wrap { display:flex; gap:18px; align-items:flex-start; height:100%; }
+.qb-left { flex:1; min-width:0; overflow-y:auto; padding:4px 18px 4px 4px; height:100%; }
+.qb-right { width:340px; flex-shrink:0; position:sticky; top:0; height:100%; overflow-y:auto; }
+@media (max-width: 992px) { .qb-wrap { flex-direction:column; height:auto; } .qb-right { width:100%; position:static; } }
+
+.qb-section { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); margin-bottom:16px; overflow:hidden; }
+.qb-section-head { display:flex; align-items:center; justify-content:space-between; padding:13px 18px; cursor:pointer; user-select:none; }
+.qb-section-head h6 { margin:0; font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.qb-section-head .qb-chevron { transition:transform .18s; color:var(--text-muted); }
+.qb-section.collapsed .qb-chevron { transform:rotate(-90deg); }
+.qb-section-body { padding:0 18px 18px; }
+.qb-section.collapsed .qb-section-body { display:none; }
+
+.qb-summary-card { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:18px; }
+.qb-summary-row { display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0; color:var(--text-secondary); }
+.qb-summary-row.total { font-size:16px; font-weight:800; color:var(--text-primary); border-top:1px solid var(--border-color); margin-top:8px; padding-top:10px; }
+.qb-summary-row.discount { color:var(--color-success); }
+
+.staged-row { display:flex; justify-content:space-between; align-items:center; padding:9px 12px; border:1px solid var(--border-color); border-radius:var(--radius-md); margin-bottom:7px; font-size:12.5px; }
+.staged-row .warn { color:var(--color-danger); font-size:11px; }
+
+.venue-card { border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px 12px; cursor:pointer; transition:border-color .15s, box-shadow .15s; position:relative; }
+.venue-card:hover { border-color:var(--brand-primary); }
+.venue-card.selected { border-color:var(--brand-primary); box-shadow:0 0 0 2px var(--brand-primary-20, rgba(124,58,237,.18)); }
+.venue-card.unavailable { opacity:.5; cursor:not-allowed; }
+.venue-card .vc-name { font-weight:700; font-size:12.5px; }
+.venue-card .vc-meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+.cust-summary { background:var(--bg-surface-2); border-radius:var(--radius-md); padding:12px 14px; font-size:12px; margin-top:10px; }
+.cust-summary .row-line { display:flex; justify-content:space-between; padding:2px 0; }
+
+#customerSuggestions .dropdown-item:hover { background:var(--bg-surface-2); }
+
 .item-row { display:grid;grid-template-columns:1fr 90px 110px 90px 32px;gap:8px;align-items:center;margin-bottom:8px }
+.avail-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px; }
+.avail-badge.ok   { background:#D1FAE5; color:#047857; }
+.avail-badge.bad  { background:#FEE2E2; color:#B91C1C; }
+.avail-badge.wait { background:#F1F5F9; color:#64748B; }
+
+@media print {
+    body * { visibility:hidden; }
+    #printArea, #printArea * { visibility:visible; }
+    #printArea { position:absolute; top:0; left:0; width:100%; padding:24px; }
+}
 </style>
 </head>
 <body>
@@ -37,8 +90,17 @@
 
     <main class="page-content">
         <div class="page-header">
-            <div><h1 class="page-title">Quotations</h1><p class="page-subtitle">Price events for prospects, negotiate revisions, convert accepted quotes into bookings</p></div>
-            <button class="btn-primary-brand" data-require-perm="quotations:create" onclick="openCreateModal()">+ New Quotation</button>
+            <div><h1 class="page-title">Quotations</h1><p class="page-subtitle">Prepare event proposals, negotiate revisions, convert accepted quotes into bookings</p></div>
+            <button class="btn-primary-brand" data-require-perm="quotations:create" onclick="openBuilder('create')">+ New Quotation</button>
+        </div>
+
+        <!-- KPI strip -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px">
+            <div class="kpi-card"><div class="kpi-label">Total Quotations</div><div class="kpi-value" id="kpiTotal">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Sent (Awaiting Response)</div><div class="kpi-value" id="kpiSent" style="color:var(--brand-primary)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Accepted</div><div class="kpi-value" id="kpiAccepted" style="color:var(--color-success)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Converted to Booking</div><div class="kpi-value" id="kpiConverted" style="color:#7C3AED">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Pipeline Value (Open)</div><div class="kpi-value" id="kpiPipelineValue" style="font-size:20px">—</div></div>
         </div>
 
         <!-- Filters -->
@@ -54,7 +116,7 @@
                 <option value="accepted">Accepted</option>
                 <option value="rejected">Rejected</option>
                 <option value="expired">Expired</option>
-                <option value="converted">Converted</option>
+                <option value="converted">Converted to Booking</option>
             </select>
         </div>
 
@@ -66,37 +128,245 @@
     <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
 </div>
 
-<!-- Create Quotation Modal -->
-<div class="modal fade" id="createModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<!-- ══════════════════════════════════════════════════════════════════════
+     QUOTATION BUILDER — full-screen split layout. Left: Customer, Event,
+     Venue, Catering, Inventory, Staff, Charges, Validity/Notes (expandable
+     sections). Right: sticky Live Cost Summary that recomputes on every
+     input change, no save/refresh needed (see computeTotals/renderSummary).
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="builderModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="builderTitle">New Quotation</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="overflow:hidden">
+        <div class="qb-wrap">
+          <div class="qb-left">
+
+            <!-- Customer -->
+            <div class="qb-section" data-section="customer">
+                <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Customer</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+                <div class="qb-section-body">
+                    <div style="position:relative">
+                        <label class="form-label">Search Existing Customer</label>
+                        <input type="text" class="form-control" id="qCustomerSearch" placeholder="Search by name, email, or phone…"
+                               oninput="searchQuoCustomers(this.value)" autocomplete="off">
+                        <div id="qCustomerSuggestions"></div>
+                    </div>
+                    <div id="qSelectedCustomer" style="display:none;margin-top:10px">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <div><strong id="qSelectedCustomerName"></strong></div>
+                            <button class="btn-ghost" style="padding:2px 8px;font-size:12px" onclick="clearQuoCustomer()">Change</button>
+                        </div>
+                        <div id="qCustomerSummary" class="cust-summary"></div>
+                    </div>
+                    <button type="button" class="btn-ghost" style="margin-top:10px;font-size:12px" onclick="openNewQuoCustomerModal()">+ Create New Customer</button>
+                </div>
+            </div>
+
+            <!-- Event Details -->
+            <div class="qb-section" data-section="event">
+                <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg> Event Details</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+                <div class="qb-section-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Event Name *</label><input type="text" class="form-control" id="qEventName" placeholder="e.g. Sharma-Verma Wedding Reception" oninput="renderSummary()"></div>
+                        <div class="col-md-6"><label class="form-label">Event Type</label>
+                            <select class="form-select" id="qEventType" onchange="renderSummary()">
+                                <option value="">Select…</option>
+                                <option>Wedding</option><option>Reception</option><option>Engagement</option>
+                                <option>Birthday</option><option>Anniversary</option><option>Corporate</option>
+                                <option>Conference</option><option>Product Launch</option><option>Social Gathering</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6"><label class="form-label">Occasion</label><input type="text" class="form-control" id="qOccasion" placeholder="e.g. 25th Wedding Anniversary"></div>
+                        <div class="col-md-6"><label class="form-label">Corporate / Company Name</label><input type="text" class="form-control" id="qCompanyName" placeholder="For corporate bookings"></div>
+                        <div class="col-md-4"><label class="form-label">Event Date *</label><input type="date" class="form-control" id="qEventDate" onchange="onEventDateChanged()"></div>
+                        <div class="col-md-4">
+                            <label class="form-label">Multi-day Event</label>
+                            <div class="form-check form-switch" style="margin-top:6px">
+                                <input class="form-check-input" type="checkbox" id="qMultiDay" onchange="toggleMultiDay()">
+                                <label class="form-check-label" for="qMultiDay" style="font-size:12.5px">Spans multiple days</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4" id="qEventEndDateWrap" style="display:none"><label class="form-label">Event End Date</label><input type="date" class="form-control" id="qEventEndDate"></div>
+                        <div class="col-md-3"><label class="form-label">Alternate Date</label><input type="date" class="form-control" id="qAltDate"></div>
+                        <div class="col-md-3"><label class="form-label">Guest Count *</label><input type="number" class="form-control" id="qGuestCount" min="1" oninput="onGuestCountChanged()"></div>
+                        <div class="col-md-3"><label class="form-label">Expected VIP Guests</label><input type="number" class="form-control" id="qVipCount" min="0" value="0"></div>
+                        <div class="col-md-3"><label class="form-label">Event Coordinator</label><input type="text" class="form-control" id="qCoordinator" placeholder="Name / contact"></div>
+                        <div class="col-12"><label class="form-label">Special Requests</label><textarea class="form-control" id="qSpecialRequests" rows="2" placeholder="Anything the venue/catering team should know…"></textarea></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Venue -->
+            <div class="qb-section" data-section="venue">
+                <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M5 20V9.5A1.5 1.5 0 0 1 6.5 8h11A1.5 1.5 0 0 1 19 9.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M12 8v6"></path></svg> Venue Selection</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+                <div class="qb-section-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Banquet / Property</label>
+                            <select class="form-select" id="qBanquetSelect" onchange="onBanquetSelected()"><option value="">Select a banquet…</option></select>
+                        </div>
+                        <div class="col-md-3"><label class="form-label">Start Time</label><input type="time" class="form-control" id="qStartTime" onchange="runQuoAvailabilityCheck()"></div>
+                        <div class="col-md-3"><label class="form-label">End Time</label><input type="time" class="form-control" id="qEndTime" onchange="runQuoAvailabilityCheck()"></div>
+                    </div>
+                    <label class="form-label" style="margin-top:10px">Hall</label>
+                    <div id="qHallGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px">
+                        <div class="form-text">Select a banquet first.</div>
+                    </div>
+                    <div class="row g-3" style="margin-top:2px">
+                        <div class="col-md-8">
+                            <label class="form-label">Booking Package</label>
+                            <select class="form-select" id="qBookingPackageSelect" onchange="onQuoBookingPackageSelected()"><option value="">— Custom / no package —</option></select>
+                            <div class="form-text">Applying a package recalculates Hall Rental (and End Time, for hourly/half-day/full-day packages) from this hall's own rate.</div>
+                        </div>
+                    </div>
+                    <div id="qAvailabilityBadge" style="margin-top:10px"></div>
+                </div>
+            </div>
+
+            <!-- Catering -->
+            <div class="qb-section" data-section="catering">
+                <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M3 2v7c0 1.1.9 2 2 2h1v11"></path><path d="M9 2v20"></path><path d="M15 2c-1 2-1 5 0 7 .6 1 1.5 1.5 1.5 2.5V22"></path></svg> Catering Sessions</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+                <div class="qb-section-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3"><label class="form-label">Session</label>
+                            <select class="form-select form-select-sm" id="csSessionType">
+                                <option value="breakfast">Breakfast</option>
+                                <option value="lunch">Lunch</option>
+                                <option value="high_tea">High Tea</option>
+                                <option value="evening_snacks">Evening Snacks</option>
+                                <option value="dinner" selected>Dinner</option>
+                                <option value="midnight_snacks">Midnight Snacks</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4"><label class="form-label">Catering Package / Menu</label>
+                            <select class="form-select form-select-sm" id="csPackageId"><option value="">Loading…</option></select>
+                        </div>
+                        <div class="col-md-2"><label class="form-label">Min Plates</label><input type="number" class="form-control form-control-sm" id="csMinPlates" min="0" value="0"></div>
+                        <div class="col-md-2"><label class="form-label">Expected Plates</label><input type="number" class="form-control form-control-sm" id="csExpectedPlates" min="1"></div>
+                        <div class="col-md-1"><button type="button" class="btn-primary-brand" style="padding:6px 10px;width:100%" onclick="addQuoCateringSession()">+</button></div>
+                    </div>
+                    <div id="qCateringList" style="margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- Inventory -->
+            <div class="qb-section" data-section="inventory">
+                <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 8 12 3 3 8l9 5 9-5Z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path></svg> Inventory</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+                <div class="qb-section-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-6"><label class="form-label">Item</label><select class="form-select form-select-sm" id="invItemSelect"><option value="">Loading…</option></select></div>
+                        <div class="col-md-2"><label class="form-label">Quantity</label><input type="number" class="form-control form-control-sm" id="invQty" min="1" value="1"></div>
+                        <div class="col-md-2"><button type="button" class="btn-primary-brand" style="padding:6px 10px;width:100%" onclick="addQuoInventoryItem()">+ Add</button></div>
+                    </div>
+                    <div id="qInventoryList" style="margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- Staff -->
+            <div class="qb-section" data-section="staff">
+                <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Staff Estimate</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+                <div class="qb-section-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-6"><label class="form-label">Role</label>
+                            <select class="form-select form-select-sm" id="staffRole">
+                                <option>Wedding Manager</option><option>Catering Manager</option><option>Security</option>
+                                <option>Housekeeping</option><option>Decoration Team</option><option>Valet Parking</option>
+                                <option>Technical Staff</option><option>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3"><label class="form-label">Estimated Cost</label><input type="number" class="form-control form-control-sm" id="staffCost" min="0" value="0"></div>
+                        <div class="col-md-3"><button type="button" class="btn-primary-brand" style="padding:6px 10px;width:100%" onclick="addQuoStaff()">+ Add</button></div>
+                    </div>
+                    <div id="qStaffList" style="margin-top:12px"></div>
+                </div>
+            </div>
+
+            <!-- Charges & Pricing -->
+            <div class="qb-section" data-section="charges">
+                <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path></svg> Additional Charges &amp; Pricing</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+                <div class="qb-section-body">
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label">Hall Rental</label><input type="number" class="form-control" id="qHallRental" min="0" oninput="renderSummary()"></div>
+                        <div class="col-md-4"><label class="form-label">Service Charge %</label><input type="number" class="form-control" id="qServiceChargePct" min="0" value="0" step="0.1" oninput="renderSummary()"></div>
+                        <div class="col-md-4"><label class="form-label">Tax % (GST)</label><input type="number" class="form-control" id="qTaxPct" min="0" value="18" step="0.1" oninput="renderSummary()"></div>
+                        <div class="col-md-4"><label class="form-label">Priority Booking Charge</label><input type="number" class="form-control" id="qPriorityCharge" min="0" value="0" oninput="renderSummary()"></div>
+                        <div class="col-md-4"><label class="form-label">Late Booking Charge</label><input type="number" class="form-control" id="qLateCharge" min="0" value="0" oninput="renderSummary()"></div>
+                        <div class="col-md-4"><label class="form-label">Discount Amount</label><input type="number" class="form-control" id="qDiscount" min="0" value="0" oninput="renderSummary()"></div>
+                        <div class="col-md-4"><label class="form-label">Advance Required %</label><input type="number" class="form-control" id="qAdvancePct" min="0" value="30" oninput="renderSummary()"></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">
+                        <label class="form-label" style="margin:0">Additional Charge Lines</label>
+                        <button type="button" class="btn-ghost" style="padding:2px 10px;font-size:12px" onclick="addAdditionalChargeRow()">+ Add Line</button>
+                    </div>
+                    <div id="qAdditionalCharges"></div>
+                </div>
+            </div>
+
+            <!-- Validity -->
+            <div class="qb-section collapsed" data-section="validity">
+                <div class="qb-section-head" onclick="toggleSection(this)"><h6><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2.5"></path><path d="M9 1h6"></path></svg> Validity</h6><span class="qb-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="m6 9 6 6 6-6"></path></svg></span></div>
+                <div class="qb-section-body">
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label">Issue Date</label><input type="date" class="form-control" id="qIssueDate" disabled></div>
+                        <div class="col-md-4"><label class="form-label">Validity (days)</label><input type="number" class="form-control" id="qValidityDays" min="1" value="7" oninput="onValidityDaysChanged()"></div>
+                        <div class="col-md-4"><label class="form-label">Expiry Date</label><input type="date" class="form-control" id="qExpiryDate"></div>
+                    </div>
+                    <div id="qExpiryHint" class="form-text"></div>
+                </div>
+            </div>
+
+          </div>
+
+          <!-- ── Live Cost Summary ── -->
+          <div class="qb-right">
+            <div class="qb-summary-card">
+                <h6 style="font-size:13px;font-weight:700;margin-bottom:12px">Live Cost Summary</h6>
+                <div class="qb-summary-row"><span>Hall Rental</span><span id="sumHall">₹0</span></div>
+                <div class="qb-summary-row"><span>Catering</span><span id="sumCatering">₹0</span></div>
+                <div class="qb-summary-row"><span>Inventory</span><span id="sumInventory">₹0</span></div>
+                <div class="qb-summary-row"><span>Staff</span><span id="sumStaff">₹0</span></div>
+                <div class="qb-summary-row"><span>Service / Priority / Late Charges</span><span id="sumCharges">₹0</span></div>
+                <div class="qb-summary-row"><span>Additional Charges</span><span id="sumAdditional">₹0</span></div>
+                <div class="qb-summary-row" style="border-top:1px dashed var(--border-color);margin-top:6px;padding-top:8px;font-weight:700"><span>Subtotal</span><span id="sumSubtotal">₹0</span></div>
+                <div class="qb-summary-row discount"><span>Discount</span><span id="sumDiscount">-₹0</span></div>
+                <div class="qb-summary-row"><span>Tax</span><span id="sumTax">+₹0</span></div>
+                <div class="qb-summary-row total"><span>Grand Total</span><span id="sumGrandTotal">₹0</span></div>
+                <div class="qb-summary-row"><span>Advance Required</span><span id="sumAdvance">₹0</span></div>
+                <div class="qb-summary-row"><span>Balance Due</span><span id="sumBalance">₹0</span></div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:8px" id="sumPerGuest"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+                <button class="btn-primary-brand" id="saveDraftBtn" onclick="saveQuotation(false)">Save as Draft</button>
+                <button class="btn-primary-brand" id="saveSendBtn" style="background:var(--color-success);border-color:var(--color-success)" onclick="saveQuotation(true)">Save &amp; Send</button>
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Customer (nested, launched from the builder) -->
+<div class="modal fade" id="qNewCustomerModal" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">New Quotation</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-header"><h5 class="modal-title">New Customer</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
             <div class="modal-body">
                 <div class="row g-3">
-                    <div class="col-6"><label class="form-label">Customer ID</label><input type="number" class="form-control" id="qCustomerId" placeholder="Optional if from a lead"></div>
-                    <div class="col-6"><label class="form-label">Lead ID</label><input type="number" class="form-control" id="qLeadId" placeholder="Optional — prefills contact/event info"></div>
-                    <div class="col-6"><label class="form-label">Event Name</label><input type="text" class="form-control" id="qEventName"></div>
-                    <div class="col-6"><label class="form-label">Event Type</label><input type="text" class="form-control" id="qEventType"></div>
-                    <div class="col-4"><label class="form-label">Event Date</label><input type="date" class="form-control" id="qEventDate"></div>
-                    <div class="col-4"><label class="form-label">Guest Count</label><input type="number" class="form-control" id="qGuestCount" min="0"></div>
-                    <div class="col-4"><label class="form-label">Hall ID</label><input type="number" class="form-control" id="qHallId" placeholder="Optional"></div>
-                    <div class="col-6"><label class="form-label">Discount Amount</label><input type="number" class="form-control" id="qDiscount" min="0" value="0"></div>
-                    <div class="col-6"><label class="form-label">Expiry Date</label><input type="date" class="form-control" id="qExpiryDate"></div>
-                    <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" id="qNotes" rows="2"></textarea></div>
+                    <div class="col-6"><label class="form-label">First Name *</label><input type="text" class="form-control" id="ncFirstName"></div>
+                    <div class="col-6"><label class="form-label">Last Name *</label><input type="text" class="form-control" id="ncLastName"></div>
+                    <div class="col-6"><label class="form-label">Email *</label><input type="email" class="form-control" id="ncEmail"></div>
+                    <div class="col-6"><label class="form-label">Phone *</label><input type="tel" class="form-control" id="ncPhone"></div>
                 </div>
-                <hr>
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                    <label class="form-label" style="margin:0">Line Items</label>
-                    <button class="btn-ghost" style="padding:2px 10px;font-size:12px" onclick="addItemRow()">+ Add Line</button>
-                </div>
-                <div class="item-row" style="font-size:11px;color:var(--text-muted);font-weight:600">
-                    <span>Description</span><span>Qty</span><span>Unit Price</span><span>Tax %</span><span></span>
-                </div>
-                <div id="qItemRows"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn-primary-brand" id="confirmCreateBtn" onclick="submitCreateQuotation()">Create Quotation</button>
+                <button class="btn-primary-brand" onclick="createQuoCustomer()">Create &amp; Select</button>
             </div>
         </div>
     </div>
@@ -116,18 +386,38 @@
     </div>
 </div>
 
+<!-- Duplicate / Clone for Another Customer -->
+<div class="modal fade" id="cloneModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Duplicate Quotation</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <p style="font-size:12.5px;color:var(--text-muted)">Creates a brand-new quotation with the same event, venue, catering, inventory, staff and pricing — you'll just pick who it's for.</p>
+                <div style="position:relative">
+                    <label class="form-label">Customer</label>
+                    <input type="text" class="form-control" id="cloneCustomerSearch" placeholder="Search by name, email, or phone…" oninput="searchCloneCustomers(this.value)" autocomplete="off">
+                    <div id="cloneCustomerSuggestions"></div>
+                </div>
+                <div id="cloneSelectedCustomer" style="display:none;margin-top:10px;font-size:13px"><strong id="cloneSelectedCustomerName"></strong></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmCloneBtn" onclick="submitClone()">Create Duplicate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Convert to Booking Modal -->
 <div class="modal fade" id="convertModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">Convert to Booking</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
             <div class="modal-body">
-                <p style="font-size:12.5px;color:var(--text-muted)">The booking will be created using this quotation's pricing (grand total becomes the booking total).</p>
+                <p style="font-size:12.5px;color:var(--text-muted)">Customer, event, venue, dates, guest count, and pricing carry over automatically from this quotation — nothing to re-enter.</p>
                 <div class="row g-3">
                     <div class="col-6"><label class="form-label">Start Time *</label><input type="time" class="form-control" id="cvStartTime"></div>
                     <div class="col-6"><label class="form-label">End Time *</label><input type="time" class="form-control" id="cvEndTime"></div>
-                    <div class="col-6"><label class="form-label">Customer ID (override)</label><input type="number" class="form-control" id="cvCustomerId" placeholder="Uses quotation's customer if blank"></div>
-                    <div class="col-6"><label class="form-label">Hall ID (override)</label><input type="number" class="form-control" id="cvHallId" placeholder="Uses quotation's hall if blank"></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -137,6 +427,9 @@
         </div>
     </div>
 </div>
+
+<!-- Hidden printable view -->
+<div id="printArea" style="display:none"></div>
 
 <div class="toast-container" id="toastContainer"></div>
 <button id="scrollTop">↑</button>
@@ -152,9 +445,43 @@
 <script>
 Auth.requireAuth('../auth/login.html');
 
-const STATUS_LABELS = { draft:'Draft', sent:'Sent', accepted:'Accepted', rejected:'Rejected', expired:'Expired', converted:'Converted' };
+const STATUS_LABELS = { draft:'Draft', sent:'Sent', accepted:'Accepted', rejected:'Rejected', expired:'Expired', converted:'Converted to Booking' };
+const SESSION_LABELS = { breakfast:'Breakfast', lunch:'Lunch', high_tea:'High Tea', evening_snacks:'Evening Snacks', dinner:'Dinner', midnight_snacks:'Midnight Snacks' };
+
+/* Inline SVG icons (24x24, stroke=currentColor) — matches the icon style used
+   throughout the rest of the app. No emoji anywhere on this page. */
+const ICON = {
+    download:  '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>',
+    print:     '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>',
+    mail:      '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg>',
+    copy:      '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
+    check:     '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg>',
+    x:         '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>',
+    warning:   '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>',
+    note:      '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg>',
+    arrowRight:'<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>',
+};
+
+/* Line items are stored generically server-side (QuotationItems: description/
+   quantity/unit_price/tax_percent — see database/migrations/010_quotations.sql).
+   There's no dedicated catering/inventory/staff table for quotations, so this
+   page encodes a category into each item's description with a small tag
+   convention ("Catering (Dinner): …", "Inventory: …", "Staff: …", "Charge: …")
+   and parses it back out (parseItemTag) when reopening a quotation for
+   editing/cloning. This keeps the Catering/Inventory/Staff builder sections
+   fully round-trippable without any backend/schema change. */
+const TAG_RE = /^([A-Za-z ]+)(?:\s*\(([^)]+)\))?:\s*(.*)$/;
+const tagItem = (category, detail, label) => `${category}${detail ? ` (${detail})` : ''}: ${label}`;
+const parseItemTag = (description) => {
+    const m = TAG_RE.exec(description || '');
+    if (!m) return { category: 'Other', detail: null, label: description || '' };
+    return { category: m[1].trim(), detail: m[2] || null, label: m[3] };
+};
+
 let allLoadedQuotations = [];
 let currentDetailId = null;
+
+/* ══════════════════════════ LIST VIEW ══════════════════════════ */
 
 async function loadQuotations(page = 1) {
     const wrap = document.getElementById('quoList');
@@ -168,11 +495,25 @@ async function loadQuotations(page = 1) {
         const rows = res.data?.quotations || [];
         allLoadedQuotations = rows;
         renderQuotations(rows);
+        updateQuoKPIs(rows, res.data?.meta?.total);
         Utils.renderPagination('quoPagination', { page, limit: 20, total: res.data?.meta?.total || rows.length }, loadQuotations);
     } catch (err) {
         Utils.toast(err.message || 'Unable to load quotations', 'error');
         wrap.innerHTML = `<div class="empty-state" style="padding:48px">Unable to load quotations. Please try again.</div>`;
     }
+}
+
+function updateQuoKPIs(rows, total) {
+    // KPIs reflect the currently loaded page for status counts/pipeline value
+    // (a full-dataset aggregate would need a dedicated stats endpoint, which
+    // this page doesn't have — see quotation.service.js for what's exposed).
+    document.getElementById('kpiTotal').textContent = total ?? rows.length;
+    document.getElementById('kpiSent').textContent = rows.filter(r => r.status === 'sent').length;
+    document.getElementById('kpiAccepted').textContent = rows.filter(r => r.status === 'accepted').length;
+    document.getElementById('kpiConverted').textContent = rows.filter(r => r.status === 'converted').length;
+    const openValue = rows.filter(r => ['draft', 'sent', 'accepted'].includes(r.status))
+        .reduce((s, r) => s + (parseFloat(r.grand_total) || 0), 0);
+    document.getElementById('kpiPipelineValue').textContent = Utils.formatCurrency(openValue);
 }
 
 function renderQuotations(rows) {
@@ -184,73 +525,719 @@ function renderQuotations(rows) {
         <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
                 <span style="font-weight:700;font-size:13px;font-family:var(--font-mono);color:var(--brand-primary)">${q.quotation_number}</span>
-                <span class="badge-status">${STATUS_LABELS[q.status] || q.status}</span>
+                <span class="quo-badge ${q.status}">${STATUS_LABELS[q.status] || q.status}</span>
                 ${q.revision > 1 ? `<span style="font-size:11px;color:var(--text-muted)">Rev ${q.revision}</span>` : ''}
             </div>
-            <div style="font-size:12.5px;color:var(--text-muted)">${q.contact_name || '—'} · ${q.event_name || ''} ${q.event_date ? '· ' + Utils.formatDate(q.event_date) : ''}</div>
+            <div style="font-size:12.5px;color:var(--text-muted)">${q.contact_name || '—'} · ${q.event_name || ''} ${q.event_date ? '· ' + Utils.formatDate(q.event_date) : ''} ${q.hall_name ? '· ' + q.hall_name : ''}</div>
         </div>
         <div style="text-align:right;min-width:120px">
             <div style="font-weight:800;font-size:14px">${Utils.formatCurrency(q.grand_total)}</div>
+            ${q.expiry_date && ['draft','sent'].includes(q.status) ? `<div style="font-size:10.5px;color:var(--text-muted)">Expires ${Utils.formatDate(q.expiry_date)}</div>` : ''}
         </div>
     </div>`).join('');
 }
 
-/* ── Create ── */
-function openCreateModal() {
-    ['qCustomerId','qLeadId','qEventName','qEventType','qEventDate','qGuestCount','qHallId','qNotes','qExpiryDate'].forEach(id => document.getElementById(id).value = '');
+const handleSearch = Utils.debounce(() => loadQuotations(1), 350);
+
+/* ══════════════════════════ BUILDER STATE ══════════════════════════ */
+
+function freshQuoState() {
+    return {
+        mode: 'create',          // 'create' | 'edit' | 'clone'
+        quotationId: null,
+        originalItems: [],       // item_row_id list, for edit-mode diffing
+        customerId: null,
+        customerName: '',
+        leadId: null,
+        banquetId: null,
+        hallId: null,
+        hallName: '',
+        hallOriginalPrice: 0,    // the hall's own base_price, before any booking-package adjustment
+        bookingPackageId: null,
+        bookingPackageName: '',
+        cateringSessions: [],    // { sessionType, packageId, packageName, perPlate, minPlates, expectedPlates, subtotal }
+        inventoryItems: [],      // { resourceId, resourceName, qty, unitPrice, available }
+        staffItems: [],          // { role, cost }
+        additionalCharges: [],   // { label, amount }
+    };
+}
+let qState = freshQuoState();
+let quoBanquets = [];
+let quoHalls = [];
+let quoBookingPackages = [];
+let quoCateringPackages = [];
+let quoInventoryCatalog = [];
+let cloneSourceQuotation = null;
+
+function toggleSection(headEl) {
+    headEl.closest('.qb-section').classList.toggle('collapsed');
+}
+
+/* ── Open / reset ── */
+async function openBuilder(mode, sourceQuotation = null) {
+    qState = freshQuoState();
+    qState.mode = mode;
+    document.getElementById('builderTitle').textContent =
+        mode === 'edit' ? `Editing ${sourceQuotation.quotation_number} (Rev ${sourceQuotation.revision})` :
+        mode === 'clone' ? `Duplicate of ${sourceQuotation.quotation_number}` : 'New Quotation';
+
+    resetBuilderForm();
+    await Promise.all([loadQuoBanquets(), loadQuoBookingPackages(), loadQuoCateringPackages(), loadQuoInventoryCatalog()]);
+
+    if (sourceQuotation) populateBuilderFromQuotation(sourceQuotation, mode);
+
+    renderQuoCateringList();
+    renderQuoInventoryList();
+    renderQuoStaffList();
+    renderQuoAdditionalCharges();
+    renderSummary();
+
+    new bootstrap.Modal(document.getElementById('builderModal')).show();
+}
+
+function resetBuilderForm() {
+    ['qEventName','qOccasion','qCompanyName','qEventDate','qEventEndDate','qAltDate','qGuestCount',
+     'qCoordinator','qSpecialRequests','qStartTime','qEndTime','qHallRental','qExpiryDate'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('qEventType').value = '';
+    document.getElementById('qVipCount').value = 0;
+    document.getElementById('qMultiDay').checked = false;
+    document.getElementById('qEventEndDateWrap').style.display = 'none';
+    document.getElementById('qServiceChargePct').value = 0;
+    document.getElementById('qTaxPct').value = 18;
+    document.getElementById('qPriorityCharge').value = 0;
+    document.getElementById('qLateCharge').value = 0;
     document.getElementById('qDiscount').value = 0;
-    document.getElementById('qItemRows').innerHTML = '';
-    addItemRow();
-    new bootstrap.Modal(document.getElementById('createModal')).show();
+    document.getElementById('qAdvancePct').value = 30;
+    document.getElementById('qValidityDays').value = 7;
+    document.getElementById('qIssueDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('qBanquetSelect').innerHTML = '<option value="">Select a banquet…</option>';
+    document.getElementById('qHallGrid').innerHTML = '<div class="form-text">Select a banquet first.</div>';
+    document.getElementById('qBookingPackageSelect').value = '';
+    document.getElementById('qAvailabilityBadge').innerHTML = '';
+    document.getElementById('qSelectedCustomer').style.display = 'none';
+    document.getElementById('qCustomerSearch').value = '';
+    onValidityDaysChanged();
 }
 
-function addItemRow() {
-    const wrap = document.getElementById('qItemRows');
-    const row = document.createElement('div');
-    row.className = 'item-row';
-    row.innerHTML = `
-        <input type="text" class="form-control form-control-sm" placeholder="e.g. Hall Rental">
-        <input type="number" class="form-control form-control-sm" min="0" value="1">
-        <input type="number" class="form-control form-control-sm" min="0" value="0">
-        <input type="number" class="form-control form-control-sm" min="0" value="0">
-        <button class="btn-ghost" style="padding:2px;color:var(--color-danger)" onclick="this.closest('.item-row').remove()">×</button>`;
-    wrap.appendChild(row);
+function toggleMultiDay() {
+    document.getElementById('qEventEndDateWrap').style.display = document.getElementById('qMultiDay').checked ? '' : 'none';
 }
 
-async function submitCreateQuotation() {
-    const items = [...document.querySelectorAll('#qItemRows .item-row')].map(row => {
-        const inputs = row.querySelectorAll('input');
-        return { description: inputs[0].value, quantity: parseFloat(inputs[1].value) || 1, unitPrice: parseFloat(inputs[2].value) || 0, taxPercent: parseFloat(inputs[3].value) || 0 };
-    }).filter(i => i.description);
-    if (!items.length) { Utils.toast('Add at least one line item', 'error'); return; }
+function onValidityDaysChanged() {
+    const days = parseInt(document.getElementById('qValidityDays').value, 10) || 7;
+    const issue = new Date(document.getElementById('qIssueDate').value || new Date());
+    const expiry = new Date(issue.getTime() + days * 86400000);
+    document.getElementById('qExpiryDate').value = expiry.toISOString().slice(0, 10);
+    document.getElementById('qExpiryHint').textContent = `Quotation auto-expires ${days} day(s) after issue — reprice with a revision if it lapses.`;
+}
 
-    const btn = document.getElementById('confirmCreateBtn');
-    Utils.showLoader(btn, 'Creating…');
+/* ── Populate from an existing quotation (edit / clone) ── */
+function populateBuilderFromQuotation(q, mode) {
+    qState.quotationId = mode === 'edit' ? q.quotation_id : null;
+    qState.leadId = q.lead_id || null;
+    qState.originalItems = mode === 'edit' ? (q.items || []).map(i => i.item_row_id) : [];
+
+    if (mode === 'edit' && q.customer_id) {
+        selectQuoCustomer(q.customer_id, q.contact_name, q.contact_email, q.contact_phone);
+    }
+    // Clone mode deliberately leaves the customer blank — that's the whole point.
+
+    document.getElementById('qEventName').value = q.event_name || '';
+    document.getElementById('qEventType').value = q.event_type || '';
+    document.getElementById('qEventDate').value = q.event_date ? q.event_date.slice(0, 10) : '';
+    document.getElementById('qGuestCount').value = q.guest_count || '';
+    document.getElementById('qExpiryDate').value = q.expiry_date ? q.expiry_date.slice(0, 10) : '';
+
+    // Best-effort parse of the labeled "extra fields" block this page writes
+    // into notes (see buildNotesField) — falls back to putting everything
+    // into Special Requests if the format doesn't match (e.g. hand-edited notes).
+    const notes = q.notes || '';
+    const grab = (label) => { const m = new RegExp(`^${label}:\\s*(.*)$`, 'm').exec(notes); return m ? m[1].trim() : ''; };
+    document.getElementById('qOccasion').value = grab('Occasion');
+    document.getElementById('qCompanyName').value = grab('Corporate');
+    document.getElementById('qCoordinator').value = grab('Coordinator');
+    document.getElementById('qVipCount').value = grab('VIP Guests') || 0;
+    document.getElementById('qAltDate').value = grab('Alternate Date');
+    const multiDay = grab('Multi-day');
+    if (multiDay) {
+        const parts = multiDay.split(' to ');
+        document.getElementById('qMultiDay').checked = true;
+        document.getElementById('qEventEndDateWrap').style.display = '';
+        if (parts[1]) document.getElementById('qEventEndDate').value = parts[1];
+    }
+    const srIdx = notes.indexOf('Special Requests:');
+    document.getElementById('qSpecialRequests').value = srIdx >= 0 ? notes.slice(srIdx + 'Special Requests:'.length).trim() : (grab('Notes') || (TAG_RE.test(notes) ? '' : notes));
+
+    // Items -> catering / inventory / staff / charges
+    (q.items || []).forEach(item => {
+        const { category, detail, label } = parseItemTag(item.description);
+        if (category === 'Hall Rental') {
+            document.getElementById('qHallRental').value = item.unit_price;
+        } else if (category === 'Catering') {
+            const pkg = quoCateringPackages.find(p => p.package_name === label.split(' — ')[0]);
+            qState.cateringSessions.push({
+                sessionType: (detail || 'dinner').toLowerCase().replace(/\s+/g, '_'),
+                packageId: pkg?.package_id || null,
+                packageName: label.split(' — ')[0],
+                perPlate: item.unit_price,
+                minPlates: 0,
+                expectedPlates: item.quantity,
+                subtotal: item.line_subtotal,
+            });
+        } else if (category === 'Inventory') {
+            qState.inventoryItems.push({ resourceId: null, resourceName: label, qty: item.quantity, unitPrice: item.unit_price, available: null });
+        } else if (category === 'Staff') {
+            qState.staffItems.push({ role: label, cost: item.unit_price });
+        } else if (category === 'Charge' && !['Service Charge', 'Priority Booking', 'Late Booking'].includes(detail)) {
+            qState.additionalCharges.push({ label, amount: item.unit_price });
+        } else if (detail === 'Service Charge') {
+            document.getElementById('qServiceChargePct').value = item.unit_price;
+        } else if (detail === 'Priority Booking') {
+            document.getElementById('qPriorityCharge').value = item.unit_price;
+        } else if (detail === 'Late Booking') {
+            document.getElementById('qLateCharge').value = item.unit_price;
+        }
+    });
+    document.getElementById('qDiscount').value = q.discount_amount || 0;
+    // Uniform tax% is stored per-item; read it back off the first item that has one.
+    const firstTaxed = (q.items || []).find(i => parseFloat(i.tax_percent) > 0);
+    document.getElementById('qTaxPct').value = firstTaxed ? firstTaxed.tax_percent : 18;
+
+    // Venue — deferred until banquet/hall lists are loaded (called by caller after load)
+    quoRestoreHallId = q.hall_id || null;
+}
+let quoRestoreHallId = null;
+
+/* ── Customer search / select / create ── */
+const searchQuoCustomers = Utils.debounce(async (q) => {
+    const wrap = document.getElementById('qCustomerSuggestions');
+    const value = (q || '').trim();
+    if (value.length < 2) { wrap.innerHTML = ''; return; }
     try {
-        await API.quotations.create({
-            customerId: document.getElementById('qCustomerId').value ? parseInt(document.getElementById('qCustomerId').value, 10) : undefined,
-            leadId:     document.getElementById('qLeadId').value ? parseInt(document.getElementById('qLeadId').value, 10) : undefined,
-            eventName:  document.getElementById('qEventName').value || undefined,
-            eventType:  document.getElementById('qEventType').value || undefined,
-            eventDate:  document.getElementById('qEventDate').value || undefined,
-            guestCount: document.getElementById('qGuestCount').value ? parseInt(document.getElementById('qGuestCount').value, 10) : undefined,
-            hallId:     document.getElementById('qHallId').value ? parseInt(document.getElementById('qHallId').value, 10) : undefined,
-            discountAmount: parseFloat(document.getElementById('qDiscount').value) || 0,
-            notes:      document.getElementById('qNotes').value || undefined,
-            expiryDate: document.getElementById('qExpiryDate').value || undefined,
-            items,
-        });
-        Utils.hideLoader(btn);
-        bootstrap.Modal.getInstance(document.getElementById('createModal'))?.hide();
-        Utils.toast('Quotation created', 'success');
-        loadQuotations(1);
-    } catch (err) {
-        Utils.hideLoader(btn);
-        Utils.toast(err.message || 'Failed to create quotation', 'error');
+        const res = await API.customers.list({ search: value, limit: 6 });
+        const list = res.data?.customers || [];
+        renderCustomerSuggestions(wrap, list, (c) => `selectQuoCustomer(${c.customer_id}, '${esc(c.first_name + ' ' + c.last_name)}', '${esc(c.email)}', '${esc(c.phone)}')`);
+    } catch { wrap.innerHTML = ''; }
+}, 300);
+
+function esc(s) { return (s || '').replace(/'/g, "\\'"); }
+
+function renderCustomerSuggestions(wrap, list, onclickFor) {
+    if (!list.length) { wrap.innerHTML = `<div style="position:absolute;z-index:1060;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:8px;padding:8px 12px;margin-top:4px;font-size:12px;color:var(--text-muted)">No matches</div>`; return; }
+    wrap.innerHTML = `<div style="position:absolute;top:100%;left:0;right:0;z-index:1060;margin-top:4px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:8px;box-shadow:var(--shadow-lg);max-height:220px;overflow-y:auto">
+        ${list.map(c => `<div class="dropdown-item" style="padding:9px 14px;cursor:pointer" onclick="${onclickFor(c)}">
+            <div style="font-size:13px;font-weight:600">${c.first_name} ${c.last_name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${c.email || ''}${c.phone ? ' • ' + c.phone : ''}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function selectQuoCustomer(id, name, email, phone) {
+    qState.customerId = id;
+    qState.customerName = name;
+    document.getElementById('qCustomerSearch').value = name;
+    document.getElementById('qCustomerSuggestions').innerHTML = '';
+    document.getElementById('qSelectedCustomerName').textContent = name;
+    document.getElementById('qSelectedCustomer').style.display = '';
+    document.getElementById('qCustomerSummary').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    try {
+        const [custRes, quoRes] = await Promise.all([
+            API.customers.get(id).catch(() => null),
+            API.quotations.list({ customer_id: id, limit: 5 }).catch(() => null),
+        ]);
+        const cust = custRes?.data;
+        const priorQuotes = quoRes?.data?.quotations || [];
+        let preferredHall = '—';
+        try {
+            const histRes = await API.customers.bookingHistory(id, { limit: 20 });
+            const bookings = histRes?.data?.bookings || [];
+            if (bookings.length) {
+                const counts = {};
+                bookings.forEach(b => { counts[b.hall_name] = (counts[b.hall_name] || 0) + 1; });
+                preferredHall = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+            }
+        } catch { /* history unavailable — leave preferredHall as — */ }
+        document.getElementById('qCustomerSummary').innerHTML = `
+            <div class="row-line"><span>Total Bookings</span><strong>${cust?.total_bookings ?? '—'}</strong></div>
+            <div class="row-line"><span>Total Spend</span><strong>${cust ? Utils.formatCurrency(cust.total_spend) : '—'}</strong></div>
+            <div class="row-line"><span>Previous Quotations</span><strong>${priorQuotes.length}</strong></div>
+            <div class="row-line"><span>Preferred Hall</span><strong>${preferredHall}</strong></div>
+            ${cust?.phone ? `<div class="row-line"><span>Phone</span><strong>${cust.phone}</strong></div>` : ''}
+            ${cust?.notes ? `<div style="margin-top:6px;color:var(--text-muted)">${ICON.note} ${cust.notes}</div>` : ''}
+        `;
+    } catch {
+        document.getElementById('qCustomerSummary').innerHTML = '<span style="color:var(--text-muted)">Unable to load customer history</span>';
     }
 }
 
-/* ── Detail / Actions ── */
+function clearQuoCustomer() {
+    qState.customerId = null;
+    qState.customerName = '';
+    document.getElementById('qCustomerSearch').value = '';
+    document.getElementById('qSelectedCustomer').style.display = 'none';
+}
+
+function openNewQuoCustomerModal() {
+    ['ncFirstName','ncLastName','ncEmail','ncPhone'].forEach(id => document.getElementById(id).value = '');
+    new bootstrap.Modal(document.getElementById('qNewCustomerModal')).show();
+}
+
+async function createQuoCustomer() {
+    const fn = document.getElementById('ncFirstName').value.trim();
+    const ln = document.getElementById('ncLastName').value.trim();
+    const em = document.getElementById('ncEmail').value.trim();
+    const ph = document.getElementById('ncPhone').value.trim();
+    if (!fn || !ln || !em || !ph) { Utils.toast('Fill in every field', 'error'); return; }
+    try {
+        const res = await API.customers.create({ first_name: fn, last_name: ln, email: em, phone: ph });
+        const id = res.data?.customer_id;
+        bootstrap.Modal.getInstance(document.getElementById('qNewCustomerModal'))?.hide();
+        await selectQuoCustomer(id, `${fn} ${ln}`, em, ph);
+        Utils.toast('Customer created', 'success');
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to create customer', 'error');
+    }
+}
+
+/* ── Venue: Banquet -> Hall cascade + availability check ── */
+async function loadQuoBanquets() {
+    try {
+        const res = await API.banquets.list({ limit: 100, is_active: true });
+        quoBanquets = res.data?.banquets || res.data?.rows || [];
+        document.getElementById('qBanquetSelect').innerHTML = '<option value="">Select a banquet…</option>' +
+            quoBanquets.map(b => `<option value="${b.banquet_id}">${b.banquet_name}${b.city ? ' — ' + b.city : ''}</option>`).join('');
+    } catch { /* leave the placeholder — banquets list failed to load */ }
+}
+
+async function onBanquetSelected() {
+    qState.banquetId = parseInt(document.getElementById('qBanquetSelect').value, 10) || null;
+    qState.hallId = null;
+    await loadQuoHalls();
+}
+
+async function loadQuoHalls() {
+    const grid = document.getElementById('qHallGrid');
+    if (!qState.banquetId) { grid.innerHTML = '<div class="form-text">Select a banquet first.</div>'; return; }
+    grid.innerHTML = '<div class="form-text"><span class="spinner-border spinner-border-sm"></span> Loading halls…</div>';
+    try {
+        const guestCount = parseInt(document.getElementById('qGuestCount').value, 10) || 1;
+        const res = await API.halls.list({ limit: 50, banquet_id: qState.banquetId, min_capacity: guestCount });
+        quoHalls = res.data?.halls || res.data || [];
+        renderQuoHallGrid();
+        if (quoRestoreHallId) {
+            const found = quoHalls.find(h => h.hall_id === quoRestoreHallId);
+            if (found) selectQuoHall(quoRestoreHallId, found.hall_name, found.base_price);
+            quoRestoreHallId = null;
+        }
+    } catch {
+        grid.innerHTML = '<div class="empty-state">Unable to load halls for this banquet.</div>';
+    }
+}
+
+function renderQuoHallGrid() {
+    const grid = document.getElementById('qHallGrid');
+    if (!quoHalls.length) { grid.innerHTML = '<div class="empty-state">No halls match this guest count at the selected banquet.</div>'; return; }
+    grid.innerHTML = quoHalls.map(h => {
+        const capacity = h.capacity_seated ?? h.capacity ?? 0;
+        const active = h.is_active === 1 || h.is_active === true;
+        return `<div class="venue-card ${qState.hallId === h.hall_id ? 'selected' : ''} ${active ? '' : 'unavailable'}"
+                     onclick="${active ? `selectQuoHall(${h.hall_id}, '${esc(h.hall_name)}', ${parseFloat(h.base_price) || 0})` : ''}">
+            <div class="vc-name">${h.hall_name}</div>
+            <div class="vc-meta">Capacity ${Utils.formatNumber(capacity)} · ${Utils.formatCurrency(h.base_price)}/day</div>
+            ${!active ? '<div class="vc-meta" style="color:var(--color-danger)">Inactive</div>' : ''}
+        </div>`;
+    }).join('');
+}
+
+function selectQuoHall(id, name, basePrice) {
+    qState.hallId = id;
+    qState.hallName = name;
+    qState.hallOriginalPrice = basePrice;
+    if (qState.bookingPackageId) {
+        applyQuoBookingPackagePricing();
+    } else {
+        document.getElementById('qHallRental').value = basePrice;
+    }
+    renderQuoHallGrid();
+    runQuoAvailabilityCheck();
+    renderSummary();
+}
+
+/* ── Booking Packages — reuses the exact pricing formula bookings/create.html
+   uses (computePackagePrice in booking.service.js): duration packages
+   (hourly/half_day/full_day) price a fraction of THIS hall's own rate;
+   fixed-session packages keep their own flat base_price. Selecting one also
+   derives End Time from Start Time + included_hours, same as a real booking. */
+async function loadQuoBookingPackages() {
+    const sel = document.getElementById('qBookingPackageSelect');
+    try {
+        const res = await API.bookingPackages.list({ is_active: 'true' });
+        quoBookingPackages = res.data?.packages || res.data || [];
+        sel.innerHTML = '<option value="">— Custom / no package —</option>' +
+            quoBookingPackages.map(p => `<option value="${p.package_id}">${p.package_name} — ${Utils.formatCurrency(p.base_price)}</option>`).join('');
+    } catch { sel.innerHTML = '<option value="">— Custom / no package —</option>'; }
+}
+
+function onQuoBookingPackageSelected() {
+    const packageId = parseInt(document.getElementById('qBookingPackageSelect').value, 10) || null;
+    if (!packageId) {
+        qState.bookingPackageId = null;
+        qState.bookingPackageName = '';
+        document.getElementById('qHallRental').value = qState.hallOriginalPrice || 0;
+        renderSummary();
+        return;
+    }
+    const pkg = quoBookingPackages.find(p => p.package_id === packageId);
+    if (!pkg) return;
+    qState.bookingPackageId = pkg.package_id;
+    qState.bookingPackageName = pkg.package_name;
+    applyQuoBookingPackagePricing();
+}
+
+function applyQuoBookingPackagePricing() {
+    const pkg = quoBookingPackages.find(p => p.package_id === qState.bookingPackageId);
+    if (!pkg) return;
+    const hallRate = qState.hallOriginalPrice || 0;
+    const price = pkg.calc_type === 'full_day' ? Math.round(hallRate)
+        : pkg.calc_type === 'half_day' ? Math.round(hallRate * 0.5)
+        : pkg.calc_type === 'hourly'   ? Math.round((hallRate / 8) * (pkg.included_hours || 1))
+        : Math.round(parseFloat(pkg.base_price) || 0);
+    document.getElementById('qHallRental').value = price;
+
+    if (pkg.included_hours != null) {
+        const startInput = document.getElementById('qStartTime');
+        if (startInput.value) {
+            const [h, m] = startInput.value.split(':').map(Number);
+            const totalMin = ((h * 60 + m) + Math.round(pkg.included_hours * 60)) % 1440;
+            document.getElementById('qEndTime').value = `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`;
+        }
+    }
+    runQuoAvailabilityCheck();
+    renderSummary();
+}
+
+async function runQuoAvailabilityCheck() {
+    const badge = document.getElementById('qAvailabilityBadge');
+    const eventDate = document.getElementById('qEventDate').value;
+    const start = document.getElementById('qStartTime').value;
+    const end = document.getElementById('qEndTime').value;
+    if (!qState.hallId || !eventDate || !start || !end) { badge.innerHTML = ''; return; }
+    badge.innerHTML = '<span class="avail-badge wait">Checking availability…</span>';
+    try {
+        const res = await API.bookings.checkAvail({ hallId: qState.hallId, eventDate, startTime: start, endTime: end });
+        if (res.data?.available) {
+            badge.innerHTML = `<span class="avail-badge ok">${ICON.check} ${qState.hallName} is available for this date/time</span>`;
+        } else {
+            badge.innerHTML = `<span class="avail-badge bad">${ICON.x} ${qState.hallName} is already booked for this date/time — choose a different slot or hall</span>`;
+            qState.hallId = null;
+        }
+    } catch {
+        badge.innerHTML = '';
+    }
+}
+
+function onEventDateChanged() {
+    runQuoAvailabilityCheck();
+}
+function onGuestCountChanged() {
+    if (qState.banquetId) loadQuoHalls();
+    renderSummary();
+}
+
+/* ── Catering ── */
+async function loadQuoCateringPackages() {
+    const sel = document.getElementById('csPackageId');
+    try {
+        const res = await API.catering.packages();
+        quoCateringPackages = (res.data || []).filter(p => p.is_active);
+        sel.innerHTML = quoCateringPackages.map(p => `<option value="${p.package_id}">${p.package_name} — ${Utils.formatCurrency(p.price_per_plate)}/plate</option>`).join('') || '<option value="">No packages available</option>';
+    } catch { sel.innerHTML = '<option value="">Failed to load packages</option>'; }
+}
+
+function addQuoCateringSession() {
+    const sessionType = document.getElementById('csSessionType').value;
+    const packageId = parseInt(document.getElementById('csPackageId').value, 10);
+    const pkg = quoCateringPackages.find(p => p.package_id === packageId);
+    const minPlates = parseInt(document.getElementById('csMinPlates').value, 10) || 0;
+    const expectedPlates = parseInt(document.getElementById('csExpectedPlates').value, 10) || parseInt(document.getElementById('qGuestCount').value, 10) || 0;
+    if (!pkg) { Utils.toast('Select a catering package', 'error'); return; }
+    if (!expectedPlates) { Utils.toast('Enter expected plate count (or set Guest Count first)', 'error'); return; }
+    const plates = Math.max(expectedPlates, minPlates);
+    qState.cateringSessions.push({
+        sessionType, packageId, packageName: pkg.package_name,
+        perPlate: parseFloat(pkg.price_per_plate) || 0, minPlates, expectedPlates: plates,
+        subtotal: Math.round((parseFloat(pkg.price_per_plate) || 0) * plates),
+    });
+    renderQuoCateringList();
+    renderSummary();
+}
+
+function removeQuoCateringSession(i) { qState.cateringSessions.splice(i, 1); renderQuoCateringList(); renderSummary(); }
+
+function renderQuoCateringList() {
+    const wrap = document.getElementById('qCateringList');
+    if (!qState.cateringSessions.length) { wrap.innerHTML = '<div class="form-text">No catering sessions added yet.</div>'; return; }
+    wrap.innerHTML = qState.cateringSessions.map((s, i) => `
+        <div class="staged-row">
+            <div><strong>${SESSION_LABELS[s.sessionType] || s.sessionType}</strong> — ${s.packageName}
+                <div style="color:var(--text-muted);font-size:11px">${s.expectedPlates} plates × ${Utils.formatCurrency(s.perPlate)}${s.minPlates ? ` (min ${s.minPlates})` : ''}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <strong>${Utils.formatCurrency(s.subtotal)}</strong>
+                <button type="button" class="btn-ghost" style="color:var(--color-danger);padding:2px 8px" onclick="removeQuoCateringSession(${i})">Remove</button>
+            </div>
+        </div>`).join('');
+}
+
+/* ── Inventory ── */
+async function loadQuoInventoryCatalog() {
+    const sel = document.getElementById('invItemSelect');
+    try {
+        const res = await API.resources.list();
+        quoInventoryCatalog = res.data || [];
+        sel.innerHTML = '<option value="">Select an item…</option>' +
+            quoInventoryCatalog.map(r => `<option value="${r.resource_id}">${r.resource_name} (${r.category}) — ${r.quantity_available} available</option>`).join('');
+    } catch { sel.innerHTML = '<option value="">Failed to load inventory</option>'; }
+}
+
+function addQuoInventoryItem() {
+    const id = parseInt(document.getElementById('invItemSelect').value, 10);
+    const item = quoInventoryCatalog.find(r => r.resource_id === id);
+    const qty = parseInt(document.getElementById('invQty').value, 10) || 1;
+    if (!item) { Utils.toast('Select an item', 'error'); return; }
+    qState.inventoryItems.push({ resourceId: item.resource_id, resourceName: item.resource_name, qty, unitPrice: parseFloat(item.unit_price) || 0, available: item.quantity_available });
+    renderQuoInventoryList();
+    renderSummary();
+}
+
+function updateQuoInventoryQty(i, val) {
+    qState.inventoryItems[i].qty = Math.max(1, parseInt(val, 10) || 1);
+    renderQuoInventoryList();
+    renderSummary();
+}
+function removeQuoInventoryItem(i) { qState.inventoryItems.splice(i, 1); renderQuoInventoryList(); renderSummary(); }
+
+function renderQuoInventoryList() {
+    const wrap = document.getElementById('qInventoryList');
+    if (!qState.inventoryItems.length) { wrap.innerHTML = '<div class="form-text">No inventory added yet.</div>'; return; }
+    wrap.innerHTML = qState.inventoryItems.map((it, i) => {
+        const over = it.available != null && it.qty > it.available;
+        return `<div class="staged-row">
+            <div>
+                <strong>${it.resourceName}</strong>
+                <input type="number" class="form-control form-control-sm" style="width:70px;display:inline-block;margin-left:8px" min="1" value="${it.qty}" onchange="updateQuoInventoryQty(${i}, this.value)">
+                ${over ? `<span class="warn"> ${ICON.warning} only ${it.available} available</span>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <strong>${Utils.formatCurrency(it.qty * it.unitPrice)}</strong>
+                <button type="button" class="btn-ghost" style="color:var(--color-danger);padding:2px 8px" onclick="removeQuoInventoryItem(${i})">Remove</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ── Staff ── */
+function addQuoStaff() {
+    const role = document.getElementById('staffRole').value;
+    const cost = parseFloat(document.getElementById('staffCost').value) || 0;
+    qState.staffItems.push({ role, cost });
+    renderQuoStaffList();
+    renderSummary();
+}
+function removeQuoStaff(i) { qState.staffItems.splice(i, 1); renderQuoStaffList(); renderSummary(); }
+
+function renderQuoStaffList() {
+    const wrap = document.getElementById('qStaffList');
+    if (!qState.staffItems.length) { wrap.innerHTML = '<div class="form-text">No staff estimates added yet.</div>'; return; }
+    wrap.innerHTML = qState.staffItems.map((s, i) => `
+        <div class="staged-row">
+            <strong>${s.role}</strong>
+            <div style="display:flex;align-items:center;gap:10px">
+                <strong>${Utils.formatCurrency(s.cost)}</strong>
+                <button type="button" class="btn-ghost" style="color:var(--color-danger);padding:2px 8px" onclick="removeQuoStaff(${i})">Remove</button>
+            </div>
+        </div>`).join('');
+}
+
+/* ── Additional charges (free-form rows) ── */
+function addAdditionalChargeRow() {
+    qState.additionalCharges.push({ label: '', amount: 0 });
+    renderQuoAdditionalCharges();
+}
+function updateAdditionalCharge(i, field, val) {
+    qState.additionalCharges[i][field] = field === 'amount' ? (parseFloat(val) || 0) : val;
+    renderSummary();
+}
+function removeAdditionalCharge(i) { qState.additionalCharges.splice(i, 1); renderQuoAdditionalCharges(); renderSummary(); }
+
+function renderQuoAdditionalCharges() {
+    const wrap = document.getElementById('qAdditionalCharges');
+    if (!qState.additionalCharges.length) { wrap.innerHTML = '<div class="form-text">None</div>'; return; }
+    wrap.innerHTML = qState.additionalCharges.map((c, i) => `
+        <div class="item-row" style="grid-template-columns:1fr 130px 32px">
+            <input type="text" class="form-control form-control-sm" placeholder="Description" value="${esc(c.label)}" onchange="updateAdditionalCharge(${i}, 'label', this.value)">
+            <input type="number" class="form-control form-control-sm" min="0" value="${c.amount}" onchange="updateAdditionalCharge(${i}, 'amount', this.value)">
+            <button type="button" class="btn-ghost" style="padding:2px;color:var(--color-danger)" onclick="removeAdditionalCharge(${i})">×</button>
+        </div>`).join('');
+}
+
+/* ══════════════════════════ LIVE PRICING ══════════════════════════ */
+
+function computeTotals() {
+    const hall = parseFloat(document.getElementById('qHallRental').value) || 0;
+    const catering = qState.cateringSessions.reduce((s, c) => s + c.subtotal, 0);
+    const inventory = qState.inventoryItems.reduce((s, i) => s + i.qty * i.unitPrice, 0);
+    const staff = qState.staffItems.reduce((s, i) => s + i.cost, 0);
+    const serviceChargePct = parseFloat(document.getElementById('qServiceChargePct').value) || 0;
+    const priority = parseFloat(document.getElementById('qPriorityCharge').value) || 0;
+    const late = parseFloat(document.getElementById('qLateCharge').value) || 0;
+    const preServiceBase = hall + catering + inventory + staff;
+    const serviceCharge = Math.round(preServiceBase * serviceChargePct / 100);
+    const charges = serviceCharge + priority + late;
+    const additional = qState.additionalCharges.reduce((s, c) => s + (c.amount || 0), 0);
+
+    const subtotal = hall + catering + inventory + staff + charges + additional;
+    const discount = parseFloat(document.getElementById('qDiscount').value) || 0;
+    const taxPct = parseFloat(document.getElementById('qTaxPct').value) || 0;
+    const taxable = Math.max(0, subtotal - discount);
+    const tax = Math.round(taxable * taxPct / 100);
+    const grandTotal = taxable + tax;
+    const advancePct = parseFloat(document.getElementById('qAdvancePct').value) || 0;
+    const advance = Math.round(grandTotal * advancePct / 100);
+    const balance = grandTotal - advance;
+
+    return { hall, catering, inventory, staff, serviceCharge, charges, additional, subtotal, discount, taxPct, tax, grandTotal, advance, balance };
+}
+
+function renderSummary() {
+    const t = computeTotals();
+    document.getElementById('sumHall').textContent = Utils.formatCurrency(t.hall);
+    document.getElementById('sumCatering').textContent = Utils.formatCurrency(t.catering);
+    document.getElementById('sumInventory').textContent = Utils.formatCurrency(t.inventory);
+    document.getElementById('sumStaff').textContent = Utils.formatCurrency(t.staff);
+    document.getElementById('sumCharges').textContent = Utils.formatCurrency(t.charges);
+    document.getElementById('sumAdditional').textContent = Utils.formatCurrency(t.additional);
+    document.getElementById('sumSubtotal').textContent = Utils.formatCurrency(t.subtotal);
+    document.getElementById('sumDiscount').textContent = '-' + Utils.formatCurrency(t.discount);
+    document.getElementById('sumTax').textContent = '+' + Utils.formatCurrency(t.tax) + ` (${t.taxPct}%)`;
+    document.getElementById('sumGrandTotal').textContent = Utils.formatCurrency(t.grandTotal);
+    document.getElementById('sumAdvance').textContent = Utils.formatCurrency(t.advance);
+    document.getElementById('sumBalance').textContent = Utils.formatCurrency(t.balance);
+    const guests = parseInt(document.getElementById('qGuestCount').value, 10) || 0;
+    document.getElementById('sumPerGuest').textContent = guests ? `≈ ${Utils.formatCurrency(t.grandTotal / guests)} per guest` : '';
+}
+
+/* ══════════════════════════ NOTES ENCODING ══════════════════════════ */
+
+function buildNotesField() {
+    const lines = [];
+    const occasion = document.getElementById('qOccasion').value.trim();
+    const company = document.getElementById('qCompanyName').value.trim();
+    const coordinator = document.getElementById('qCoordinator').value.trim();
+    const vip = document.getElementById('qVipCount').value;
+    const altDate = document.getElementById('qAltDate').value;
+    if (occasion) lines.push(`Occasion: ${occasion}`);
+    if (company) lines.push(`Corporate: ${company}`);
+    if (coordinator) lines.push(`Coordinator: ${coordinator}`);
+    if (vip && vip !== '0') lines.push(`VIP Guests: ${vip}`);
+    if (altDate) lines.push(`Alternate Date: ${altDate}`);
+    if (document.getElementById('qMultiDay').checked) {
+        const end = document.getElementById('qEventEndDate').value;
+        lines.push(`Multi-day: ${document.getElementById('qEventDate').value} to ${end || '?'}`);
+    }
+    const sr = document.getElementById('qSpecialRequests').value.trim();
+    if (sr) lines.push(`\nSpecial Requests:\n${sr}`);
+    return lines.join('\n');
+}
+
+function buildItemsPayload() {
+    const items = [];
+    const t = computeTotals();
+    if (t.hall > 0) items.push({ description: tagItem('Hall Rental', qState.bookingPackageName || null, qState.hallName || 'Hall'), quantity: 1, unitPrice: t.hall, taxPercent: t.taxPct });
+    qState.cateringSessions.forEach(s => {
+        items.push({ description: tagItem('Catering', SESSION_LABELS[s.sessionType] || s.sessionType, `${s.packageName} — ${s.expectedPlates} plates`), quantity: s.expectedPlates, unitPrice: s.perPlate, taxPercent: t.taxPct });
+    });
+    qState.inventoryItems.forEach(i => {
+        items.push({ description: tagItem('Inventory', null, i.resourceName), quantity: i.qty, unitPrice: i.unitPrice, taxPercent: t.taxPct });
+    });
+    qState.staffItems.forEach(s => {
+        items.push({ description: tagItem('Staff', null, s.role), quantity: 1, unitPrice: s.cost, taxPercent: t.taxPct });
+    });
+    if (t.serviceCharge > 0) items.push({ description: tagItem('Charge', 'Service Charge', `Service Charge (${document.getElementById('qServiceChargePct').value}%)`), quantity: 1, unitPrice: t.serviceCharge, taxPercent: 0 });
+    const priority = parseFloat(document.getElementById('qPriorityCharge').value) || 0;
+    if (priority > 0) items.push({ description: tagItem('Charge', 'Priority Booking', 'Priority Booking Charge'), quantity: 1, unitPrice: priority, taxPercent: 0 });
+    const late = parseFloat(document.getElementById('qLateCharge').value) || 0;
+    if (late > 0) items.push({ description: tagItem('Charge', 'Late Booking', 'Late Booking Charge'), quantity: 1, unitPrice: late, taxPercent: 0 });
+    qState.additionalCharges.filter(c => c.label && c.amount).forEach(c => {
+        items.push({ description: tagItem('Charge', null, c.label), quantity: 1, unitPrice: c.amount, taxPercent: 0 });
+    });
+    return items;
+}
+
+/* ══════════════════════════ SAVE ══════════════════════════ */
+
+async function saveQuotation(sendAfter) {
+    if (!qState.customerId) { Utils.toast('Select or create a customer', 'error'); return; }
+    const eventName = document.getElementById('qEventName').value.trim();
+    const eventDate = document.getElementById('qEventDate').value;
+    const guestCount = parseInt(document.getElementById('qGuestCount').value, 10);
+    if (!eventName) { Utils.toast('Event name is required', 'error'); return; }
+    if (!eventDate) { Utils.toast('Event date is required', 'error'); return; }
+    if (!guestCount) { Utils.toast('Guest count is required', 'error'); return; }
+
+    const btn = document.getElementById(sendAfter ? 'saveSendBtn' : 'saveDraftBtn');
+    Utils.showLoader(btn, 'Saving…');
+
+    const header = {
+        customerId: qState.customerId,
+        leadId: qState.leadId || undefined,
+        eventName,
+        eventType: document.getElementById('qEventType').value || undefined,
+        eventDate,
+        guestCount,
+        hallId: qState.hallId || undefined,
+        discountAmount: parseFloat(document.getElementById('qDiscount').value) || 0,
+        notes: buildNotesField() || undefined,
+        expiryDate: document.getElementById('qExpiryDate').value || undefined,
+    };
+    const items = buildItemsPayload();
+
+    try {
+        let quotationId;
+        if (qState.mode === 'edit') {
+            await API.quotations.update(qState.quotationId, header);
+            // No bulk-replace-items endpoint exists — remove everything that
+            // was there before and re-add the current staged set. Simple and
+            // correct; a smarter diff isn't worth the complexity for a form
+            // that's fully rebuilt from qState on every open anyway.
+            for (const rowId of qState.originalItems) {
+                await API.quotations.removeItem(qState.quotationId, rowId);
+            }
+            for (const item of items) {
+                await API.quotations.addItem(qState.quotationId, item);
+            }
+            quotationId = qState.quotationId;
+        } else {
+            const res = await API.quotations.create({ ...header, items });
+            quotationId = res.data.quotation_id;
+        }
+
+        if (sendAfter) {
+            await API.quotations.send(quotationId);
+        }
+
+        Utils.hideLoader(btn);
+        bootstrap.Modal.getInstance(document.getElementById('builderModal'))?.hide();
+        Utils.toast(qState.mode === 'edit' ? 'Quotation updated' : sendAfter ? 'Quotation created and sent' : 'Quotation saved as draft', 'success');
+        loadQuotations(1);
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to save quotation', 'error');
+    }
+}
+
+/* ══════════════════════════ DETAIL / ACTIONS ══════════════════════════ */
+
 async function openDetailModal(id) {
     currentDetailId = id;
     document.getElementById('detailTitle').textContent = 'Loading…';
@@ -265,36 +1252,54 @@ async function openDetailModal(id) {
     }
 }
 
+function groupItemsByCategory(items) {
+    const groups = {};
+    (items || []).forEach(i => {
+        const { category } = parseItemTag(i.description);
+        (groups[category] = groups[category] || []).push(i);
+    });
+    return groups;
+}
+
 function renderDetail(q) {
     document.getElementById('detailTitle').textContent = `${q.quotation_number} (Rev ${q.revision})`;
+    const groups = groupItemsByCategory(q.items);
     document.getElementById('detailBody').innerHTML = `
         <div style="display:flex;justify-content:space-between;margin-bottom:12px">
             <div>
                 <div style="font-weight:700">${q.contact_name || '—'}</div>
                 <div style="font-size:12px;color:var(--text-muted)">${q.contact_email || ''} ${q.contact_phone ? '· ' + q.contact_phone : ''}</div>
             </div>
-            <span class="badge-status">${STATUS_LABELS[q.status] || q.status}</span>
+            <span class="quo-badge ${q.status}">${STATUS_LABELS[q.status] || q.status}</span>
         </div>
         <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
             ${[q.event_name, q.event_type, q.event_date ? Utils.formatDate(q.event_date) : null, q.hall_name, q.guest_count ? q.guest_count + ' guests' : null].filter(Boolean).join(' · ')}
         </div>
-        <table class="table table-sm">
-            <thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Tax</th><th class="text-end">Total</th>${q.status === 'draft' ? '<th></th>' : ''}</tr></thead>
-            <tbody>${(q.items||[]).map(i => `
-                <tr>
-                    <td>${i.description}</td><td>${i.quantity}</td><td>${Utils.formatCurrency(i.unit_price)}</td><td>${i.tax_percent}%</td>
-                    <td class="text-end">${Utils.formatCurrency(i.line_total)}</td>
-                    ${q.status === 'draft' ? `<td><button class="btn-ghost" style="padding:0 6px;color:var(--color-danger)" onclick="removeDetailItem(${i.item_row_id})">×</button></td>` : ''}
-                </tr>`).join('')}
-            </tbody>
-        </table>
-        <div style="text-align:right;font-size:13px">
+        ${q.notes ? `<div style="font-size:12px;color:var(--text-secondary);background:var(--bg-surface-2);border-radius:8px;padding:10px 12px;margin-bottom:14px;white-space:pre-line">${q.notes}</div>` : ''}
+        ${Object.entries(groups).map(([cat, items]) => `
+            <div style="margin-bottom:10px">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">${cat}</div>
+                <table class="table table-sm">
+                    <tbody>${items.map(i => `
+                        <tr>
+                            <td>${parseItemTag(i.description).label}</td><td>${i.quantity}</td><td>${Utils.formatCurrency(i.unit_price)}</td>
+                            <td class="text-end">${Utils.formatCurrency(i.line_total)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`).join('')}
+        <div style="text-align:right;font-size:13px;margin-top:10px">
             <div>Subtotal: ${Utils.formatCurrency(q.subtotal)}</div>
             ${q.discount_amount > 0 ? `<div style="color:var(--color-success)">Discount: -${Utils.formatCurrency(q.discount_amount)}</div>` : ''}
             <div>Tax: ${Utils.formatCurrency(q.tax_amount)}</div>
             <div style="font-weight:800;font-size:15px;margin-top:4px">Grand Total: ${Utils.formatCurrency(q.grand_total)}</div>
         </div>
-        ${q.revisions && q.revisions.length > 1 ? `<div style="margin-top:12px;font-size:11.5px;color:var(--text-muted)">Revisions: ${q.revisions.map(r => `#${r.revision}${r.quotation_id===q.quotation_id?' (current)':''}`).join(', ')}</div>` : ''}
+        <div style="margin-top:12px;font-size:11.5px;color:var(--text-muted)">
+            Issued ${Utils.formatDate(q.created_at)} by ${q.created_by_name || '—'}
+            ${q.expiry_date ? ` · Expires ${Utils.formatDate(q.expiry_date)}` : ''}
+            ${q.accepted_at ? ` · Accepted ${Utils.formatDate(q.accepted_at)}` : ''}
+        </div>
+        ${q.revisions && q.revisions.length > 1 ? `<div style="margin-top:8px;font-size:11.5px;color:var(--text-muted)">Revisions: ${q.revisions.map(r => `<a href="#" onclick="openDetailModal(${r.quotation_id});return false" style="${r.quotation_id===q.quotation_id?'font-weight:700':''}">#${r.revision}${r.quotation_id===q.quotation_id?' (current)':''}</a>`).join(', ')}</div>` : ''}
         ${q.accept_token && q.status === 'sent' ? `<div style="margin-top:10px;padding:8px;background:var(--bg-surface-2);border-radius:6px;font-size:11px;word-break:break-all">Customer acceptance link token: <code>${q.accept_token}</code></div>` : ''}
     `;
     renderDetailActions(q);
@@ -303,20 +1308,31 @@ function renderDetail(q) {
 function renderDetailActions(q) {
     const el = document.getElementById('detailActions');
     const buttons = [];
-    buttons.push(`<button class="btn-ghost" onclick="downloadQuotationPdf(${q.quotation_id}, '${q.quotation_number}')">⬇ PDF</button>`);
+    buttons.push(`<button class="btn-ghost" onclick="downloadQuotationPdf(${q.quotation_id}, '${q.quotation_number}')">${ICON.download} PDF</button>`);
+    buttons.push(`<button class="btn-ghost" onclick="printQuotation(${q.quotation_id})">${ICON.print} Print</button>`);
+    buttons.push(`<button class="btn-ghost" onclick="emailQuotation(${q.quotation_id})">${ICON.mail} Email</button>`);
+    buttons.push(`<button class="btn-ghost" data-require-perm="quotations:create" onclick="openDuplicateModal(${q.quotation_id})">${ICON.copy} Duplicate</button>`);
     if (q.status === 'draft') {
-        buttons.push(`<button class="btn-ghost" data-require-perm="quotations:update" onclick="quotationAction('send')">Send</button>`);
+        // A draft is the only status the backend allows in-place editing on
+        // (quotation.service.js:update rejects anything else) — for every
+        // other status, "editing" means creating a new draft revision first
+        // (see reviseAndEdit below), which is offered instead.
+        buttons.push(`<button class="btn-ghost" data-require-perm="quotations:update" onclick="editDraftQuotation(${q.quotation_id})">Edit</button>`);
+        buttons.push(`<button class="btn-primary-brand" data-require-perm="quotations:update" onclick="quotationAction('send')">Send</button>`);
     }
     if (q.status === 'sent') {
         buttons.push(`<button class="btn-ghost" data-require-perm="quotations:approve" style="color:var(--color-success)" onclick="quotationAction('accept')">Mark Accepted</button>`);
         buttons.push(`<button class="btn-ghost" data-require-perm="quotations:update" style="color:var(--color-danger)" onclick="quotationAction('reject')">Reject</button>`);
         buttons.push(`<button class="btn-ghost" data-require-perm="quotations:update" onclick="quotationAction('expire')">Expire</button>`);
     }
-    if (['sent','rejected','expired'].includes(q.status)) {
-        buttons.push(`<button class="btn-ghost" data-require-perm="quotations:create" onclick="reviseQuotation()">Create Revision</button>`);
+    if (['sent', 'accepted', 'rejected', 'expired'].includes(q.status)) {
+        buttons.push(`<button class="btn-ghost" data-require-perm="quotations:create" onclick="reviseAndEdit(${q.quotation_id})">Revise &amp; Edit</button>`);
     }
     if (q.status === 'accepted') {
         buttons.push(`<button class="btn-primary-brand" data-require-perm="quotations:approve" onclick="openConvertModal()">Convert to Booking</button>`);
+    }
+    if (q.status === 'converted' && q.converted_booking_id) {
+        buttons.push(`<a class="btn-ghost" href="../bookings/index.html?booking_id=${q.converted_booking_id}">View Booking ${ICON.arrowRight}</a>`);
     }
     el.innerHTML = buttons.join('');
     Auth.populateUserUI();
@@ -334,22 +1350,29 @@ async function quotationAction(action) {
     }
 }
 
-async function removeDetailItem(itemRowId) {
+async function editDraftQuotation(id) {
     try {
-        await API.quotations.removeItem(currentDetailId, itemRowId);
-        openDetailModal(currentDetailId);
+        const res = await API.quotations.get(id);
+        bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
+        await openBuilder('edit', res.data);
     } catch (err) {
-        Utils.toast(err.message || 'Failed to remove item', 'error');
+        Utils.toast(err.message || 'Failed to load quotation for editing', 'error');
     }
 }
 
-async function reviseQuotation() {
+/* Sent/accepted/rejected/expired quotations can't be edited in place (the
+   backend only allows update() on a draft — see quotation.service.js) — so
+   "editing" one of those means: create a new draft revision (server-side
+   copy, same items), then open it straight in the Builder for editing. This
+   is how a Sales Exec/Manager makes another version after the customer asks
+   for changes, at any stage of negotiation. */
+async function reviseAndEdit(id) {
     try {
-        const res = await API.quotations.revise(currentDetailId);
-        Utils.toast(`Revision ${res.data.revision} created`, 'success');
+        const res = await API.quotations.revise(id);
+        Utils.toast(`Revision ${res.data.revision} created as a new draft`, 'success');
         bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
         loadQuotations(1);
-        openDetailModal(res.data.quotation_id);
+        await openBuilder('edit', res.data);
     } catch (err) {
         Utils.toast(err.message || 'Failed to create revision', 'error');
     }
@@ -359,12 +1382,108 @@ function downloadQuotationPdf(id, number) {
     API.quotations.download(id, `${number}.pdf`).catch(err => Utils.toast(err.message || 'Failed to download PDF', 'error'));
 }
 
+/* Email — no in-app SMTP send exists for quotations (see quotation.routes.js),
+   so this opens the user's own mail client pre-addressed to the customer;
+   they attach the downloaded PDF themselves. A true "send from BanquetPro"
+   flow needs a backend email endpoint. */
+async function emailQuotation(id) {
+    try {
+        const res = await API.quotations.get(id);
+        const q = res.data;
+        if (!q.contact_email) { Utils.toast('This quotation has no customer email on file', 'error'); return; }
+        const subject = encodeURIComponent(`Your event proposal — ${q.quotation_number}`);
+        const body = encodeURIComponent(`Hi ${q.contact_name || ''},\n\nPlease find attached your quotation ${q.quotation_number} for ${q.event_name || 'your event'} — total ${Utils.formatCurrency(q.grand_total)}.\n\n(Download the PDF from BanquetPro and attach it before sending.)\n\nThank you!`);
+        window.location.href = `mailto:${q.contact_email}?subject=${subject}&body=${body}`;
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to prepare email', 'error');
+    }
+}
+
+async function printQuotation(id) {
+    try {
+        const res = await API.quotations.get(id);
+        const q = res.data;
+        const groups = groupItemsByCategory(q.items);
+        document.getElementById('printArea').innerHTML = `
+            <h2>${q.quotation_number} <small style="font-size:14px;color:#666">(Rev ${q.revision})</small></h2>
+            <p><strong>${q.contact_name || ''}</strong><br>${q.contact_email || ''} ${q.contact_phone || ''}</p>
+            <p>${[q.event_name, q.event_type, q.event_date, q.hall_name, q.guest_count ? q.guest_count + ' guests' : ''].filter(Boolean).join(' · ')}</p>
+            ${Object.entries(groups).map(([cat, items]) => `
+                <h4>${cat}</h4>
+                <table border="1" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse">
+                    ${items.map(i => `<tr><td>${parseItemTag(i.description).label}</td><td>${i.quantity}</td><td>${Utils.formatCurrency(i.unit_price)}</td><td>${Utils.formatCurrency(i.line_total)}</td></tr>`).join('')}
+                </table>`).join('')}
+            <h3 style="text-align:right">Grand Total: ${Utils.formatCurrency(q.grand_total)}</h3>
+        `;
+        window.print();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to prepare print view', 'error');
+    }
+}
+
+/* ── Duplicate / Clone for another customer ── */
+async function openDuplicateModal(id) {
+    try {
+        const res = await API.quotations.get(id);
+        cloneSourceQuotation = res.data;
+        document.getElementById('cloneCustomerSearch').value = '';
+        document.getElementById('cloneSelectedCustomer').style.display = 'none';
+        cloneTargetCustomer = null;
+        bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
+        new bootstrap.Modal(document.getElementById('cloneModal')).show();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to load quotation', 'error');
+    }
+}
+
+let cloneTargetCustomer = null;
+const searchCloneCustomers = Utils.debounce(async (q) => {
+    const wrap = document.getElementById('cloneCustomerSuggestions');
+    const value = (q || '').trim();
+    if (value.length < 2) { wrap.innerHTML = ''; return; }
+    try {
+        const res = await API.customers.list({ search: value, limit: 6 });
+        const list = res.data?.customers || [];
+        renderCustomerSuggestions(wrap, list, (c) => `selectCloneCustomer(${c.customer_id}, '${esc(c.first_name + ' ' + c.last_name)}')`);
+    } catch { wrap.innerHTML = ''; }
+}, 300);
+
+function selectCloneCustomer(id, name) {
+    cloneTargetCustomer = id;
+    document.getElementById('cloneCustomerSearch').value = name;
+    document.getElementById('cloneCustomerSuggestions').innerHTML = '';
+    document.getElementById('cloneSelectedCustomerName').textContent = name;
+    document.getElementById('cloneSelectedCustomer').style.display = '';
+}
+
+async function submitClone() {
+    if (!cloneTargetCustomer) { Utils.toast('Select a customer for the duplicate', 'error'); return; }
+    const btn = document.getElementById('confirmCloneBtn');
+    Utils.showLoader(btn, 'Duplicating…');
+    try {
+        const q = cloneSourceQuotation;
+        const items = (q.items || []).map(i => ({ description: i.description, quantity: i.quantity, unitPrice: i.unit_price, taxPercent: i.tax_percent }));
+        await API.quotations.create({
+            customerId: cloneTargetCustomer,
+            eventName: q.event_name, eventType: q.event_type, eventDate: q.event_date,
+            guestCount: q.guest_count, hallId: q.hall_id,
+            discountAmount: q.discount_amount, notes: q.notes, expiryDate: q.expiry_date,
+            items,
+        });
+        Utils.hideLoader(btn);
+        bootstrap.Modal.getInstance(document.getElementById('cloneModal'))?.hide();
+        Utils.toast('Duplicate quotation created', 'success');
+        loadQuotations(1);
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to duplicate quotation', 'error');
+    }
+}
+
 /* ── Convert to Booking ── */
 function openConvertModal() {
     document.getElementById('cvStartTime').value = '';
     document.getElementById('cvEndTime').value = '';
-    document.getElementById('cvCustomerId').value = '';
-    document.getElementById('cvHallId').value = '';
     new bootstrap.Modal(document.getElementById('convertModal')).show();
 }
 
@@ -375,13 +1494,7 @@ async function submitConvert() {
     const btn = document.getElementById('confirmConvertBtn');
     Utils.showLoader(btn, 'Converting…');
     try {
-        const customerId = document.getElementById('cvCustomerId').value;
-        const hallId = document.getElementById('cvHallId').value;
-        const res = await API.quotations.convert(currentDetailId, {
-            eventTimeStart, eventTimeEnd,
-            customerId: customerId ? parseInt(customerId, 10) : undefined,
-            hallId: hallId ? parseInt(hallId, 10) : undefined,
-        });
+        const res = await API.quotations.convert(currentDetailId, { eventTimeStart, eventTimeEnd });
         Utils.hideLoader(btn);
         bootstrap.Modal.getInstance(document.getElementById('convertModal'))?.hide();
         bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
@@ -393,7 +1506,6 @@ async function submitConvert() {
     }
 }
 
-const handleSearch = Utils.debounce(() => loadQuotations(1), 350);
 document.addEventListener('DOMContentLoaded', () => loadQuotations(1));
 </script>
 </body>

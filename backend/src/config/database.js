@@ -2,6 +2,14 @@
  * Database Configuration — MSSQL (Microsoft SQL Server)
  * Uses the `mssql` package (Tedious driver) with connection pooling.
  * Supports 1000+ concurrent users via pool settings.
+ *
+ * Resilient connection manager:
+ *  - Single shared pool (never competing pools) guarded by a cached
+ *    connect promise.
+ *  - Exponential backoff retry (1s → 30s cap) for at least 60s before
+ *    a getPool() call gives up and throws.
+ *  - Auto-reconnect: a pool/network error tears down the cached pool so
+ *    the next getPool() call transparently reconnects.
  */
 
 'use strict';
@@ -17,18 +25,42 @@ const poolConfig = {
     user:     process.env.DB_USER || 'sa',
     password: process.env.DB_PASSWORD || '',
     pool: {
-        max:                     parseInt(process.env.DB_POOL_MAX, 10) || 20,
-        min:                     parseInt(process.env.DB_POOL_MIN, 10) || 0,
-        idleTimeoutMillis:       30000,
+        max:               parseInt(process.env.DB_POOL_MAX, 10) || 20,
+        min:               parseInt(process.env.DB_POOL_MIN, 10) || 0,
+        idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT, 10) || 30000,
     },
     options: {
         encrypt:                String(process.env.DB_ENCRYPT).toLowerCase() === 'true',
-        trustServerCertificate: String(process.env.DB_TRUST_SERVER_CERTIFICATE).toLowerCase() === 'true',
+        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === undefined
+            ? true
+            : String(process.env.DB_TRUST_SERVER_CERTIFICATE).toLowerCase() === 'true',
         enableArithAbort:       true,
         useUTC:                 true,
     },
-    connectionTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT, 10) || 15000,
-    requestTimeout:    parseInt(process.env.DB_REQUEST_TIMEOUT, 10) || 15000,
+    connectionTimeout: Math.max(parseInt(process.env.DB_CONNECT_TIMEOUT, 10) || 30000, 30000),
+    requestTimeout:    Math.max(parseInt(process.env.DB_REQUEST_TIMEOUT, 10) || 30000, 30000),
+};
+
+// Windows Auth (trusted connection) is used whenever DB_USER isn't supplied.
+const usingWindowsAuth = !process.env.DB_USER;
+if (usingWindowsAuth) {
+    poolConfig.options.trustedConnection = true;
+}
+
+// ─── Retry Policy ───────────────────────────────────────────────────────────
+const RETRY_BASE_MS   = parseInt(process.env.DB_RETRY_BASE_MS, 10) || 1000;
+const RETRY_MAX_MS    = parseInt(process.env.DB_RETRY_MAX_MS, 10) || 30000;
+const RETRY_BUDGET_MS = parseInt(process.env.DB_RETRY_BUDGET_MS, 10) || 60000; // retry at least 60s before giving up
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const logConnectionTarget = () => {
+    logger.info('MSSQL target', {
+        instance: `${poolConfig.server},${poolConfig.port}`,
+        database: poolConfig.database,
+        authMode: usingWindowsAuth ? 'Windows Authentication' : 'SQL Server Authentication',
+        encrypt:  poolConfig.options.encrypt,
+    });
 };
 
 // ─── Singleton Pool Instance ───────────────────────────────────────────────
@@ -36,9 +68,69 @@ let pool = null;
 let poolPromise = null;
 
 /**
- * Get or lazily create the connection pool.
- * mssql pool creation is asynchronous, so we cache the connect promise
- * to avoid creating multiple pools under concurrent first-use calls.
+ * Attempt a single connection.
+ */
+const connectOnce = async () => {
+    const connectedPool = await new sql.ConnectionPool(poolConfig).connect();
+
+    connectedPool.on('error', (err) => {
+        logger.error('MSSQL pool error — pool will reconnect on next use', { error: err.message });
+        // Tear down the shared references so the next getPool() call
+        // transparently reconnects instead of reusing a dead pool.
+        pool = null;
+        poolPromise = null;
+    });
+
+    return connectedPool;
+};
+
+/**
+ * Connect with exponential backoff, retrying for at least
+ * DB_RETRY_BUDGET_MS (default 60s) before giving up.
+ */
+const connectWithBackoff = async () => {
+    logConnectionTarget();
+
+    const startedAt = Date.now();
+    let attempt = 0;
+    let delay = RETRY_BASE_MS;
+
+    for (;;) {
+        attempt += 1;
+        logger.info('Attempting MSSQL connection', { attempt });
+        try {
+            const connectedPool = await connectOnce();
+            logger.info('MSSQL connection pool created', {
+                attempt,
+                host:     poolConfig.server,
+                database: poolConfig.database,
+                max:      poolConfig.pool.max,
+            });
+            return connectedPool;
+        } catch (err) {
+            const elapsed = Date.now() - startedAt;
+            logger.error('MSSQL connection attempt failed', {
+                attempt, elapsedMs: elapsed, error: err.message,
+            });
+
+            if (elapsed >= RETRY_BUDGET_MS) {
+                logger.error('MSSQL connection retry budget exhausted — giving up for now', {
+                    attempts: attempt, elapsedMs: elapsed,
+                });
+                throw err;
+            }
+
+            await sleep(delay);
+            delay = Math.min(delay * 2, RETRY_MAX_MS);
+        }
+    }
+};
+
+/**
+ * Get or lazily create the connection pool. Always returns a valid,
+ * connected pool (or throws after exhausting the retry budget). Concurrent
+ * callers share the same in-flight connect promise, so only one pool is
+ * ever created.
  * @returns {Promise<sql.ConnectionPool>}
  */
 const getPool = async () => {
@@ -46,18 +138,9 @@ const getPool = async () => {
         return pool;
     }
     if (!poolPromise) {
-        poolPromise = new sql.ConnectionPool(poolConfig)
-            .connect()
+        poolPromise = connectWithBackoff()
             .then((connectedPool) => {
                 pool = connectedPool;
-                pool.on('error', (err) => {
-                    logger.error('MSSQL pool error', { error: err.message });
-                });
-                logger.info('MSSQL connection pool created', {
-                    host:     poolConfig.server,
-                    database: poolConfig.database,
-                    max:      poolConfig.pool.max,
-                });
                 return pool;
             })
             .catch((err) => {
@@ -167,8 +250,34 @@ const healthCheck = async () => {
     try {
         const rows = await executeQuery('SELECT 1 AS ok');
         return rows[0]?.ok === 1;
-    } catch {
+    } catch (err) {
+        logger.error('Health check DB query failed', { error: err.message });
         return false;
+    }
+};
+
+/**
+ * Block until the database responds to a simple query, retrying with
+ * exponential backoff indefinitely (never gives up, since a fresh boot's
+ * SQL Server may legitimately take longer than one 60s retry budget).
+ * Intended to be awaited once at process startup, before the HTTP server
+ * begins accepting requests.
+ */
+const waitUntilReady = async () => {
+    logger.info('Waiting for SQL Server...');
+    // eslint-disable-next-line no-console
+    console.log('Waiting for SQL Server...');
+
+    for (;;) {
+        try {
+            await getPool();
+            logger.info('Database connected. Starting server.');
+            // eslint-disable-next-line no-console
+            console.log('Database connected. Starting server.');
+            return;
+        } catch (err) {
+            logger.error('Still waiting for SQL Server — will keep retrying', { error: err.message });
+        }
     }
 };
 
@@ -187,4 +296,12 @@ const closePool = async () => {
 process.on('SIGINT',  closePool);
 process.on('SIGTERM', closePool);
 
-module.exports = { getPool, executeQuery, executeStoredProcedure, withTransaction, healthCheck, closePool };
+module.exports = {
+    getPool,
+    executeQuery,
+    executeStoredProcedure,
+    withTransaction,
+    healthCheck,
+    waitUntilReady,
+    closePool,
+};

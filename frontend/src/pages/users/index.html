@@ -155,13 +155,19 @@
                          Hidden entirely for non-super-admins, who are always scoped to
                          their own company server-side regardless of what's submitted. -->
                     <div class="col-md-6" id="uCompanyWrap" style="display:none">
-                        <label class="form-label">Company / Property *</label>
+                        <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+                            <span>Company / Property *</span>
+                            <button type="button" class="btn-ghost" data-require-perm="companies:update" style="padding:0 6px;font-size:11px" onclick="openRenameModal('company', document.getElementById('uCompany').value, document.getElementById('uCompany').selectedOptions[0]?.textContent)" title="Rename this Company/Property">Rename</button>
+                        </label>
                         <select class="form-select" id="uCompany" onchange="onCompanyChanged()">
                             <option value="">Loading…</option>
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Branch</label>
+                        <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+                            <span>Branch</span>
+                            <button type="button" class="btn-ghost" data-require-perm="branches:update" style="padding:0 6px;font-size:11px" onclick="openRenameModal('branch', document.getElementById('uBranch').value, document.getElementById('uBranch').selectedOptions[0]?.textContent)" title="Rename this Branch">Rename</button>
+                        </label>
                         <select class="form-select" id="uBranch">
                             <option value="">Unassigned</option>
                         </select>
@@ -220,15 +226,44 @@
             <div class="modal-body">
                 <input type="hidden" id="ccUserId">
                 <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Moving <strong id="ccUserEmail"></strong> out of their current property into a different one. They'll see only the new property's data from their next login onward.</p>
-                <label class="form-label">New Property</label>
+                <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+                    <span>New Property</span>
+                    <button type="button" class="btn-ghost" data-require-perm="companies:update" style="padding:0 6px;font-size:11px" onclick="openRenameModal('company', document.getElementById('ccCompanyId').value, document.getElementById('ccCompanyId').selectedOptions[0]?.textContent)" title="Rename this Company/Property">Rename</button>
+                </label>
                 <select class="form-select" id="ccCompanyId" onchange="onChangeCompanySelected()"><option value="">Loading…</option></select>
-                <label class="form-label" style="margin-top:12px">New Branch</label>
+                <label class="form-label" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                    <span>New Branch</span>
+                    <button type="button" class="btn-ghost" data-require-perm="branches:update" style="padding:0 6px;font-size:11px" onclick="openRenameModal('branch', document.getElementById('ccBranchId').value, document.getElementById('ccBranchId').selectedOptions[0]?.textContent)" title="Rename this Branch">Rename</button>
+                </label>
                 <select class="form-select" id="ccBranchId" disabled><option value="">Select a Property first</option></select>
                 <p style="font-size:12px;color:var(--text-muted);margin-top:6px">Leaving Branch unassigned is fine — it can be set later from Edit User.</p>
             </div>
             <div class="modal-footer">
                 <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn-primary-brand" id="confirmChangeCompanyBtn" onclick="submitChangeCompany()">Move User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Company/Property or Branch — Super Admin only. Reuses the same
+     existing-entity edit endpoints Administration's Company/Branch pages use
+     (PUT /companies/:id, PATCH /branches/:id) so this is a real rename, not
+     a local-only relabel — every dropdown showing that Company/Property or
+     Branch anywhere in the app picks up the new name immediately. -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="renameModalTitle">Rename</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="renameEntityType">
+                <input type="hidden" id="renameEntityId">
+                <label class="form-label" id="renameFieldLabel">Name</label>
+                <input type="text" class="form-control" id="renameNewValue">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmRenameBtn" onclick="submitRename()">Save</button>
             </div>
         </div>
     </div>
@@ -490,6 +525,53 @@ async function loadBranchesForCompany(companyId, selectedBranchId) {
 async function onCompanyChanged() {
     const companyId = document.getElementById('uCompany').value || null;
     await loadBranchesForCompany(companyId, null);
+}
+
+/* ── Rename Company/Property or Branch (Super Admin only) — a real rename via
+   the same endpoints Administration's own Company/Branch management pages
+   use, not a local relabel. Updates every dropdown option showing that
+   entity across both open modals immediately, so there's no stale name
+   floating around until the page is reloaded. ── */
+let renameModalInst;
+function openRenameModal(type, id, currentName) {
+    if (!id) { Utils.toast(`Select a ${type === 'company' ? 'Company/Property' : 'Branch'} first`, 'error'); return; }
+    document.getElementById('renameEntityType').value = type;
+    document.getElementById('renameEntityId').value = id;
+    document.getElementById('renameModalTitle').textContent = type === 'company' ? 'Rename Company / Property' : 'Rename Branch';
+    document.getElementById('renameFieldLabel').textContent = type === 'company' ? 'Company / Property Name' : 'Branch Name';
+    document.getElementById('renameNewValue').value = (currentName || '').trim();
+    renameModalInst = new bootstrap.Modal(document.getElementById('renameModal'));
+    renameModalInst.show();
+}
+
+async function submitRename() {
+    const type = document.getElementById('renameEntityType').value;
+    const id = document.getElementById('renameEntityId').value;
+    const newName = document.getElementById('renameNewValue').value.trim();
+    if (!newName) { Utils.toast('Name cannot be empty', 'error'); return; }
+    const btn = document.getElementById('confirmRenameBtn');
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        if (type === 'company') {
+            await API.companies.update(id, { companyName: newName });
+        } else {
+            await API.branches.update(id, { branchName: newName });
+        }
+        Utils.hideLoader(btn);
+        renameModalInst?.hide();
+        Utils.toast(`${type === 'company' ? 'Company/Property' : 'Branch'} renamed`, 'success');
+        // Reflect the new name in every dropdown option across both modals
+        // that currently references this entity — no reload needed.
+        const selectIds = type === 'company' ? ['uCompany', 'ccCompanyId'] : ['uBranch', 'ccBranchId'];
+        selectIds.forEach(selId => {
+            const opt = document.getElementById(selId)?.querySelector(`option[value="${id}"]`);
+            if (opt) opt.textContent = newName;
+        });
+        loadUsers(1);
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || `Failed to rename ${type === 'company' ? 'Company/Property' : 'Branch'}`, 'error');
+    }
 }
 
 async function loadCompanyDropdown(selectedCompanyId) {

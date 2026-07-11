@@ -232,7 +232,9 @@ const API = (() => {
 
         /* ─ Branches ─ */
         branches: {
-            list: (p) => request('GET', '/branches', { params: p }),
+            list:   (p)    => request('GET',   '/branches',      { params: p }),
+            create: (d)    => request('POST',  '/branches',      { body: d }),
+            update: (id,d) => request('PATCH', `/branches/${id}`, { body: d }),
         },
 
         /* ─ Halls ─ */

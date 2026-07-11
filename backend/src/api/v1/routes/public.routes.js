@@ -11,6 +11,25 @@ const response         = require('../../../utils/response');
 const quotationService = require('../../../services/quotation.service');
 
 /**
+ * GET /api/v1/public/companies
+ * Minimal (id + name only — no contact/financial fields) listing of active
+ * companies/properties, for the self-registration form's required
+ * Company/Property picker. Registration happens before a session exists, so
+ * this can't sit behind the authenticated GET /companies endpoint — but it
+ * exposes nothing beyond what a prospective customer needs to pick which
+ * property they're signing up with.
+ */
+router.get('/companies', async (req, res) => {
+    const rows = await executeQuery(
+        `SELECT company_id, company_name
+         FROM Companies
+         WHERE is_active = 1 AND deleted_at IS NULL
+         ORDER BY company_name`
+    );
+    return response.success(res, rows);
+});
+
+/**
  * GET /api/v1/public/banquets?city=&min_capacity=
  * Public listing for customer-facing search
  */

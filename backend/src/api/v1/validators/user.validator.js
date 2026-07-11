@@ -32,6 +32,12 @@ const nameAndRoleFields = {
     role_ids:   Joi.array().items(Joi.number().integer().positive()),
     branchId:   Joi.number().integer().positive().allow(null),
     branch_id:  Joi.number().integer().positive().allow(null),
+    // Only a Super Admin's request may actually change these (enforced in
+    // user.service.js:resolveOrgAssignment) — accepted here for everyone so
+    // Joi's stripUnknown doesn't drop the field before the service gets a
+    // chance to validate + reject it for non-super-admin callers.
+    companyId:  Joi.number().integer().positive().allow(null),
+    company_id: Joi.number().integer().positive().allow(null),
 };
 
 const createSchema = Joi.object({

@@ -12,9 +12,14 @@ const { PERMISSIONS }        = require('../../../constants');
 const router = Router();
 
 router.get('/', requirePermission(PERMISSIONS.BRANCHES_READ), async (req, res) => {
+    // activeOnly=true is used by the user-assignment cascading dropdown
+    // (Company/Property -> Branch) — it must only ever offer branches that
+    // are still active. The branch-management page itself omits this filter
+    // so inactive branches remain visible/reactivatable there.
+    const activeOnly = req.query.activeOnly === 'true' || req.query.activeOnly === '1';
     const rows = await executeQuery(
         `SELECT branch_id, branch_name, branch_code, address_line1, phone, is_active, created_at
-         FROM Branches WHERE company_id = @companyId ORDER BY branch_name`,
+         FROM Branches WHERE company_id = @companyId ${activeOnly ? 'AND is_active = 1' : ''} ORDER BY branch_name`,
         { companyId: req.companyId }
     );
     return response.success(res, rows);

@@ -29,6 +29,11 @@ const schemas = {
         password:         password.required(),
         confirm_password: Joi.any().valid(Joi.ref('password')).required()
             .messages({ 'any.only': 'Passwords do not match' }),
+        // Which property this customer is signing up with — no hardcoded
+        // default (see auth.service.js:register); re-validated server-side
+        // against the DB regardless of what's submitted here.
+        company_id:       Joi.number().integer().positive().required()
+            .messages({ 'any.required': 'Select the Company/Property you are signing up with' }),
     }),
 
     forgotPassword: Joi.object({

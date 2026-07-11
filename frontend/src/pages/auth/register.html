@@ -276,6 +276,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label">Property you're booking with</label>
+                    <select class="form-control" id="companyId" required>
+                        <option value="">Loading properties…</option>
+                    </select>
+                    <div class="invalid-feedback" id="companyId_error"></div>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Password</label>
                     <div class="input-group-auth">
                         <span class="input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path></svg></span>
@@ -315,6 +323,22 @@
     Auth.applyTheme();
     Auth.requireGuest();
 
+    // Company/Property picker — always loaded from the database (GET
+    // /public/companies, no auth required since this page runs pre-login),
+    // never a hardcoded default. See auth.service.js:register for the
+    // matching server-side validation.
+    (async function loadCompanies() {
+        const sel = document.getElementById('companyId');
+        try {
+            const res = await API.public.companies();
+            const companies = res.data || [];
+            sel.innerHTML = '<option value="">Select the property you\'re booking with…</option>' +
+                companies.map(c => `<option value="${c.company_id}">${c.company_name}</option>`).join('');
+        } catch (err) {
+            sel.innerHTML = '<option value="">Failed to load properties — please refresh</option>';
+        }
+    })();
+
     document.getElementById('registerForm').addEventListener('submit', async function (e) {
         e.preventDefault();
 
@@ -322,6 +346,7 @@
         const lastName  = document.getElementById('lastName').value.trim();
         const email     = document.getElementById('email').value.trim();
         const phone     = document.getElementById('phone').value.trim();
+        const companyId = document.getElementById('companyId').value;
         const password  = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         const alert = document.getElementById('registerAlert');
@@ -334,6 +359,7 @@
         if (!firstName) { Utils.setFieldError('firstName', 'First name is required'); valid = false; }
         if (!lastName)  { Utils.setFieldError('lastName', 'Last name is required'); valid = false; }
         if (!email || !Utils.Validators.email(email)) { Utils.setFieldError('email', 'Please enter a valid email address'); valid = false; }
+        if (!companyId) { Utils.setFieldError('companyId', 'Select the property you are signing up with'); valid = false; }
         if (!password || password.length < 8 || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
             Utils.setFieldError('password', 'Password must be 8+ characters with uppercase, lowercase, and a number');
             valid = false;
@@ -350,6 +376,7 @@
                 last_name:  lastName,
                 email,
                 phone: phone || undefined,
+                company_id: parseInt(companyId, 10),
                 password,
                 confirm_password: confirmPassword,
             });

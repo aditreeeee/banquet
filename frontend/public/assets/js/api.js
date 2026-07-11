@@ -183,6 +183,12 @@ const API = (() => {
             me:            ()                => request('GET',  '/auth/me'),
         },
 
+        /* ─ Public (no auth) — banquet search, availability, and the
+           Company/Property picker used by the self-registration form ─ */
+        public: {
+            companies: () => request('GET', '/public/companies'),
+        },
+
         /* ─ Dashboard ─ */
         dashboard: {
             kpis:     (params) => request('GET', '/dashboard/kpis',        { params }),
@@ -402,8 +408,10 @@ const API = (() => {
             create: (d)    => request('POST', '/users',        { body: d }),
             update: (id,d) => request('PUT',  `/users/${id}`,  { body: d }),
             toggle: (id)   => request('PATCH',`/users/${id}/toggle-status`),
+            changeCompany: (id, companyId, branchId) => request('PATCH', `/users/${id}/company`, { body: { companyId, branchId: branchId || null } }),
             delete: (id)   => request('DELETE', `/users/${id}`),
             schedule: (id) => request('GET',  `/users/${id}/schedule`),
+            auditLog: (id) => request('GET',  `/users/${id}/audit-log`),
             pending:  ()   => request('GET',  '/users/pending'),
             approve:  (id) => request('PATCH',`/users/${id}/approve`),
             reject:   (id) => request('PATCH',`/users/${id}/reject`),

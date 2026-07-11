@@ -6,6 +6,8 @@
 'use strict';
 
 const authRepo = require('../repositories/auth.repository');
+const companyRepo = require('../repositories/company.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const settingsService = require('./settings.service');
 const {
     verifyPassword,
@@ -124,6 +126,18 @@ const login = async ({ email, password, remember_me = false }, meta = {}) => {
         userAgent: meta.userAgent,
     });
 
+    // entity_type/entity_id='user'/<self> so this shows up in that user's
+    // own audit trail (see auditLogRepo.findForUser) alongside every
+    // administrative action taken on their account.
+    await auditLogRepo.log({
+        companyId:  user.company_id,
+        userId:     user.user_id,
+        action:     'user.login',
+        entityType: 'user',
+        entityId:   user.user_id,
+        description: `${user.email} logged in`,
+    });
+
     // Strip sensitive fields before returning
     const { password_hash, ...safeUser } = user;
     const permissions = await authRepo.findPermissions(user.user_id);
@@ -138,7 +152,7 @@ const login = async ({ email, password, remember_me = false }, meta = {}) => {
  * ('pending') state — see auth.repository.js register() — so it cannot log
  * in until an admin approves it via userService.approve/reject.
  */
-const register = async ({ first_name, last_name, email, phone, password }) => {
+const register = async ({ first_name, last_name, email, phone, password, company_id }) => {
     const normalizedEmail = email.toLowerCase().trim();
     const existing = await authRepo.findByEmail(normalizedEmail);
     if (existing) {
@@ -152,6 +166,19 @@ const register = async ({ first_name, last_name, email, phone, password }) => {
         throw new Error('Customer role is not configured');
     }
 
+    // No hardcoded default tenant — the signup form's Company/Property picker
+    // (fed by GET /public/companies) requires an explicit choice, and it's
+    // re-validated here exactly like admin-driven user creation
+    // (user.service.js:resolveOrgAssignment) so a tampered/forged request
+    // can't land on a deleted or deactivated company either.
+    const companyId = parseInt(company_id, 10);
+    const companyOk = await companyRepo.existsAndActive(companyId);
+    if (!companyOk) {
+        throw new ValidationError('Selected Company/Property does not exist or is inactive', [
+            { field: 'company_id', message: 'Choose an active, existing Company/Property' },
+        ]);
+    }
+
     const passwordHash = await hashPassword(password);
     const user = await authRepo.register({
         firstName: first_name,
@@ -160,13 +187,10 @@ const register = async ({ first_name, last_name, email, phone, password }) => {
         phone,
         passwordHash,
         roleId,
-        // Self-registration has no tenant-selection UI yet; new accounts join
-        // the default/primary company (company_id 1). Revisit if/when the app
-        // exposes multi-company signup (e.g. a tenant subdomain or invite code).
-        companyId: 1,
+        companyId,
     });
 
-    logger.info('New user registered — pending approval', { userId: user.user_id, email: normalizedEmail });
+    logger.info('New user registered — pending approval', { userId: user.user_id, email: normalizedEmail, companyId });
     return user;
 };
 

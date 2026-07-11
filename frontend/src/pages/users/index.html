@@ -8,6 +8,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="../../../public/assets/css/theme.css" rel="stylesheet">
 <link href="../../../public/assets/css/app.css"   rel="stylesheet">
+<link href="../../../public/assets/css/kpi-typography.css" rel="stylesheet">
 </head>
 <body>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -25,8 +26,13 @@
 
     <main class="page-content">
         <div class="page-header">
-            <div><h1 class="page-title">User Management</h1><p class="page-subtitle">Manage staff accounts, roles and permissions</p></div>
-            <button class="btn-primary-brand" data-require-perm="users:create" onclick="openModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Add User</button>
+            <div><h1 class="page-title" id="pageTitle">User Management</h1><p class="page-subtitle" id="pageSubtitle">Manage staff accounts, roles and permissions</p></div>
+            <div style="display:flex;gap:10px;align-items:center">
+                <!-- Super Admin only — every user across every Company/Property/Branch,
+                     regardless of assignment or current impersonation. -->
+                <button class="btn-ghost" id="showAllUsersBtn" style="display:none" onclick="toggleShowAllUsers()"></button>
+                <button class="btn-primary-brand" data-require-perm="users:create" onclick="openModal()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Add User</button>
+            </div>
         </div>
 
         <!-- Pending Approval -->
@@ -45,6 +51,14 @@
             </div>
         </div>
 
+        <!-- Overview KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px" id="overviewKPIs">
+            <div class="kpi-card"><div class="kpi-label">Total Users</div><div class="kpi-value" id="kpiTotal">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Active</div><div class="kpi-value" id="kpiActiveTotal" style="color:var(--color-success)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Pending Approval</div><div class="kpi-value" id="kpiPending" style="color:var(--color-warning)">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Deactivated</div><div class="kpi-value" id="kpiDeactivated" style="color:var(--color-danger)">—</div></div>
+        </div>
+
         <!-- Role KPIs -->
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px" id="roleKPIs">
             <div class="kpi-card"><div class="kpi-label">Super Admins</div><div class="kpi-value" id="kpiSA">—</div></div>
@@ -60,6 +74,15 @@
                 <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-4.2-4.2"></path></svg></span>
                 <input type="text" class="form-control" id="userSearch" placeholder="Name, email, branch…" oninput="handleSearch(this.value)">
             </div>
+            <!-- Company/Property + Branch filters — Super Admin only, shown in
+                 "Show All Users" mode. Always DB-driven (GET /companies,
+                 GET /branches?company_id=). -->
+            <select class="form-select" id="companyFilter" onchange="onCompanyFilterChanged()" style="width:auto;display:none">
+                <option value="">All Companies/Properties</option>
+            </select>
+            <select class="form-select" id="branchFilter" onchange="loadUsers(1)" style="width:auto;display:none" disabled>
+                <option value="">All Branches</option>
+            </select>
             <select class="form-select" id="roleFilter" onchange="loadUsers(1)" style="width:auto">
                 <option value="">All Roles</option>
                 <option value="1">Super Admin</option>
@@ -70,8 +93,9 @@
             <select class="form-select" id="statusFilter" onchange="loadUsers(1)" style="width:auto">
                 <option value="">All Status</option>
                 <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="suspended">Suspended</option>
+                <option value="inactive">Deactivated</option>
+                <option value="pending">Pending Approval</option>
+                <option value="rejected">Rejected</option>
             </select>
         </div>
 
@@ -80,7 +104,19 @@
             <div class="table-responsive">
                 <table class="table">
                     <thead>
-                        <tr><th>User</th><th id="companyColHeader" style="display:none">Company</th><th>Role</th><th>Branch</th><th>Last Login</th><th>Status</th><th>2FA</th><th style="width:120px">Actions</th></tr>
+                        <tr>
+                            <th>User</th>
+                            <th id="companyColHeader" style="display:none">Company / Property</th>
+                            <th>Role</th>
+                            <th>Branch</th>
+                            <th id="createdByColHeader" style="display:none">Created By</th>
+                            <th id="createdAtColHeader" style="display:none">Created</th>
+                            <th id="updatedAtColHeader" style="display:none">Last Updated</th>
+                            <th>Last Login</th>
+                            <th>Status</th>
+                            <th>2FA</th>
+                            <th style="width:150px">Actions</th>
+                        </tr>
                     </thead>
                     <tbody id="usersBody">
                         <tr><td colspan="7" class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></td></tr>
@@ -113,13 +149,21 @@
                             <option value="4">Booking Executive</option>
                         </select>
                     </div>
+                    <!-- Company/Property + Branch — dynamically loaded, cascading, Super
+                         Admin-only for the Company/Property level. Never hardcoded and
+                         never free text: see requirements in the User Management refactor.
+                         Hidden entirely for non-super-admins, who are always scoped to
+                         their own company server-side regardless of what's submitted. -->
+                    <div class="col-md-6" id="uCompanyWrap" style="display:none">
+                        <label class="form-label">Company / Property *</label>
+                        <select class="form-select" id="uCompany" onchange="onCompanyChanged()">
+                            <option value="">Loading…</option>
+                        </select>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label">Branch</label>
                         <select class="form-select" id="uBranch">
-                            <option value="">All Branches</option>
-                            <option value="1">Main Branch</option>
-                            <option value="2">North Branch</option>
-                            <option value="3">South Branch</option>
+                            <option value="">Unassigned</option>
                         </select>
                     </div>
                     <div class="col-md-6" id="passFieldWrap">
@@ -143,6 +187,53 @@
     </div>
 </div>
 
+<!-- User Details Modal — access scope + audit trail (login history, role
+     changes, org reassignment, admin actions). Read-only; visibility is
+     re-enforced server-side by GET /users/:id/audit-log regardless of what
+     this page shows. -->
+<div class="modal fade" id="userDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">User Details</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <div id="udScope" style="background:var(--bg-subtle,rgba(0,0,0,.03));border:1px solid var(--border-color);border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;line-height:1.9"></div>
+                <h6 style="font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);margin-bottom:10px">Activity &amp; Audit Trail</h6>
+                <div id="udAuditLog" style="max-height:320px;overflow-y:auto">
+                    <div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Property Modal — Super Admin only; moves a user to a different
+     company (see backend PATCH /users/:id/company). Deliberately separate
+     from the regular Edit User modal since this bypasses the normal
+     own-company scoping every other user edit is confined to. -->
+<div class="modal fade" id="changeCompanyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Change Property</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="ccUserId">
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Moving <strong id="ccUserEmail"></strong> out of their current property into a different one. They'll see only the new property's data from their next login onward.</p>
+                <label class="form-label">New Property</label>
+                <select class="form-select" id="ccCompanyId" onchange="onChangeCompanySelected()"><option value="">Loading…</option></select>
+                <label class="form-label" style="margin-top:12px">New Branch</label>
+                <select class="form-select" id="ccBranchId" disabled><option value="">Select a Property first</option></select>
+                <p style="font-size:12px;color:var(--text-muted);margin-top:6px">Leaving Branch unassigned is fine — it can be set later from Edit User.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmChangeCompanyBtn" onclick="submitChangeCompany()">Move User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 <button id="scrollTop">↑</button>
 
@@ -159,17 +250,95 @@ Auth.requireAuth('../auth/login.html');
 Auth.requirePermission('users:read');
 
 const ROLE_COLORS = { 'Super Admin':'#7C3AED','Company Admin':'#2563EB','Branch Manager':'#10B981','Booking Executive':'#F59E0B' };
+const STATUS_LABELS = { active:'Active', inactive:'Deactivated', pending:'Pending Approval', rejected:'Rejected' };
 
 let currentUsers = [];
 
+// "Show All Users" — Super Admin only. When on, the Company/Property and
+// Branch filters (and their table columns) are exposed and every request
+// can target any tenant explicitly via ?company_id=, independent of
+// whatever tenant is currently impersonated (see user.service.js:getAll).
+let showAllUsers = false;
+
+function toggleShowAllUsers() {
+    showAllUsers = !showAllUsers;
+    applyShowAllUsersUI();
+    loadUsers(1);
+}
+
+function applyShowAllUsersUI() {
+    const isSA = Auth.isSuperAdmin();
+    const btn = document.getElementById('showAllUsersBtn');
+    if (isSA) {
+        btn.style.display = '';
+        btn.textContent = showAllUsers ? '← My Property Only' : 'Show All Users (All Properties)';
+    } else {
+        btn.style.display = 'none';
+        showAllUsers = false;
+    }
+    document.getElementById('pageSubtitle').textContent = (isSA && showAllUsers)
+        ? 'Every user across every Company, Property and Branch on the platform'
+        : 'Manage staff accounts, roles and permissions';
+
+    const companySel = document.getElementById('companyFilter');
+    const branchSel  = document.getElementById('branchFilter');
+    companySel.style.display = (isSA && showAllUsers) ? '' : 'none';
+    branchSel.style.display  = (isSA && showAllUsers) ? '' : 'none';
+    if (isSA && showAllUsers) loadCompanyFilterOptions();
+    if (!(isSA && showAllUsers)) { companySel.value = ''; branchSel.value = ''; branchSel.disabled = true; }
+
+    ['createdByColHeader', 'createdAtColHeader', 'updatedAtColHeader'].forEach(id => {
+        document.getElementById(id).style.display = (isSA && showAllUsers) ? '' : 'none';
+    });
+}
+
+async function loadCompanyFilterOptions() {
+    const sel = document.getElementById('companyFilter');
+    const current = sel.value;
+    try {
+        const res = await API.companies.list({ limit: 500 });
+        const companies = res.data?.companies || res.data || [];
+        sel.innerHTML = '<option value="">All Companies/Properties</option>' +
+            companies.map(c => `<option value="${c.company_id}">${c.company_name}</option>`).join('');
+        sel.value = current;
+    } catch (err) {
+        sel.innerHTML = '<option value="">Failed to load companies</option>';
+    }
+}
+
+async function onCompanyFilterChanged() {
+    const companyId = document.getElementById('companyFilter').value || null;
+    const branchSel = document.getElementById('branchFilter');
+    if (!companyId) {
+        branchSel.innerHTML = '<option value="">All Branches</option>';
+        branchSel.disabled = true;
+        loadUsers(1);
+        return;
+    }
+    branchSel.disabled = false;
+    branchSel.innerHTML = '<option value="">Loading…</option>';
+    try {
+        const res = await API.branches.list({ company_id: companyId });
+        const branches = res.data || [];
+        branchSel.innerHTML = '<option value="">All Branches</option>' +
+            branches.map(b => `<option value="${b.branch_id}">${b.branch_name}</option>`).join('');
+    } catch (err) {
+        branchSel.innerHTML = '<option value="">Failed to load branches</option>';
+    }
+    loadUsers(1);
+}
+
 async function loadUsers(page = 1) {
     const tbody = document.getElementById('usersBody');
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>';
     try {
+        const isSA = Auth.isSuperAdmin();
         const res   = await API.users.list({ page, limit:20,
-            search: document.getElementById('userSearch').value || undefined,
-            role:   document.getElementById('roleFilter').value   || undefined,
-            status: document.getElementById('statusFilter').value  || undefined,
+            search:     document.getElementById('userSearch').value || undefined,
+            role:       document.getElementById('roleFilter').value   || undefined,
+            status:     document.getElementById('statusFilter').value  || undefined,
+            company_id: (isSA && showAllUsers) ? (document.getElementById('companyFilter').value || undefined) : undefined,
+            branch_id:  (isSA && showAllUsers) ? (document.getElementById('branchFilter').value || undefined) : undefined,
         });
         const users = res.data?.users || [];
         currentUsers = users;
@@ -179,7 +348,7 @@ async function loadUsers(page = 1) {
     } catch (err) {
         Utils.toast(err.message || 'Unable to load users from the server', 'error');
         currentUsers = [];
-        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state" style="padding:24px">Unable to load users. Please try again.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state" style="padding:24px">Unable to load users. Please try again.</div></td></tr>';
         updateKPIs({});
         Utils.renderPagination('userPagination', { page:1, limit:20, total:0 }, loadUsers);
     }
@@ -188,9 +357,12 @@ async function loadUsers(page = 1) {
 function renderUsers(users) {
     const tbody = document.getElementById('usersBody');
     const showCompany = Auth.isSuperAdmin();
+    const showAdminCols = Auth.isSuperAdmin() && showAllUsers;
     document.getElementById('companyColHeader').style.display = showCompany ? '' : 'none';
-    if (!users.length) { tbody.innerHTML = `<tr><td colspan="${showCompany?8:7}"><div class="empty-state" style="padding:24px">No users found</div></td></tr>`; return; }
+    const colCount = 7 + (showCompany?1:0) + (showAdminCols?3:0);
+    if (!users.length) { tbody.innerHTML = `<tr><td colspan="${colCount}"><div class="empty-state" style="padding:24px">No users found</div></td></tr>`; return; }
     const me = Auth.getUser()?.user_id;
+    const fmtDate = (d) => d ? (Utils.formatDate ? Utils.formatDate(d) : new Date(d).toLocaleDateString()) : '—';
     tbody.innerHTML = users.map(u => `
     <tr>
         <td>
@@ -202,15 +374,20 @@ function renderUsers(users) {
                 </div>
             </div>
         </td>
-        ${showCompany ? `<td style="font-size:12px"><span title="company_id: ${u.company_id}">${u.company_name || '—'}</span> <span style="color:var(--text-muted);font-size:10.5px">#${u.company_id}</span></td>` : ''}
+        ${showCompany ? `<td style="font-size:12px"><span title="company_id: ${u.company_id}">${u.company_name || '— Unassigned —'}</span></td>` : ''}
         <td><span style="background:${ROLE_COLORS[u.role_name]}20;color:${ROLE_COLORS[u.role_name]};padding:3px 8px;border-radius:20px;font-size:11.5px;font-weight:600">${u.role_name}</span></td>
         <td style="font-size:12.5px">${u.branch_name || '—'}</td>
+        ${showAdminCols ? `<td style="font-size:12px;color:var(--text-muted)">${u.created_by_name || '—'}</td>` : ''}
+        ${showAdminCols ? `<td style="font-size:12px;color:var(--text-muted)">${fmtDate(u.created_at)}</td>` : ''}
+        ${showAdminCols ? `<td style="font-size:12px;color:var(--text-muted)">${fmtDate(u.updated_at)}</td>` : ''}
         <td style="font-size:12px;color:var(--text-muted)">${u.last_login || '—'}</td>
         <td>${Utils.statusBadge(u.status)}</td>
         <td>${u.two_fa ? '<span style="color:var(--color-success)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td>
             <div style="display:flex;gap:4px">
+                <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="openUserDetails(${u.user_id})" title="View Details"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
                 <button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px" onclick="editUser(${u.user_id})" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg></button>
+                ${showCompany ? `<button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px" onclick="openChangeCompanyModal(${u.user_id}, ${u.company_id}, '${(u.email||'').replace(/'/g,"\\'")}')" title="Change Property"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 20V9l8-5 8 5v11"></path><path d="M8 20v-5h8v5"></path></svg></button>` : ''}
                 ${u.status === 'active' ? `<button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px;color:var(--color-warning)" onclick="toggleStatus(${u.user_id},'inactive')" title="Deactivate"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path></svg></button>` : `<button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px;color:var(--color-success)" onclick="toggleStatus(${u.user_id},'active')" title="Activate"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0"></path></svg></button>`}
                 <button class="btn-ghost" data-require-perm="users:update" style="padding:4px 8px;font-size:12px" onclick="resetPassword(${u.user_id}, '${u.email}')" title="Reset Password"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="15" r="3"></circle><path d="M11 12h8"></path><path d="M16 9l3 3"></path></svg></button>
                 <button class="btn-ghost" data-require-perm="users:delete" style="padding:4px 8px;font-size:12px;color:var(--color-danger)" onclick="deleteUser(${u.user_id}, '${u.email}')" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><line x1="3" y1="6" x2="21" y2="6"></line><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
@@ -226,10 +403,110 @@ function updateKPIs(s) {
     document.getElementById('kpiBM').textContent     = s.branch_manager ?? 0;
     document.getElementById('kpiBE').textContent     = s.booking_exec   ?? 0;
     document.getElementById('kpiActive').textContent = s.active         ?? 0;
+    document.getElementById('kpiTotal').textContent       = s.total       ?? 0;
+    document.getElementById('kpiActiveTotal').textContent = s.active      ?? 0;
+    document.getElementById('kpiPending').textContent     = s.pending     ?? 0;
+    document.getElementById('kpiDeactivated').textContent = s.deactivated ?? 0;
+}
+
+// User Details modal — access scope + full audit trail (login history, role
+// changes, org reassignment, admin actions). GET /users/:id/audit-log
+// enforces the same visibility as everything else here server-side.
+let userDetailsModalInst;
+async function openUserDetails(id) {
+    const scopeEl = document.getElementById('udScope');
+    const logEl   = document.getElementById('udAuditLog');
+    scopeEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    logEl.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></div>';
+    userDetailsModalInst = new bootstrap.Modal(document.getElementById('userDetailsModal'));
+    userDetailsModalInst.show();
+
+    try {
+        const res = await API.users.get(id);
+        const u = res.data;
+        document.querySelector('#userDetailsModal .modal-title').textContent = `${u.first_name} ${u.last_name || ''}`.trim();
+        scopeEl.innerHTML = `
+            <div><strong>Company:</strong> ${u.company_name || 'Unassigned'}</div>
+            <div><strong>Property:</strong> ${u.company_name || 'Unassigned'}</div>
+            <div><strong>Branch:</strong> ${u.branch_name || 'All Branches'}</div>
+            <div><strong>Role:</strong> ${u.role_name}</div>
+            <div><strong>Permissions:</strong> ${u.permission_count ?? '—'}</div>
+            <div><strong>Status:</strong> ${STATUS_LABELS[u.status] || u.status}</div>
+            <div><strong>Created By:</strong> ${u.created_by_name || '—'}</div>
+            <div><strong>Created:</strong> ${u.created_at ? new Date(u.created_at).toLocaleString() : '—'}</div>
+            <div><strong>Last Updated:</strong> ${u.updated_at ? new Date(u.updated_at).toLocaleString() : '—'}</div>
+        `;
+    } catch (err) {
+        scopeEl.innerHTML = `<span style="color:var(--color-danger)">${err.message || 'Failed to load user details'}</span>`;
+    }
+
+    try {
+        const logRes = await API.users.auditLog(id);
+        const entries = logRes.data || [];
+        logEl.innerHTML = entries.length ? entries.map(e => `
+            <div style="padding:8px 0;border-bottom:1px solid var(--border-color);font-size:12.5px">
+                <div style="display:flex;justify-content:space-between;gap:8px">
+                    <strong>${e.action}</strong>
+                    <span style="color:var(--text-muted);font-size:11.5px">${new Date(e.created_at).toLocaleString()}</span>
+                </div>
+                <div style="color:var(--text-muted)">${e.description || ''}</div>
+                <div style="color:var(--text-muted);font-size:11px">by ${e.actor_name || 'System'}${e.ip_address ? ' · ' + e.ip_address : ''}</div>
+            </div>
+        `).join('') : '<div class="empty-state" style="padding:16px">No activity recorded yet</div>';
+    } catch (err) {
+        logEl.innerHTML = `<div style="color:var(--color-danger);font-size:12.5px">${err.message || 'Failed to load audit trail'}</div>`;
+    }
 }
 
 let userModalInst, editingId = null;
-function openModal(user = null) {
+
+// Company/Property -> Branch cascade. Both dropdowns are always loaded from
+// the database (GET /companies, GET /branches?company_id=&activeOnly=true) —
+// never hardcoded, never free text. Super Admin picks the Company/Property
+// explicitly; every other role never sees that field at all and is always
+// scoped server-side to their own company regardless of what's submitted.
+async function loadBranchesForCompany(companyId, selectedBranchId) {
+    const sel = document.getElementById('uBranch');
+    if (Auth.isSuperAdmin() && !companyId) {
+        sel.innerHTML = '<option value="">Select a Company/Property first</option>';
+        sel.disabled = true;
+        return;
+    }
+    sel.disabled = false;
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+        const params = { activeOnly: true };
+        if (companyId) params.company_id = companyId;
+        const res = await API.branches.list(params);
+        const branches = res.data || [];
+        sel.innerHTML = '<option value="">Unassigned</option>' +
+            branches.map(b => `<option value="${b.branch_id}">${b.branch_name}</option>`).join('');
+        sel.value = selectedBranchId || '';
+    } catch (err) {
+        sel.innerHTML = '<option value="">Failed to load branches</option>';
+    }
+}
+
+async function onCompanyChanged() {
+    const companyId = document.getElementById('uCompany').value || null;
+    await loadBranchesForCompany(companyId, null);
+}
+
+async function loadCompanyDropdown(selectedCompanyId) {
+    const sel = document.getElementById('uCompany');
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+        const res = await API.companies.list({ is_active: 'true', limit: 500 });
+        const companies = res.data?.companies || res.data || [];
+        sel.innerHTML = '<option value="">Select Company/Property…</option>' +
+            companies.map(c => `<option value="${c.company_id}">${c.company_name}</option>`).join('');
+        sel.value = selectedCompanyId || '';
+    } catch (err) {
+        sel.innerHTML = '<option value="">Failed to load companies</option>';
+    }
+}
+
+async function openModal(user = null) {
     editingId = user?.user_id || null;
     document.getElementById('modalTitle').textContent = user ? 'Edit User' : 'Add User';
     document.getElementById('userId').value     = user?.user_id || '';
@@ -239,9 +516,27 @@ function openModal(user = null) {
     document.getElementById('uPhone').value     = user?.phone      || '';
     const roleIds = (user?.role_ids && user.role_ids.length) ? user.role_ids : (user?.role_id ? [user.role_id] : []);
     [...document.getElementById('uRole').options].forEach(o => { o.selected = roleIds.includes(parseInt(o.value, 10)); });
-    document.getElementById('uBranch').value    = user?.branch_id  || '';
     document.getElementById('uStatus').value    = user?.status     || 'active';
     document.getElementById('passFieldWrap').style.display = user ? 'none' : '';
+
+    const isSA = Auth.isSuperAdmin();
+    document.getElementById('uCompanyWrap').style.display = isSA ? '' : 'none';
+    if (isSA) {
+        await loadCompanyDropdown(user?.company_id || null);
+        await loadBranchesForCompany(user?.company_id || null, user?.branch_id || null);
+        // Company/Property can only be changed via the dedicated "Change
+        // Property" flow (openChangeCompanyModal) — locking it here avoids
+        // the false impression that picking a different value in this modal
+        // moves the user (update() intentionally never touches company_id;
+        // see user.service.js).
+        document.getElementById('uCompany').disabled = !!user;
+    } else {
+        // Non-super-admins are always scoped server-side to their own
+        // company — just load its branches directly (no company param
+        // needed; the backend resolves it from the session).
+        await loadBranchesForCompany(null, user?.branch_id || null);
+    }
+
     userModalInst = new bootstrap.Modal(document.getElementById('userModal'));
     userModalInst.show();
 }
@@ -258,6 +553,7 @@ async function editUser(id) {
 async function saveUser() {
     const btn  = document.getElementById('saveUserBtn');
     const roleIds = [...document.getElementById('uRole').selectedOptions].map(o => parseInt(o.value, 10));
+    const isSA = Auth.isSuperAdmin();
     const data = {
         first_name: document.getElementById('uFirstName').value.trim(),
         last_name:  document.getElementById('uLastName').value.trim(),
@@ -269,8 +565,12 @@ async function saveUser() {
         status:     document.getElementById('uStatus').value,
         password:   document.getElementById('uPassword')?.value || undefined,
     };
+    if (isSA) {
+        data.company_id = document.getElementById('uCompany').value ? parseInt(document.getElementById('uCompany').value) : null;
+    }
     if (!data.first_name || !data.last_name || !data.email) { Utils.toast('First name, last name and email are required', 'error'); return; }
     if (!roleIds.length) { Utils.toast('Select at least one role', 'error'); return; }
+    if (!editingId && isSA && !data.company_id) { Utils.toast('Select the Company/Property this user belongs to', 'error'); return; }
     Utils.showLoader(btn, 'Saving…');
     try {
         if (editingId) await API.users.update(editingId, data);
@@ -328,6 +628,74 @@ async function resetPassword(id, email) {
     }
 }
 
+let changeCompanyModalInst;
+async function openChangeCompanyModal(userId, currentCompanyId, email) {
+    document.getElementById('ccUserId').value = userId;
+    document.getElementById('ccUserEmail').textContent = email;
+    const sel = document.getElementById('ccCompanyId');
+    sel.innerHTML = '<option value="">Loading…</option>';
+    const branchSel = document.getElementById('ccBranchId');
+    branchSel.innerHTML = '<option value="">Select a Property first</option>';
+    branchSel.disabled = true;
+    try {
+        const res = await API.companies.list({ is_active: 'true', limit: 500 });
+        const companies = res.data?.companies || res.data || [];
+        sel.innerHTML = '<option value="">Select Property…</option>' + companies
+            .filter(c => c.company_id !== currentCompanyId)
+            .map(c => `<option value="${c.company_id}">${c.company_name} (#${c.company_id})</option>`)
+            .join('') || '<option value="">No other properties exist</option>';
+    } catch (err) {
+        sel.innerHTML = '<option value="">Failed to load properties</option>';
+    }
+    changeCompanyModalInst = new bootstrap.Modal(document.getElementById('changeCompanyModal'));
+    changeCompanyModalInst.show();
+}
+
+async function onChangeCompanySelected() {
+    const companyId = document.getElementById('ccCompanyId').value || null;
+    const branchSel = document.getElementById('ccBranchId');
+    if (!companyId) {
+        branchSel.innerHTML = '<option value="">Select a Property first</option>';
+        branchSel.disabled = true;
+        return;
+    }
+    branchSel.disabled = false;
+    branchSel.innerHTML = '<option value="">Loading…</option>';
+    try {
+        const res = await API.branches.list({ company_id: companyId, activeOnly: true });
+        const branches = res.data || [];
+        branchSel.innerHTML = '<option value="">Unassigned</option>' +
+            branches.map(b => `<option value="${b.branch_id}">${b.branch_name}</option>`).join('');
+    } catch (err) {
+        branchSel.innerHTML = '<option value="">Failed to load branches</option>';
+    }
+}
+
+async function submitChangeCompany() {
+    const userId = document.getElementById('ccUserId').value;
+    const companyId = parseInt(document.getElementById('ccCompanyId').value, 10);
+    const branchVal = document.getElementById('ccBranchId').value;
+    const branchId = branchVal ? parseInt(branchVal, 10) : null;
+    if (!companyId) { Utils.toast('Select a property to move this user to', 'error'); return; }
+    const ok = await Utils.confirm(
+        'Move this user to the selected property? They will lose access to their current property\'s data and only see the new one from their next login onward. Any unspecified branch will be cleared.',
+        { title: 'Change Property', danger: true }
+    );
+    if (!ok) return;
+    const btn = document.getElementById('confirmChangeCompanyBtn');
+    Utils.showLoader(btn, 'Moving…');
+    try {
+        await API.users.changeCompany(userId, companyId, branchId);
+        Utils.hideLoader(btn);
+        changeCompanyModalInst?.hide();
+        Utils.toast('User moved to the new property', 'success');
+        loadUsers(1);
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to change property', 'error');
+    }
+}
+
 async function loadPending() {
     try {
         const res = await API.users.pending();
@@ -382,7 +750,7 @@ async function rejectUser(id) {
 }
 
 const handleSearch = Utils.debounce(() => loadUsers(1), 350);
-document.addEventListener('DOMContentLoaded', () => { loadUsers(1); loadPending(); });
+document.addEventListener('DOMContentLoaded', () => { applyShowAllUsersUI(); loadUsers(1); loadPending(); });
 </script>
 </body>
 </html>

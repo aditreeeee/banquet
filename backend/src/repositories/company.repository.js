@@ -175,4 +175,17 @@ const softDelete = async (companyId) => {
     );
 };
 
-module.exports = { findAll, findById, create, update, toggleActive, countActiveUsers, softDelete };
+/**
+ * Existence + active-status check used to validate a Super-Admin-supplied
+ * company_id before it's written onto a user — never trust the frontend
+ * value alone (a deleted or deactivated company must never be assignable).
+ */
+const existsAndActive = async (companyId) => {
+    const rows = await executeQuery(
+        `SELECT company_id FROM Companies WHERE company_id = @id AND is_active = 1 AND deleted_at IS NULL`,
+        { id: companyId }
+    );
+    return !!rows[0];
+};
+
+module.exports = { findAll, findById, create, update, toggleActive, countActiveUsers, softDelete, existsAndActive };

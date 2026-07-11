@@ -4,6 +4,7 @@
 'use strict';
 
 const repo = require('../repositories/customer.repository');
+const reviewRepo = require('../repositories/review.repository');
 const { NotFoundError, ConflictError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
 const { resolveBranchScope, resolveCompanyScope } = require('../utils/branchScope');
@@ -29,6 +30,10 @@ const getAll = async (query, actor) => {
 const getById = async (id, companyId) => {
     const c = await repo.findById(id, companyId);
     if (!c) throw new NotFoundError('Customer');
+    // customers/detail.html's Reviews tab reads c.reviews — this was never
+    // populated before (always undefined -> rendered as "No reviews yet"
+    // regardless of whether the customer actually had any).
+    c.reviews = await reviewRepo.findByCustomer(id, companyId);
     return c;
 };
 

@@ -47,6 +47,25 @@ const getStats = async (banquetId, companyId) => {
     return rows[0] || { total_reviews: 0, avg_rating: null };
 };
 
+/** Reviews a given customer has left, most recent first — used by the
+    Customer Detail page's Reviews tab (customers/detail.html:renderReviews,
+    which expects r.rating/r.created_at/r.event_name/r.comment). companyId
+    === null means "every tenant" (Super Admin, not impersonating) — matches
+    customer.repository.js:findById's own scoping. */
+const findByCustomer = async (customerId, companyId) => {
+    const rows = await executeQuery(
+        `SELECT r.review_id, r.banquet_id, r.customer_id, r.booking_id, r.rating,
+                r.title, r.review_text AS comment, r.created_at,
+                b.booking_ref, b.event_name
+         FROM Reviews r
+         JOIN Bookings b ON b.booking_id = r.booking_id
+         WHERE r.customer_id = @customerId AND (@companyId IS NULL OR b.company_id = @companyId)
+         ORDER BY r.created_at DESC`,
+        { customerId, companyId: companyId || null }
+    );
+    return rows;
+};
+
 const findByBooking = async (bookingId, companyId) => {
     const rows = await executeQuery(
         `SELECT ${SELECT_FIELDS}
@@ -99,4 +118,4 @@ const syncBanquetRatingStats = async (banquetId) => {
     );
 };
 
-module.exports = { findForBanquet, getStats, findByBooking, create, syncBanquetRatingStats };
+module.exports = { findForBanquet, getStats, findByBooking, findByCustomer, create, syncBanquetRatingStats };

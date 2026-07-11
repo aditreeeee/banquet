@@ -10,7 +10,9 @@ const BASE_SELECT = `
            c.alternate_phone, c.address, c.city, c.state, c.notes, c.source,
            c.is_active, c.company_id, c.branch_id, c.created_at,
            (SELECT COUNT(*) FROM Bookings b WHERE b.customer_id = c.customer_id AND b.status NOT IN ('draft','cancelled')) AS total_bookings,
-           ISNULL((SELECT SUM(total_amount) FROM Bookings b WHERE b.customer_id = c.customer_id AND b.status NOT IN ('draft','cancelled')), 0) AS total_spend
+           ISNULL((SELECT SUM(total_amount) FROM Bookings b WHERE b.customer_id = c.customer_id AND b.status NOT IN ('draft','cancelled')), 0) AS total_spend,
+           ISNULL((SELECT AVG(total_amount) FROM Bookings b WHERE b.customer_id = c.customer_id AND b.status NOT IN ('draft','cancelled')), 0) AS avg_booking_value,
+           (SELECT AVG(CAST(r.rating AS DECIMAL(3,2))) FROM Reviews r WHERE r.customer_id = c.customer_id) AS avg_rating
     FROM Customers c
 `;
 

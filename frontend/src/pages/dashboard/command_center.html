@@ -808,28 +808,34 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
                         </div>
                       );
                     })
-                  : days.map((d,i)=>{
-                      const dayBookings = hallBookings.filter(b=>spansDate(b,d));
-                      if (!dayBookings.length) return <div key={d} style={{gridColumn:`${i+1} / ${i+2}`,pointerEvents:'none'}}/>;
-                      return (
-                        <div key={d} style={{gridColumn:`${i+1} / ${i+2}`,display:'flex',flexDirection:'column',gap:2,padding:'3px 2px',pointerEvents:'none'}}>
-                          {dayBookings.slice(0,2).map(b=>(
+                  : /* Daily view — one bar per booking, spanning gridColumn from its
+                       start day to its end day (clamped to the visible week) so a
+                       multi-day event reads as a single continuous bar instead of a
+                       separate fragment repeated in each day's cell. Grid auto-
+                       placement stacks overlapping bars into extra rows on its own. */
+                    (() => {
+                      const rangeStart = days[0], rangeEnd = days[days.length-1];
+                      const dayIdx = (dateStr) => Math.round((new Date(dateStr+'T00:00:00') - new Date(rangeStart+'T00:00:00'))/86400000);
+                      return hallBookings
+                        .filter(b => b.event_date_iso<=rangeEnd && (b.event_end_date_iso||b.event_date_iso)>=rangeStart)
+                        .map(b=>{
+                          const startIdx = Math.max(0, dayIdx(b.event_date_iso));
+                          const endIdx   = Math.min(cols-1, dayIdx(b.event_end_date_iso||b.event_date_iso));
+                          const isMultiDay = (b.event_end_date_iso||b.event_date_iso) !== b.event_date_iso;
+                          return (
                             <div key={b.booking_id} className={`matrix-bar${b.is_priority?' vip':''}`}
-                              style={{margin:0,background:STATUS_COLOR[b.status]||C.slate,pointerEvents:'auto',
+                              style={{gridColumn:`${startIdx+1} / ${endIdx+2}`,background:STATUS_COLOR[b.status]||C.slate,
                                 opacity:drag?.booking?.booking_id===b.booking_id?0.4:1,cursor:'grab'}}
-                              title={`${b.event_name||b.booking_ref} · ${b.customer_name} — drag to another day or hall`}
+                              title={`${b.event_name||b.booking_ref} · ${b.customer_name}${isMultiDay?` — ${Utils.formatDate(b.event_date_iso)} to ${Utils.formatDate(b.event_end_date_iso)}`:''} — drag to another day or hall`}
                               draggable
                               onDragStart={startDrag(b,'move')} onDragEnd={endDrag}
                               onMouseEnter={()=>onHoverBooking(b)} onMouseLeave={()=>onHoverBooking(null)}
                               onClick={()=>onSelectBooking(b.booking_id)}>
                               {b.event_name || b.booking_ref}
                             </div>
-                          ))}
-                          {dayBookings.length>2 && <div style={{fontSize:9.5,color:'var(--text-muted)',textAlign:'center'}}>+{dayBookings.length-2} more</div>}
-                        </div>
-                      );
-                    })
-                }
+                          );
+                        });
+                    })()}
               </div>
             </div>
           );

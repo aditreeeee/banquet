@@ -277,8 +277,15 @@ const findAll = async ({ companyId, branchId, status, hallId, customerId, fromDa
         '(@fromDate IS NULL OR b.event_date >= @fromDate)',
         '(@toDate IS NULL OR b.event_date <= @toDate)',
         '(@isPriority IS NULL OR b.is_priority = @isPriority)',
+        // Matches everything the payments/index.html Record Payment search box
+        // promises ("booking ID, customer name, phone or event date") — phone
+        // and event date were previously joined/selected but never actually
+        // matched against @search, so searching by either silently returned
+        // nothing.
         `(@search IS NULL OR b.booking_ref LIKE CONCAT('%', @search, '%')
-          OR CONCAT(c.first_name, ' ', c.last_name) LIKE CONCAT('%', @search, '%'))`,
+          OR CONCAT(c.first_name, ' ', c.last_name) LIKE CONCAT('%', @search, '%')
+          OR c.phone LIKE CONCAT('%', @search, '%')
+          OR CONVERT(VARCHAR(10), b.event_date, 120) LIKE CONCAT('%', @search, '%'))`,
     ].join(' AND ');
 
     const orderCol = ['event_date', 'created_at', 'total_amount', 'status'].includes(sortBy)

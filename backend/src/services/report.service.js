@@ -167,13 +167,14 @@ const getOwnerAnalytics = async (query, actor) => {
     const previousFrom = new Date(previousTo.getTime() - (rangeDays - 1) * 86400000);
 
     const [
-        revenuePerHall, occupancy, topCustomers, rates, inventoryCost, monthlyComparison, summary,
+        revenuePerHall, occupancy, topCustomers, rates, inventoryCost, decorationAnalytics, monthlyComparison, summary,
     ] = await Promise.all([
         reportRepo.getRevenuePerHall({ companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getOccupancyReport({ companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getTopCustomers({ companyId, branchId, fromDate: from, toDate: to, limit: 10 }),
         reportRepo.getCancellationAndRefundRates({ companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getInventoryCost({ companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getDecorationAnalytics({ companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getMonthlyComparison({
             companyId, branchId,
             currentFrom: from, currentTo: to,
@@ -186,6 +187,9 @@ const getOwnerAnalytics = async (query, actor) => {
     const mostPopularHall = revenuePerHall.reduce((best, h) =>
         (!best || h.bookings_count > best.bookings_count) ? h : best, null);
     const peakOccupancyHall = occupancy.length ? occupancy[0] : null;
+    const mostPopularDecorationPackage = decorationAnalytics.packageBreakdown.length
+        ? decorationAnalytics.packageBreakdown[0] // pre-sorted by bookings_count DESC in the repo query
+        : null;
 
     const avgBookingValue = summary.total_bookings > 0
         ? Number((summary.total_revenue / summary.total_bookings).toFixed(2))
@@ -212,6 +216,11 @@ const getOwnerAnalytics = async (query, actor) => {
         refundRate: rates.refund_rate,
         inventoryCost,
         netContributionMargin,
+        mostPopularDecorationPackage,
+        decorationRevenue: decorationAnalytics.totalRevenue,
+        decorationProfitability: decorationAnalytics.profitability,
+        decorationPackageBreakdown: decorationAnalytics.packageBreakdown,
+        decorationItemUtilization: decorationAnalytics.itemUtilization,
         monthlyComparison: { ...monthlyComparison, revenueChangePct, bookingsChangePct },
     };
 };

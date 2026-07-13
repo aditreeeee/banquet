@@ -467,29 +467,49 @@
                 </div>
             </div>
 
-            <!-- STEP 6: Decoration -->
+            <!-- STEP 6: Decoration — real catalog selection (Decorations module), not a
+                 flat manual amount. Staged items persist to BookingDecorations via a
+                 follow-up call right after booking create/update, same pattern as
+                 Catering sessions below (the booking must exist first). -->
             <div class="step-panel card" id="step6">
                 <div class="card-body">
                     <h5 style="font-weight:700;margin-bottom:20px;color:var(--text-primary)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M12 3c-2 2-2 4-2 7"></path><path d="M12 3c2 2 2 4 2 7"></path><path d="M8 10c2 1 3 2 4 5"></path><path d="M16 10c-2 1-3 2-4 5"></path></svg> Decoration</h5>
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <label class="form-label">Decoration Package</label>
-                            <select class="form-select" id="decorationType" onchange="updateDecoPrice()">
-                                <option value="0">None (₹0)</option>
-                                <option value="5000">Basic Flowers (₹5,000)</option>
-                                <option value="15000">Classic Floral (₹15,000)</option>
-                                <option value="30000">Premium Stage (₹30,000)</option>
-                                <option value="60000">Grand Luxury (₹60,000)</option>
-                                <option value="custom">Custom…</option>
+                            <select class="form-select" id="decoPackageSelect">
+                                <option value="">Select a package…</option>
                             </select>
                         </div>
-                        <div class="col-md-6" id="customDecoWrap" style="display:none">
-                            <label class="form-label">Custom Amount (₹)</label>
-                            <input type="number" class="form-control" id="customDecoAmount" min="0" placeholder="Enter amount" oninput="updateDecoPrice()">
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="button" class="btn-ghost w-100" onclick="applyDecoPackage()">Apply Package</button>
+                        </div>
+                        <div class="col-12"><hr></div>
+                        <div class="col-12">
+                            <label class="form-label">Add Individual Decoration Item</label>
+                            <div style="display:flex;gap:10px;align-items:center">
+                                <select class="form-select" id="decoItemSelect" style="max-width:320px"></select>
+                                <input type="number" class="form-control" id="decoItemQty" value="1" min="1" step="1" style="max-width:110px" placeholder="Qty">
+                                <button type="button" class="btn-ghost" onclick="addStagedDecoration()">+ Add</button>
+                            </div>
+                        </div>
+                        <div class="col-12" id="stagedDecorationsList">
+                            <div class="form-text">No decorations added yet — this booking will have none, or you can add them later from Booking Details.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Installation Time</label>
+                            <input type="datetime-local" class="form-control" id="decoInstallationAt">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Removal Time</label>
+                            <input type="datetime-local" class="form-control" id="decoRemovalAt">
                         </div>
                         <div class="col-12">
                             <label class="form-label">Decoration Notes</label>
                             <textarea class="form-control" id="decorationNotes" rows="2" placeholder="Colour theme, flower preferences, stage requirements…"></textarea>
+                        </div>
+                        <div class="col-12" style="text-align:right;font-size:14px;padding-top:6px;border-top:1px solid var(--border-color)">
+                            Estimated Decoration Cost: <strong id="decoEstimatedTotal">₹0</strong>
                         </div>
                     </div>
                 </div>
@@ -760,6 +780,7 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/formDraft.js"></script>
 <script src="../../../public/assets/js/sidebar.js"></script>
 <script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
@@ -832,6 +853,7 @@ const state = {
     cateringTaxAmount:     null,
     stagedCateringSessions: [], // [{sessionType, servingTime, packageId, packageName, subtotal}] — persisted after booking create()
     resourceAllocations:   [], // [{resourceId, resourceName, quantity, available}] — editable inventory recommendations
+    stagedDecorations: [], // [{decorationId, decorationName, quantity, rentalPrice, installationCost, removalCost, taxPercent, discountPercent, packageId}] — persisted after booking create()
     decorationAmt:  0,
     selectedServices:[],
     servicesTotal:  0,
@@ -1030,6 +1052,7 @@ async function nextStep() {
     }
     if (state.currentStep === 1) await loadBanquets();
     if (state.currentStep === 2) await loadHalls();
+    if (state.currentStep === 5) await loadDecorationCatalog();
     if (state.currentStep === 6) await loadInventoryRecommendations();
     if (state.currentStep === 7) calculatePrice();
     if (state.currentStep === 8) populateConfirmation();
@@ -1115,13 +1138,6 @@ function validateCurrentStep() {
         state.eventName     = evtName;
         state.theme         = document.getElementById('theme').value.trim();
         state.specialRequests = document.getElementById('specialRequests').value;
-    }
-
-    if (state.currentStep === 6) {
-        const dt = document.getElementById('decorationType').value;
-        state.decorationAmt = dt === 'custom'
-            ? parseInt(document.getElementById('customDecoAmount').value) || 0
-            : parseInt(dt) || 0;
     }
 
     if (state.currentStep === 7) {
@@ -1514,13 +1530,132 @@ function updateInventoryQty(index, value) {
 }
 
 /* ── Decoration ── */
-function updateDecoPrice() {
-    const v = document.getElementById('decorationType').value;
-    document.getElementById('customDecoWrap').style.display = v === 'custom' ? '' : 'none';
-    state.decorationAmt = v === 'custom'
-        ? parseInt(document.getElementById('customDecoAmount').value) || 0
-        : parseInt(v) || 0;
+/* ── Decorations (catalog) — mirrors the Inventory Allocation section's
+   stock-bound pattern (finite quantity_available per item), not Catering's
+   per-plate calculation. Package selection stages every linked item at once;
+   individual items can be added/removed/adjusted on top of that. Server-side
+   allocation is checked for over-allocation on the event date the same way
+   Inventory resources are (see decoration.repository.js allocateInTx). ── */
+let allDecorationItems = [];
+let allDecorationPackages = [];
+
+async function loadDecorationCatalog() {
+    try {
+        const [itemsRes, pkgRes] = await Promise.all([
+            API.decorations.items({ activeOnly: true }),
+            API.decorations.packages(),
+        ]);
+        allDecorationItems = itemsRes.data || [];
+        allDecorationPackages = pkgRes.data || [];
+        document.getElementById('decoPackageSelect').innerHTML = '<option value="">Select a package…</option>' +
+            allDecorationPackages.map(p => `<option value="${p.package_id}">${Utils.escapeHtml(p.package_name)}</option>`).join('');
+        renderDecoItemSelect();
+    } catch (e) {
+        console.warn('Failed to load decoration catalog', e);
+    }
+}
+
+function renderDecoItemSelect() {
+    const stagedIds = new Set(state.stagedDecorations.map(d => d.decorationId));
+    document.getElementById('decoItemSelect').innerHTML =
+        allDecorationItems.filter(i => !stagedIds.has(i.decoration_id)).map(i =>
+            `<option value="${i.decoration_id}">${Utils.escapeHtml(i.decoration_name)} (${Utils.formatCurrency(i.rental_price)})</option>`
+        ).join('') || '<option value="">No more items available</option>';
+}
+
+function stageDecorationItem(item, quantity, packageId) {
+    const existing = state.stagedDecorations.find(d => d.decorationId === item.decoration_id);
+    if (existing) { existing.quantity += quantity; return; }
+    state.stagedDecorations.push({
+        decorationId:     item.decoration_id,
+        decorationName:   item.decoration_name,
+        quantity,
+        rentalPrice:      Number(item.rental_price) || 0,
+        installationCost: Number(item.installation_cost) || 0,
+        removalCost:      Number(item.removal_cost) || 0,
+        taxPercent:       Number(item.tax_percent) || 0,
+        discountPercent:  Number(item.discount_percent) || 0,
+        packageId:        packageId || null,
+    });
+}
+
+async function applyDecoPackage() {
+    const packageId = parseInt(document.getElementById('decoPackageSelect').value, 10);
+    if (!packageId) { Utils.toast('Select a decoration package first', 'error'); return; }
+    try {
+        const res = await API.decorations.pricing(packageId);
+        const items = res.data.items || [];
+        if (!items.length) { Utils.toast('This package has no items linked yet', 'warning'); return; }
+        items.forEach(pi => {
+            const item = allDecorationItems.find(i => i.decoration_id === pi.decoration_id);
+            if (item) stageDecorationItem(item, pi.quantity, packageId);
+        });
+        renderStagedDecorations();
+        renderDecoItemSelect();
+        calculatePrice();
+        Utils.toast(`${items.length} item(s) added from "${res.data.package.package_name}"`, 'success');
+    } catch (e) { Utils.toast(e.message || 'Failed to apply package', 'error'); }
+}
+
+function addStagedDecoration() {
+    const decorationId = parseInt(document.getElementById('decoItemSelect').value, 10);
+    const quantity = parseInt(document.getElementById('decoItemQty').value, 10) || 1;
+    if (!decorationId) { Utils.toast('Select a decoration item first', 'error'); return; }
+    const item = allDecorationItems.find(i => i.decoration_id === decorationId);
+    if (!item) return;
+    if (quantity > item.quantity_available) {
+        Utils.toast(`Only ${item.quantity_available} "${item.decoration_name}" available in stock`, 'warning');
+    }
+    stageDecorationItem(item, quantity, null);
+    renderStagedDecorations();
+    renderDecoItemSelect();
     calculatePrice();
+}
+
+function updateStagedDecorationQty(index, value) {
+    const qty = parseInt(value, 10) || 0;
+    if (qty <= 0) { removeStagedDecoration(index); return; }
+    state.stagedDecorations[index].quantity = qty;
+    renderStagedDecorations();
+    calculatePrice();
+}
+
+function removeStagedDecoration(index) {
+    state.stagedDecorations.splice(index, 1);
+    renderStagedDecorations();
+    renderDecoItemSelect();
+    calculatePrice();
+}
+
+function decorationLineTotal(d) {
+    const base = d.rentalPrice * d.quantity + d.installationCost + d.removalCost;
+    const discounted = base * (1 - d.discountPercent / 100);
+    return discounted * (1 + d.taxPercent / 100);
+}
+
+function renderStagedDecorations() {
+    const wrap = document.getElementById('stagedDecorationsList');
+    state.decorationAmt = Math.round(state.stagedDecorations.reduce((sum, d) => sum + decorationLineTotal(d), 0));
+    document.getElementById('decoEstimatedTotal').textContent = Utils.formatCurrency(state.decorationAmt);
+
+    if (!state.stagedDecorations.length) {
+        wrap.innerHTML = '<div class="form-text">No decorations added yet — this booking will have none, or you can add them later from Booking Details.</div>';
+        return;
+    }
+    wrap.innerHTML = `
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Item</th><th style="width:110px">Quantity</th><th>Line Total</th><th></th></tr></thead>
+            <tbody>
+                ${state.stagedDecorations.map((d, i) => `
+                    <tr>
+                        <td>${Utils.escapeHtml(d.decorationName)}${d.packageId ? ' <span class="badge bg-light text-dark">package</span>' : ''}</td>
+                        <td><input type="number" class="form-control form-control-sm" min="1" value="${d.quantity}"
+                                onchange="updateStagedDecorationQty(${i}, this.value)"></td>
+                        <td>${Utils.formatCurrency(decorationLineTotal(d))}</td>
+                        <td><button type="button" class="btn-ghost" style="color:var(--color-danger);padding:2px 8px" onclick="removeStagedDecoration(${i})">Remove</button></td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>`;
 }
 
 /* â”€â”€ Customer search â”€â”€ */
@@ -1858,6 +1993,21 @@ async function submitBooking() {
                 }
             }
 
+            // Sync decorations the same way — Step 6 is the source of truth for
+            // whatever's currently staged, whether that came from a package or
+            // individual items.
+            if (state.stagedDecorations.length) {
+                try {
+                    await API.bookings.updateDecorations(editBookingId, state.stagedDecorations.map(d => ({
+                        decorationId: d.decorationId, quantity: d.quantity, packageId: d.packageId || undefined,
+                        installationAt: document.getElementById('decoInstallationAt')?.value || undefined,
+                        removalAt: document.getElementById('decoRemovalAt')?.value || undefined,
+                    })));
+                } catch (decoErr) {
+                    Utils.toast(getErrorMessage(decoErr, 'Booking saved, but decoration reallocation failed — please adjust it from the booking detail page.'), 'warning');
+                }
+            }
+
             const ref = res.data?.booking_ref || state.bookingRef || '';
             document.getElementById('successRef').textContent = ref;
             document.querySelector('#successModal h4').textContent = 'Booking Updated!';
@@ -1923,8 +2073,24 @@ async function submitBooking() {
                 }
             }
         }
+
+        // Decorations require a real booking_id too — see updateDecorationAllocations
+        // in booking.service.js (the same catalog-allocation pattern as Inventory
+        // resources, but persisted as a follow-up call like Catering, not inline).
+        if (id && state.stagedDecorations.length) {
+            try {
+                await API.bookings.updateDecorations(id, state.stagedDecorations.map(d => ({
+                    decorationId: d.decorationId, quantity: d.quantity, packageId: d.packageId || undefined,
+                    installationAt: document.getElementById('decoInstallationAt')?.value || undefined,
+                    removalAt: document.getElementById('decoRemovalAt')?.value || undefined,
+                })));
+            } catch (decoErr) {
+                Utils.toast(getErrorMessage(decoErr, 'Booking created, but decorations couldn\'t be added — add them from Booking Details.'), 'warning');
+            }
+        }
         document.getElementById('successRef').textContent = ref || '';
         document.getElementById('viewBookingBtn').href   = id ? `detail.html?id=${id}` : 'index.html';
+        clearBookingDraft();
         new bootstrap.Modal(document.getElementById('successModal')).show();
     } catch (err) {
         Utils.hideLoader(btn);
@@ -2027,6 +2193,25 @@ async function loadExistingBooking(id) {
                 available:    null,
             }));
         } catch (_) { /* non-fatal — inventory section will just start empty */ }
+
+        // Seed staged decorations from what's actually allocated today, same
+        // as the inventory block above.
+        try {
+            const decoRes = await API.bookings.decorations(id);
+            state.stagedDecorations = (decoRes.data || []).map(d => ({
+                decorationId:     d.decoration_id,
+                decorationName:   d.decoration_name,
+                quantity:         d.quantity_allocated,
+                rentalPrice:      Number(d.rental_price) || 0,
+                installationCost: Number(d.installation_cost) || 0,
+                removalCost:      Number(d.removal_cost) || 0,
+                taxPercent:       Number(d.tax_percent) || 0,
+                discountPercent:  Number(d.discount_percent) || 0,
+                packageId:        d.package_id || null,
+            }));
+            await loadDecorationCatalog();
+            renderStagedDecorations();
+        } catch (_) { /* non-fatal — decorations section will just start empty */ }
     } catch (err) {
         Utils.toast(getErrorMessage(err, 'Unable to load booking for editing.'), 'error');
     }
@@ -2124,8 +2309,70 @@ function setTimeFieldDisabled(id, disabled) {
     }
 }
 
+/* ── Draft auto-save/restore — saves the wizard's `state` object (the
+   single source of truth driving every step) right before a session-timeout
+   logout, and offers to restore it on the next visit to this page. Scoped
+   to new-booking creation only (editMode has its own server-persisted
+   record to resume from instead). ── */
+const BOOKING_DRAFT_KEY = 'booking_draft';
+let draftAutoSaveInterval = null;
+
+function saveBookingDraft() {
+    if (editMode) return;
+    // Skip an essentially-empty draft (user hasn't entered anything yet) —
+    // no point prompting to "restore" nothing next time.
+    if (!state.eventDate && !state.hallId && !state.customerId) return;
+    FormDraft.save(BOOKING_DRAFT_KEY, state);
+}
+
+function clearBookingDraft() {
+    clearInterval(draftAutoSaveInterval);
+    FormDraft.clear(BOOKING_DRAFT_KEY);
+}
+
+async function restoreBookingDraftIfAny() {
+    const draft = FormDraft.load(BOOKING_DRAFT_KEY);
+    if (!draft) return;
+    const ok = await Utils.confirm(
+        'We found an unfinished booking you started earlier — would you like to continue where you left off?',
+        { title: 'Restore Draft' }
+    );
+    if (!ok) { FormDraft.clear(BOOKING_DRAFT_KEY); return; }
+
+    Object.assign(state, draft);
+    // Re-populate the step-1 fields directly (they don't come from a loader).
+    if (state.eventDate)   document.getElementById('eventDate').value = state.eventDate;
+    if (state.guestCount)  document.getElementById('guestCount').value = state.guestCount;
+    if (state.startTime)   document.getElementById('startTime').value = state.startTime;
+    if (state.endTime)     document.getElementById('endTime').value = state.endTime;
+
+    // Re-run whichever lazy-loaders the wizard would normally trigger on the
+    // way to the restored step, so banquet/hall grids, decoration catalog,
+    // etc. are populated instead of blank.
+    const targetStep = state.currentStep || 1;
+    state.currentStep = 1;
+    if (targetStep >= 2) await loadBanquets();
+    if (targetStep >= 3) await loadHalls();
+    if (targetStep >= 6) await loadDecorationCatalog();
+    if (targetStep >= 7) await loadInventoryRecommendations();
+    if (targetStep >= 8) calculatePrice();
+    if (targetStep >= 9) populateConfirmation();
+    state.currentStep = targetStep;
+    renderSteps();
+    renderStagedDecorations();
+    if (typeof renderStagedCateringSessions === 'function') renderStagedCateringSessions();
+    Utils.toast('Draft restored', 'success');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     Auth.requireAuth('../auth/login.html');
+    window.addEventListener('bnq:session-warning', saveBookingDraft);
+    window.addEventListener('bnq:session-timeout', saveBookingDraft);
+    // Belt-and-suspenders periodic autosave every 20s while the wizard is
+    // open — the session-warning event only fires ~2 min before logout
+    // (configurable), which is plenty of notice, but a browser/tab crash
+    // isn't a graceful session timeout and deserves its own safety net.
+    draftAutoSaveInterval = setInterval(saveBookingDraft, 20000);
     flatpickr('#startTime', TIME_PICKER_CONFIG);
     flatpickr('#endTime',   TIME_PICKER_CONFIG);
     // Same 12-hour picker as Start/End Time above, minus the
@@ -2152,6 +2399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadExistingBooking(editBookingId); // pre-fills its own saved setup/cleanup/cooloff values
     } else {
         loadOperationalDefaults();
+        restoreBookingDraftIfAny();
     }
 
     recalcOperationalSchedule();

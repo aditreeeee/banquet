@@ -26,6 +26,8 @@ router.get('/:id',           requirePermission(PERMISSIONS.BOOKINGS_READ),   ctr
 router.get('/:id/activities', requirePermission(PERMISSIONS.BOOKINGS_READ),  ctrl.getActivities);
 router.get('/:id/resources',  requirePermission(PERMISSIONS.BOOKINGS_READ),  ctrl.getResources);
 router.put('/:id/resources',  requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateResources, ctrl.updateResources);
+router.get('/:id/decorations',  requirePermission(PERMISSIONS.BOOKINGS_READ),  ctrl.getDecorations);
+router.put('/:id/decorations',  requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateDecorations, ctrl.updateDecorations);
 router.get('/:id/contacts',   requirePermission(PERMISSIONS.BOOKINGS_READ),   ctrl.getContacts);
 router.post('/:id/contacts',  requirePermission(PERMISSIONS.BOOKINGS_UPDATE), v.validateContact, ctrl.addContact);
 router.delete('/:id/contacts/:contactId', requirePermission(PERMISSIONS.BOOKINGS_UPDATE), ctrl.removeContact);

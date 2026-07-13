@@ -105,6 +105,44 @@
                 </table>
             </div>
         </div>
+
+        <!-- Decorations -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+            <div class="metric-card">
+                <div class="metric-label">Most Popular Decoration Package <span class="info-icon" title="Decoration package with the highest number of bookings it was applied to in the period.">ⓘ</span></div>
+                <div class="metric-value" id="mPopularDecoPkg" style="font-size:16px">—</div>
+                <div class="metric-sub" id="mPopularDecoPkgSub"></div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Decoration Revenue <span class="info-icon" title="Rental + installation + removal charges from all decoration allocations in the period, less discount, plus tax.">ⓘ</span></div>
+                <div class="metric-value" id="mDecoRevenue">—</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Decoration Profitability <span class="info-icon" title="Decoration revenue minus decoration item cost (unit_cost × quantity allocated) in the period.">ⓘ</span></div>
+                <div class="metric-value" id="mDecoProfit">—</div>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+            <div class="table-card">
+                <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);font-weight:700;font-size:13px">Decoration Revenue by Package</div>
+                <div class="table-responsive">
+                    <table class="table" style="font-size:12.5px">
+                        <thead><tr><th>Package</th><th>Bookings</th><th>Qty</th><th>Revenue</th></tr></thead>
+                        <tbody id="decoPackageTableBody"><tr><td colspan="4" class="text-center py-3">No data for this period.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="table-card">
+                <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);font-weight:700;font-size:13px">Decoration Inventory Usage <span class="info-icon" title="Quantity allocated in the period as a % of that item's total quantity_available — a running proxy for utilization, not date-scoped concurrency.">ⓘ</span></div>
+                <div class="table-responsive">
+                    <table class="table" style="font-size:12.5px">
+                        <thead><tr><th>Item</th><th>Allocated</th><th>Available</th><th>Utilization</th></tr></thead>
+                        <tbody id="decoUtilTableBody"><tr><td colspan="4" class="text-center py-3">No data for this period.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </main>
     <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
 </div>
@@ -207,6 +245,35 @@ function render(d) {
             <td>${h.area_sqft ?? '—'}</td>
             <td>${h.revenue_per_sqft != null ? Utils.formatCurrency(h.revenue_per_sqft) : '—'}</td>
         </tr>`).join('') : `<tr><td colspan="5" class="text-center py-3">No data for this period.</td></tr>`;
+
+    // Decorations
+    if (d.mostPopularDecorationPackage) {
+        document.getElementById('mPopularDecoPkg').textContent = d.mostPopularDecorationPackage.package_name;
+        document.getElementById('mPopularDecoPkgSub').textContent = `${d.mostPopularDecorationPackage.bookings_count} bookings`;
+    } else {
+        document.getElementById('mPopularDecoPkg').textContent = '—';
+        document.getElementById('mPopularDecoPkgSub').textContent = 'No decoration bookings in this period';
+    }
+    document.getElementById('mDecoRevenue').textContent = Utils.formatCurrency(d.decorationRevenue || 0);
+    document.getElementById('mDecoProfit').textContent  = Utils.formatCurrency(d.decorationProfitability || 0);
+
+    const decoPackages = d.decorationPackageBreakdown || [];
+    document.getElementById('decoPackageTableBody').innerHTML = decoPackages.length ? decoPackages.map(p => `
+        <tr>
+            <td>${Utils.escapeHtml(p.package_name)}</td>
+            <td>${p.bookings_count}</td>
+            <td>${p.total_quantity}</td>
+            <td>${Utils.formatCurrency(p.revenue)}</td>
+        </tr>`).join('') : `<tr><td colspan="4" class="text-center py-3">No data for this period.</td></tr>`;
+
+    const decoUtil = (d.decorationItemUtilization || []).filter(i => i.quantity_allocated > 0).slice(0, 10);
+    document.getElementById('decoUtilTableBody').innerHTML = decoUtil.length ? decoUtil.map(i => `
+        <tr>
+            <td>${Utils.escapeHtml(i.decoration_name)}</td>
+            <td>${i.quantity_allocated}</td>
+            <td>${i.quantity_available}</td>
+            <td style="color:${i.utilization_pct >= 100 ? 'var(--color-danger)' : 'inherit'}">${i.utilization_pct}%</td>
+        </tr>`).join('') : `<tr><td colspan="4" class="text-center py-3">No data for this period.</td></tr>`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {

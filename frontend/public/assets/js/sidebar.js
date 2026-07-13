@@ -16,6 +16,7 @@ const Sidebar = (() => {
         cancelled: '<circle cx="12" cy="12" r="9"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path>',
         menu:      '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="16" y2="13"></line>',
         inventory: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path>',
+        decor:     '<path d="M12 3v4"></path><path d="M12 17v4"></path><path d="M3 12h4"></path><path d="M17 12h4"></path><path d="m5.6 5.6 2.8 2.8"></path><path d="m15.6 15.6 2.8 2.8"></path><path d="m18.4 5.6-2.8 2.8"></path><path d="m8.4 15.6-2.8 2.8"></path>',
         customers: '<path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"></path><circle cx="9.5" cy="7" r="3"></circle><path d="M17 8a3 3 0 1 1 0 6"></path><path d="M20 19v-1a2 2 0 0 0-1.4-1.9"></path>',
         pipeline:  '<path d="M4 18 9 13l3 3 8-9"></path><path d="M18 7h3v3"></path>',
         payments:  '<path d="M12 3v18"></path><path d="M16 7H8a3 3 0 1 0 0 6h8a3 3 0 1 1 0 6H8"></path>',
@@ -50,6 +51,7 @@ const Sidebar = (() => {
         { group: 'Catalog & Inventory', items: [
             { label: 'Master Menu',       href: '../catering/menu.html',          icon: ICONS.menu,      perm: 'catering:read' },
             { label: 'Booking Packages',  href: '../booking-packages/index.html', icon: ICONS.newBooking, perm: 'bookings:read' },
+            { label: 'Decorations',       href: '../decorations/index.html',      icon: ICONS.decor,     perm: 'decorations:read' },
             { label: 'Inventory',         href: '../inventory/index.html',        icon: ICONS.inventory, perm: 'resources:read' },
         ]},
         { group: 'CRM', items: [

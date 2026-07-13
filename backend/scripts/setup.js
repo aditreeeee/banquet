@@ -706,6 +706,30 @@ const seedExtendedDemoData = async (pool) => {
     `);
     ok('Priority booking columns ensured.');
 
+    // ── 3d2. Session-timeout system: RefreshTokens needs to remember whether a
+    // token was issued under "Keep Me Signed In" (so the extended expiry
+    // survives token rotation on /auth/refresh instead of degrading back to
+    // the short-lived default) and when the session actually started (so
+    // absolute session lifetime is measured from first login, not reset by
+    // every refresh the way idle-timeout activity resets the idle timer). ──
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('RefreshTokens') AND name = 'is_extended')
+        BEGIN
+            ALTER TABLE RefreshTokens ADD is_extended BIT NOT NULL DEFAULT 0;
+        END
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('RefreshTokens') AND name = 'session_started_at')
+        BEGIN
+            ALTER TABLE RefreshTokens ADD session_started_at DATETIME2 NULL;
+        END
+    `);
+    // Backfill: any existing (pre-migration) tokens treat their own creation
+    // time as the session start, so the absolute-lifetime check has a sane
+    // value instead of NULL until they next rotate.
+    await pool.request().batch(`
+        UPDATE RefreshTokens SET session_started_at = created_at WHERE session_started_at IS NULL;
+    `);
+    ok('Session-timeout columns on RefreshTokens ensured.');
+
     // ── 3e. Bookings.created_at/updated_at defaults: GETDATE() -> GETUTCDATE() ──
     // The app always supplies GETUTCDATE() explicitly on insert/update, but the
     // column DEFAULT (used by raw inserts / seed data) still used local server
@@ -1386,6 +1410,293 @@ const seedExtendedDemoData = async (pool) => {
         END
     `);
     ok('Master Menu (CateringPackageItems) table ensured.');
+
+    // ── 3p2. Decorations catalog — cloned from the Resources/BookingResources
+    // pattern (not Catering) since decoration items are finite, quantity-bound
+    // stock exactly like inventory, not a per-plate calculation. Categories are
+    // a real lookup table (not a CHECK constraint like Resources.category) so
+    // admins can add their own, per spec. ─────────────────────────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DecorationCategories')
+        BEGIN
+            CREATE TABLE DecorationCategories (
+                category_id     INT             NOT NULL IDENTITY(1,1),
+                company_id      INT             NOT NULL,
+                category_name   NVARCHAR(100)   NOT NULL,
+                sort_order      INT             NOT NULL DEFAULT 0,
+                is_active       BIT             NOT NULL DEFAULT 1,
+                created_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_decoration_categories PRIMARY KEY (category_id),
+                CONSTRAINT FK_dc_company FOREIGN KEY (company_id) REFERENCES Companies(company_id),
+                CONSTRAINT UQ_dc_company_name UNIQUE (company_id, category_name)
+            );
+        END
+    `);
+    ok('DecorationCategories table ensured.');
+
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DecorationItems')
+        BEGIN
+            CREATE TABLE DecorationItems (
+                decoration_id       INT             NOT NULL IDENTITY(1,1),
+                company_id          INT             NOT NULL,
+                category_id         INT             NULL,
+                decoration_code     NVARCHAR(20)    NOT NULL,
+                decoration_name     NVARCHAR(200)   NOT NULL,
+                description         NVARCHAR(500)   NULL,
+                theme               NVARCHAR(100)   NULL,
+                color_scheme        NVARCHAR(100)   NULL,
+                vendor              NVARCHAR(150)   NULL,
+                unit                NVARCHAR(20)    NOT NULL DEFAULT 'piece',
+                quantity_available  INT             NOT NULL DEFAULT 0,
+                unit_cost           DECIMAL(12,2)   NOT NULL DEFAULT 0,
+                rental_price        DECIMAL(12,2)   NOT NULL DEFAULT 0,
+                installation_cost   DECIMAL(12,2)   NOT NULL DEFAULT 0,
+                removal_cost        DECIMAL(12,2)   NOT NULL DEFAULT 0,
+                tax_percent         DECIMAL(5,2)    NOT NULL DEFAULT 0,
+                discount_percent    DECIMAL(5,2)    NOT NULL DEFAULT 0,
+                images              NVARCHAR(MAX)   NULL, -- JSON array of image URLs
+                notes               NVARCHAR(500)   NULL,
+                is_active           BIT             NOT NULL DEFAULT 1,
+                created_by          INT             NULL,
+                created_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                updated_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_decoration_items PRIMARY KEY (decoration_id),
+                CONSTRAINT FK_di_company FOREIGN KEY (company_id) REFERENCES Companies(company_id),
+                CONSTRAINT FK_di_category FOREIGN KEY (category_id) REFERENCES DecorationCategories(category_id),
+                CONSTRAINT UQ_di_company_code UNIQUE (company_id, decoration_code)
+            );
+            CREATE INDEX IX_di_company ON DecorationItems(company_id, is_active);
+        END
+    `);
+    ok('DecorationItems table ensured.');
+
+    // Quantity Reserved/Allocated (per spec) are deliberately NOT stored columns
+    // here — they're derived live from BookingDecorations the same way
+    // Resources.getInventorySnapshot() computes reserved/available for a given
+    // date, so they can never drift out of sync with actual allocations.
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DecorationPackages')
+        BEGIN
+            CREATE TABLE DecorationPackages (
+                package_id      INT             NOT NULL IDENTITY(1,1),
+                company_id      INT             NOT NULL,
+                package_name    NVARCHAR(200)   NOT NULL,
+                package_type    NVARCHAR(50)    NULL, -- e.g. Classic Wedding, Royal Wedding, Corporate...
+                description     NVARCHAR(MAX)   NULL,
+                flat_price      DECIMAL(12,2)   NULL, -- NULL = computed live from linked items; set = admin override ("Save as Template" price)
+                is_active       BIT             NOT NULL DEFAULT 1,
+                created_by      INT             NULL,
+                created_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                updated_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_decoration_packages PRIMARY KEY (package_id),
+                CONSTRAINT FK_dp_company FOREIGN KEY (company_id) REFERENCES Companies(company_id)
+            );
+        END
+    `);
+    ok('DecorationPackages table ensured.');
+
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'DecorationPackageItems')
+        BEGIN
+            CREATE TABLE DecorationPackageItems (
+                package_item_id     INT             NOT NULL IDENTITY(1,1),
+                package_id          INT             NOT NULL,
+                decoration_id       INT             NOT NULL,
+                quantity            INT             NOT NULL DEFAULT 1,
+                created_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_dpi PRIMARY KEY (package_item_id),
+                CONSTRAINT FK_dpi_package FOREIGN KEY (package_id) REFERENCES DecorationPackages(package_id),
+                CONSTRAINT FK_dpi_item FOREIGN KEY (decoration_id) REFERENCES DecorationItems(decoration_id),
+                CONSTRAINT UQ_dpi_package_item UNIQUE (package_id, decoration_id),
+                CONSTRAINT CHK_dpi_qty CHECK (quantity > 0)
+            );
+            CREATE INDEX IX_dpi_package ON DecorationPackageItems(package_id);
+        END
+    `);
+    ok('DecorationPackageItems table ensured.');
+
+    // Allocation table — same shape/semantics as BookingResources (release-on-
+    // cancel is implicit via the booking's own status, never an explicit
+    // delete; see resource.repository.js and booking.service.js:cancel's
+    // comment on why no separate release step exists).
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'BookingDecorations')
+        BEGIN
+            CREATE TABLE BookingDecorations (
+                allocation_id       INT             NOT NULL IDENTITY(1,1),
+                booking_id          BIGINT          NOT NULL,
+                decoration_id       INT             NOT NULL,
+                package_id          INT             NULL, -- which package this line came from, if any (traceability only)
+                quantity_allocated  INT             NOT NULL,
+                installation_at     DATETIME2       NULL,
+                removal_at          DATETIME2       NULL,
+                notes               NVARCHAR(500)   NULL,
+                created_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_booking_decorations PRIMARY KEY (allocation_id),
+                CONSTRAINT FK_bd_booking     FOREIGN KEY (booking_id)     REFERENCES Bookings(booking_id),
+                CONSTRAINT FK_bd_decoration  FOREIGN KEY (decoration_id) REFERENCES DecorationItems(decoration_id),
+                CONSTRAINT FK_bd_package     FOREIGN KEY (package_id)     REFERENCES DecorationPackages(package_id),
+                CONSTRAINT UQ_bd_booking_decoration UNIQUE (booking_id, decoration_id),
+                CONSTRAINT CHK_bd_qty CHECK (quantity_allocated > 0)
+            );
+            CREATE INDEX IX_bd_decoration ON BookingDecorations(decoration_id, booking_id);
+        END
+    `);
+    ok('BookingDecorations table ensured.');
+
+    // ── 3p3. Seed decorations:* permissions, granted to the same roles as
+    // resources:* (Super Admin=1, Company Admin=2, Branch Manager=3, Business
+    // Owner=6, Operations Manager=7) — decorations are operational inventory,
+    // same audience as the existing Inventory module. ─────────────────────────
+    const decorationPerms = [
+        ['decorations', 'read',   'decorations:read',   'View decoration items and packages'],
+        ['decorations', 'create', 'decorations:create', 'Create decoration items and packages'],
+        ['decorations', 'update', 'decorations:update', 'Edit decoration items and packages'],
+    ];
+    for (const [module_, action, key, desc] of decorationPerms) {
+        await pool.request()
+            .input('module', sql.NVarChar, module_)
+            .input('action', sql.NVarChar, action)
+            .input('key', sql.NVarChar, key)
+            .input('desc', sql.NVarChar, desc)
+            .query(`
+                IF NOT EXISTS (SELECT 1 FROM Permissions WHERE permission_key = @key)
+                INSERT INTO Permissions (module, action, permission_key, description)
+                VALUES (@module, @action, @key, @desc);
+            `);
+    }
+    await pool.request().batch(`
+        INSERT INTO RolePermissions (role_id, permission_id)
+        SELECT r.role_id, p.permission_id
+        FROM Permissions p
+        CROSS JOIN (SELECT 1 AS role_id UNION SELECT 2 UNION SELECT 3 UNION SELECT 6 UNION SELECT 7) r
+        WHERE p.permission_key IN ('decorations:read','decorations:create','decorations:update')
+          AND NOT EXISTS (
+              SELECT 1 FROM RolePermissions rp WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id
+          );
+    `);
+    ok('Decorations permissions ensured.');
+
+    // ── 3p4. Seed demo DecorationCategories (needed for DecorationItems FK) ──
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM DecorationCategories WHERE company_id = 1)
+        BEGIN
+            INSERT INTO DecorationCategories (company_id, category_name, sort_order, is_active) VALUES
+                (1, N'Stage Decoration',          1, 1),
+                (1, N'Floral Decoration',         2, 1),
+                (1, N'Wedding Mandap',             3, 1),
+                (1, N'Reception Backdrop',         4, 1),
+                (1, N'Entrance Decoration',        5, 1),
+                (1, N'Lighting',                   6, 1),
+                (1, N'Balloon Decoration',         7, 1),
+                (1, N'Theme Decoration',           8, 1),
+                (1, N'Ceiling Decoration',         9, 1),
+                (1, N'Table Decoration',          10, 1),
+                (1, N'Chair Decoration',          11, 1),
+                (1, N'Walkway Decoration',        12, 1),
+                (1, N'Photo Booth',               13, 1),
+                (1, N'LED Wall & Screens',        14, 1),
+                (1, N'Signage & Welcome Boards',  15, 1),
+                (1, N'Custom Decoration',         16, 1);
+        END
+    `);
+    ok('Demo DecorationCategories seeded.');
+
+    // ── 3p5. Seed demo DecorationItems (one per category, realistic pricing) ──
+    // Guarded on the specific demo code (not "any row exists") so ad-hoc
+    // items created via the UI/API during testing can't block this from
+    // ever seeding the actual demo catalog.
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM DecorationItems WHERE company_id = 1 AND decoration_code = 'DEMO-0001')
+        BEGIN
+            DECLARE @cat TABLE (category_name NVARCHAR(100), category_id INT);
+            INSERT INTO @cat SELECT category_name, category_id FROM DecorationCategories WHERE company_id = 1;
+
+            INSERT INTO DecorationItems
+                (company_id, category_id, decoration_code, decoration_name, description, theme, color_scheme,
+                 vendor, unit, quantity_available, unit_cost, rental_price, installation_cost, removal_cost,
+                 tax_percent, discount_percent, notes, is_active, created_at, updated_at)
+            SELECT 1, c.category_id, v.code, v.name, v.description, v.theme, v.color_scheme, v.vendor, v.unit,
+                   v.qty, v.unit_cost, v.rental_price, v.install_cost, v.removal_cost, v.tax_pct, 0, NULL, 1,
+                   SYSUTCDATETIME(), SYSUTCDATETIME()
+            FROM (VALUES
+                ('DEMO-0001', N'Grand Stage with LED Backdrop',       N'Elevated stage with programmable LED backdrop panel', N'Royal',        N'Gold & White',   N'Shaan Decorators',    'set',   4, 8000,  25000, 3000, 1500, 18, 'Stage Decoration'),
+                ('DEMO-0002', N'Fresh Floral Arch',                   N'Fresh flower entrance/mandap arch',                    N'Classic',      N'Red & White',    N'Bloom Florists',      'piece', 6, 4000,  12000, 1500, 800,  12, 'Floral Decoration'),
+                ('DEMO-0003', N'Royal Wedding Mandap',                N'Traditional 4-pillar mandap with drapery',             N'Royal Wedding',N'Maroon & Gold',  N'Shaan Decorators',    'set',   3, 15000, 45000, 5000, 2500, 18, 'Wedding Mandap'),
+                ('DEMO-0004', N'Reception Backdrop Panel',            N'Fabric backdrop with couple monogram',                 N'Elegant',      N'Blush Pink',     N'Bloom Florists',      'set',   5, 5000,  18000, 2000, 1000, 12, 'Reception Backdrop'),
+                ('DEMO-0005', N'Grand Entrance Floral Gate',          N'Walk-through floral entrance gate',                    N'Classic',      N'White & Green',  N'Bloom Florists',      'set',   4, 6000,  20000, 2500, 1200, 12, 'Entrance Decoration'),
+                ('DEMO-0006', N'Warm White Fairy Light Curtain',      N'10x10 ft LED fairy light curtain backdrop',            N'Modern',       N'Warm White',     N'GlowTech Lighting',   'set',   10, 1500, 5000,  500,  300,  18, 'Lighting'),
+                ('DEMO-0007', N'Balloon Arch (100 balloons)',         N'Custom colour balloon arch',                           N'Festive',      N'Pastel Mix',     N'Party Bazaar',        'set',   8, 1200,  4000,  600,  300,  12, 'Balloon Decoration'),
+                ('DEMO-0008', N'Bollywood Theme Set',                 N'Cutouts, props and backdrop for Bollywood theme',      N'Bollywood',    N'Multicolour',    N'Party Bazaar',        'set',   3, 7000,  22000, 3000, 1500, 18, 'Theme Decoration'),
+                ('DEMO-0009', N'Draped Ceiling Canopy',                N'Fabric ceiling drape for indoor halls',                N'Elegant',      N'Ivory',          N'Shaan Decorators',    'set',   4, 6000,  18000, 3500, 1800, 18, 'Ceiling Decoration'),
+                ('DEMO-0010', N'Floral Table Centerpiece',            N'Fresh flower centerpiece per table',                   N'Classic',      N'Seasonal Mix',   N'Bloom Florists',      'piece', 40, 400,  1200,  0,    0,    12, 'Table Decoration'),
+                ('DEMO-0011', N'Chiavari Chair Sash & Cover',         N'Chair cover with satin sash',                          N'Elegant',      N'Gold',           N'Party Bazaar',        'piece', 300, 40,   150,   0,    0,    12, 'Chair Decoration'),
+                ('DEMO-0012', N'Petal & Lantern Walkway',              N'Rose petal path with hanging lanterns',                N'Romantic',     N'Red & Gold',     N'Bloom Florists',      'set',   3, 5000,  15000, 2000, 1000, 12, 'Walkway Decoration'),
+                ('DEMO-0013', N'Photo Booth with Props',              N'Branded backdrop, frame and prop kit',                 N'Fun',          N'Multicolour',    N'Party Bazaar',        'set',   3, 6000,  20000, 1500, 800,  18, 'Photo Booth'),
+                ('DEMO-0014', N'LED Video Wall 10x8ft',               N'Rental LED screen with operator',                      N'Modern',       N'—',              N'GlowTech Lighting',   'set',   2, 25000, 60000, 5000, 3000, 18, 'LED Wall & Screens'),
+                ('DEMO-0015', N'Personalised Welcome Signage',        N'Standee welcome board with names',                     N'Elegant',      N'Gold & White',   N'Shaan Decorators',    'piece', 5, 1500,  4500,  0,    0,    18, 'Signage & Welcome Boards')
+            ) AS v(code, name, description, theme, color_scheme, vendor, unit, qty, unit_cost, rental_price, install_cost, removal_cost, tax_pct, category_name)
+            JOIN @cat c ON c.category_name = v.category_name;
+        END
+    `);
+    ok('Demo DecorationItems seeded.');
+
+    // ── 3p6. Seed demo DecorationPackages + link items (per the module spec's
+    // example package list — a representative subset, not all twelve) ──────
+    await pool.request().batch(`
+        IF NOT EXISTS (
+            SELECT 1 FROM DecorationPackageItems dpi
+            JOIN DecorationItems di ON di.decoration_id = dpi.decoration_id
+            WHERE di.decoration_code = 'DEMO-0001'
+        )
+        BEGIN
+            INSERT INTO DecorationPackages (company_id, package_name, package_type, description, flat_price, is_active, created_at, updated_at) VALUES
+                (1, N'Classic Wedding',      N'Wedding',      N'Floral arch, mandap, reception backdrop and table centerpieces', NULL, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+                (1, N'Royal Wedding',        N'Wedding',      N'Grand stage, royal mandap, ceiling canopy and premium lighting',  NULL, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+                (1, N'Birthday Party',       N'Birthday',     N'Balloon arch, theme set and photo booth',                         NULL, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+                (1, N'Corporate Conference', N'Corporate',    N'LED video wall and welcome signage',                              NULL, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+        END
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (
+            SELECT 1 FROM DecorationPackageItems dpi
+            JOIN DecorationItems di ON di.decoration_id = dpi.decoration_id
+            WHERE di.decoration_code = 'DEMO-0001'
+        )
+        BEGIN
+            -- Only the just-inserted demo packages (created_at within the last
+            -- minute) — excludes any older same-named package a tenant may
+            -- have created independently, so this never links demo items onto
+            -- an unrelated package that merely happens to share a name.
+            DECLARE @pkg TABLE (package_name NVARCHAR(200), package_id INT);
+            INSERT INTO @pkg SELECT package_name, package_id FROM DecorationPackages
+                WHERE company_id = 1 AND created_at >= DATEADD(MINUTE, -1, SYSUTCDATETIME());
+            DECLARE @item TABLE (decoration_code NVARCHAR(20), decoration_id INT);
+            INSERT INTO @item SELECT decoration_code, decoration_id FROM DecorationItems WHERE company_id = 1;
+
+            INSERT INTO DecorationPackageItems (package_id, decoration_id, quantity, created_at)
+            SELECT p.package_id, i.decoration_id, v.qty, SYSUTCDATETIME()
+            FROM (VALUES
+                (N'Classic Wedding',      N'DEMO-0002', 1),
+                (N'Classic Wedding',      N'DEMO-0003', 1),
+                (N'Classic Wedding',      N'DEMO-0004', 1),
+                (N'Classic Wedding',      N'DEMO-0010', 20),
+                (N'Royal Wedding',        N'DEMO-0001', 1),
+                (N'Royal Wedding',        N'DEMO-0003', 1),
+                (N'Royal Wedding',        N'DEMO-0009', 1),
+                (N'Royal Wedding',        N'DEMO-0006', 2),
+                (N'Birthday Party',       N'DEMO-0007', 2),
+                (N'Birthday Party',       N'DEMO-0008', 1),
+                (N'Birthday Party',       N'DEMO-0013', 1),
+                (N'Corporate Conference', N'DEMO-0014', 1),
+                (N'Corporate Conference', N'DEMO-0015', 1)
+            ) AS v(package_name, decoration_code, qty)
+            JOIN @pkg p ON p.package_name = v.package_name
+            JOIN @item i ON i.decoration_code = v.decoration_code;
+        END
+    `);
+    ok('Demo DecorationPackages seeded and linked to items.');
 
     // ── 3q. Structured inventory: extend Resources with category/supplier/cost ─
     await pool.request().batch(`

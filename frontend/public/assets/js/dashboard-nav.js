@@ -22,6 +22,7 @@ function getDashboardNav(I) {
         { s:'Catalog & Inventory', items:[
             { id:'masterMenu',       icon:I.fileText,      label:'Master Menu',      href:'../catering/menu.html', perm:'catering:read'   },
             { id:'bookingPackages',  icon:I.calendar,      label:'Booking Packages', href:'../booking-packages/index.html', perm:'bookings:read' },
+            { id:'decorations',      icon:I.clipboardList, label:'Decorations',      href:'../decorations/index.html', perm:'decorations:read' },
             { id:'inventory',        icon:I.clipboardList, label:'Inventory',        href:'../inventory/index.html', perm:'resources:read' },
         ]},
         { s:'CRM', items:[

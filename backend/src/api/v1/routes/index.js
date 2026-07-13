@@ -27,6 +27,7 @@ router.use('/invoices',     require('./invoice.routes'));
 router.use('/reports',      require('./report.routes'));
 router.use('/resources',    require('./resource.routes'));
 router.use('/catering',     require('./catering.routes'));
+router.use('/decorations',  require('./decoration.routes'));
 router.use('/menu-items',   require('./menuItem.routes'));
 router.use('/leads',       require('./lead.routes'));
 router.use('/quotations',  require('./quotation.routes'));

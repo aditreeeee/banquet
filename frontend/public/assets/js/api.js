@@ -66,12 +66,13 @@ const API = (() => {
        refresh triggered by an actual 401 (a real invalid/expired session)
        should hard-redirect to login. */
     let refreshPromise = null;
-    async function refreshAccessToken({ silent = false } = {}) {
+    async function refreshAccessToken({ silent = false, extend = false } = {}) {
         if (refreshPromise) return refreshPromise;
         refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
             method: 'POST',
             credentials: 'include',          // sends refresh-token cookie
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ extend: !!extend }),
         })
         .then(r => r.json())
         .then(data => {
@@ -86,7 +87,13 @@ const API = (() => {
             refreshPromise = null;
             if (!silent) {
                 clearToken();
-                Auth.redirectToLogin();
+                // The server has already revoked the underlying refresh token
+                // (see auth.service.js refreshTokens — both the reuse-detection
+                // and absolute-session-lifetime paths revoke before throwing),
+                // so there's nothing left to invalidate via a separate
+                // /auth/logout call; just clear local state and redirect with
+                // the reason so the login page shows the right message.
+                Auth.redirectToLogin('timeout');
             }
             throw err;
         });
@@ -173,9 +180,9 @@ const API = (() => {
 
         /* ─ Auth endpoints ─ */
         auth: {
-            login:         (email, password) => request('POST', '/auth/login',          { body: { email, password } }),
+            login:         (email, password, remember = false) => request('POST', '/auth/login', { body: { email, password, remember_me: !!remember } }),
             register:      (d)               => request('POST', '/auth/register',       { body: d }),
-            logout:        ()                => request('POST', '/auth/logout',         {}),
+            logout:        (opts)            => request('POST', '/auth/logout',         { body: opts?.reason ? { reason: opts.reason } : {} }),
             refresh:       (opts)            => refreshAccessToken(opts),
             forgotPassword:(email)           => request('POST', '/auth/forgot-password',{ body: { email } }),
             resetPassword: (token, password) => request('POST', '/auth/reset-password', { body: { token, password } }),
@@ -216,8 +223,13 @@ const API = (() => {
             tenantDashboard: (companyId, p) => request('GET', `/platform/tenants/${companyId}/dashboard`, { params: p }),
             tenantReports:   (companyId, p) => request('GET', `/platform/tenants/${companyId}/reports`,   { params: p }),
             users:           (p) => request('GET', '/platform/users', { params: p }),
-            getSessionTimeout: ()      => request('GET',   '/platform/settings/session-timeout'),
-            setSessionTimeout: (mins)  => request('PATCH', '/platform/settings/session-timeout', { body: { accessTokenMinutes: mins } }),
+            // getSessionPolicy/updateSessionPolicy would be more accurate names
+            // now that this covers idle timeout, absolute lifetime, warning,
+            // Keep Me Signed In duration, and max concurrent sessions — not
+            // just the access-token minutes it started as — but kept as-is to
+            // avoid touching every existing caller of the old name.
+            getSessionTimeout: ()        => request('GET',   '/platform/settings/session-timeout'),
+            setSessionTimeout: (policy)  => request('PATCH', '/platform/settings/session-timeout', { body: policy }),
         },
 
         banquets: {
@@ -264,6 +276,8 @@ const API = (() => {
             activities: (id)    => request('GET',  `/bookings/${id}/activities`),
             resources:  (id)    => request('GET',  `/bookings/${id}/resources`),
             updateResources: (id, resources) => request('PUT', `/bookings/${id}/resources`, { body: { resources } }),
+            decorations:  (id)    => request('GET',  `/bookings/${id}/decorations`),
+            updateDecorations: (id, decorations) => request('PUT', `/bookings/${id}/decorations`, { body: { decorations } }),
             contacts:   (id)    => request('GET',  `/bookings/${id}/contacts`),
             addContact: (id,d)  => request('POST', `/bookings/${id}/contacts`, { body: d }),
             removeContact: (id,contactId) => request('DELETE', `/bookings/${id}/contacts/${contactId}`),
@@ -350,6 +364,26 @@ const API = (() => {
             removeItem:  (id,itemId) => request('DELETE', `/catering/packages/${id}/items/${itemId}`),
             syncPrice:   (id)    => request('POST', `/catering/packages/${id}/sync-price`),
             deletePackage: (id)  => request('DELETE', `/catering/packages/${id}`),
+        },
+
+        /* ─ Decorations (catalog + packages) ─ */
+        decorations: {
+            categories:       ()     => request('GET',  '/decorations/categories'),
+            createCategory:   (name) => request('POST', '/decorations/categories',  { body: { categoryName: name } }),
+            items:            (p)    => request('GET',  '/decorations/items',       { params: p }),
+            item:             (id)   => request('GET',  `/decorations/items/${id}`),
+            createItem:       (d)    => request('POST', '/decorations/items',       { body: d }),
+            updateItem:       (id,d) => request('PUT',  `/decorations/items/${id}`, { body: d }),
+            importCsv:        (file) => { const fd = new FormData(); fd.append('file', file); return request('POST', '/decorations/items/import', { body: fd, rawForm: true }); },
+            packages:         (p)    => request('GET',  '/decorations/packages',    { params: p }),
+            package:          (id)   => request('GET',  `/decorations/packages/${id}`),
+            createPackage:    (d)    => request('POST', '/decorations/packages',    { body: d }),
+            updatePackage:    (id,d) => request('PUT',  `/decorations/packages/${id}`, { body: d }),
+            deletePackage:    (id)   => request('DELETE', `/decorations/packages/${id}`),
+            pricing:          (id)   => request('GET',  `/decorations/packages/${id}/pricing`),
+            addItem:          (id,d) => request('POST', `/decorations/packages/${id}/items`, { body: d }),
+            removeItem:       (id,itemId) => request('DELETE', `/decorations/packages/${id}/items/${itemId}`),
+            snapshot:         (p)    => request('GET', '/decorations/snapshot', { params: p }),
         },
 
         /* ─ Master Menu (menu items) ─ */

@@ -10,6 +10,7 @@ const hallRepo     = require('../repositories/hall.repository');
 const customerRepo = require('../repositories/customer.repository');
 const auditLogRepo = require('../repositories/auditLog.repository');
 const resourceRepo = require('../repositories/resource.repository');
+const decorationRepo = require('../repositories/decoration.repository');
 const bookingContactRepo = require('../repositories/bookingContact.repository');
 const bookingStaffRepo = require('../repositories/bookingStaff.repository');
 const bookingCateringRepo = require('../repositories/bookingCatering.repository');
@@ -674,6 +675,45 @@ const updateResourceAllocations = async (bookingId, companyId, resources, actor)
     return resourceRepo.getAllocationsForBooking(bookingId, companyId);
 };
 
+const getDecorationAllocations = async (bookingId, companyId) => {
+    const booking = await bookingRepo.findById(bookingId, companyId);
+    if (!booking) throw new NotFoundError('Booking');
+    return decorationRepo.getAllocationsForBooking(bookingId, companyId);
+};
+
+/**
+ * Reallocate a booking's decoration items to a new set of quantities — same
+ * pattern as updateResourceAllocations (decorations are quantity-bound stock,
+ * not a per-plate calculation). Called both right after booking creation
+ * (Step 6 catalog selection) and on edit, since — unlike resources — the
+ * create payload's decorations[] is never trusted at creation time; the
+ * booking must exist first so the allocation rows can reference it.
+ */
+const updateDecorationAllocations = async (bookingId, companyId, decorations, actor) => {
+    const booking = await bookingRepo.findById(bookingId, companyId);
+    if (!booking) throw new NotFoundError('Booking');
+    if (['cancelled', 'completed', 'archived'].includes(booking.status)) {
+        throw new ValidationError(`Cannot reallocate decorations for a ${booking.status} booking`);
+    }
+
+    await decorationRepo.reallocateForBooking(bookingId, companyId, decorations, booking.event_date);
+    // Decoration cost contributes to total_amount — see recalculateBookingTotal.
+    await recalculateBookingTotal(bookingId, companyId);
+    dashService.invalidateDashboardCache(companyId);
+
+    await auditLogRepo.log({
+        companyId,
+        userId:     actor.userId,
+        action:     'booking.decorations_updated',
+        entityType: 'booking',
+        entityId:   bookingId,
+        description: `Decoration allocation updated for booking ${booking.booking_ref}`,
+        newValues:  { decorations },
+    });
+
+    return decorationRepo.getAllocationsForBooking(bookingId, companyId);
+};
+
 // ─── Alternative Contacts ──────────────────────────────────────────────────────
 
 const getContacts = async (bookingId, companyId) => {
@@ -795,7 +835,25 @@ const recalculateBookingTotal = async (bookingId, companyId) => {
         r.is_billable ? sum + (parseFloat(r.unit_price) || 0) * (r.quantity_allocated || 0) : sum
     ), 0);
 
-    const storedCharges = ['setup_charge', 'decoration_charge', 'cleanup_charge', 'cleaning_charge',
+    // Same fallback principle as catering above: prefer the catalog
+    // allocation (rental + install + removal, less discount, plus tax) when
+    // the booking has any DecorationItems allocated via the Decorations
+    // module; fall back to the legacy flat decoration_charge column for
+    // bookings priced before the catalog existed. Never sum both — that
+    // would double-count (see backend/scripts/setup.js's DecorationItems
+    // block and Decorations module notes for why decoration_charge was
+    // pulled out of storedCharges below).
+    const decorationAllocations = await decorationRepo.getAllocationsForBooking(bookingId, companyId);
+    const decorationCost = decorationAllocations.length
+        ? Number(decorationAllocations.reduce((sum, d) => {
+            const base = (parseFloat(d.rental_price) || 0) * d.quantity_allocated
+                + (parseFloat(d.installation_cost) || 0) + (parseFloat(d.removal_cost) || 0);
+            const discounted = base * (1 - (parseFloat(d.discount_percent) || 0) / 100);
+            return sum + discounted * (1 + (parseFloat(d.tax_percent) || 0) / 100);
+        }, 0).toFixed(2))
+        : (parseFloat(booking.decoration_charge) || 0);
+
+    const storedCharges = ['setup_charge', 'cleanup_charge', 'cleaning_charge',
         'late_exit_charge', 'extended_usage_charge', 'cooloff_charge']
         .reduce((sum, col) => sum + (parseFloat(booking[col]) || 0), 0);
 
@@ -805,6 +863,7 @@ const recalculateBookingTotal = async (bookingId, companyId) => {
         + storedCharges
         + cateringCost
         + resourceCost
+        + decorationCost
     ).toFixed(2));
 
     if (newTotal !== parseFloat(booking.total_amount)) {
@@ -883,6 +942,8 @@ module.exports = {
     getActivityTimeline,
     getResourceAllocations,
     updateResourceAllocations,
+    getDecorationAllocations,
+    updateDecorationAllocations,
     getContacts,
     addContact,
     removeContact,

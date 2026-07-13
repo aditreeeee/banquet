@@ -81,7 +81,11 @@
       "src/api/v1/middleware/errorHandler.js",
       "src/api/v1/validators/booking.validator.js",
       "src/api/v1/validators/payment.validator.js",
-      "src/api/v1/validators/user.validator.js"
+      "src/api/v1/validators/user.validator.js",
+      "src/services/booking.service.js",
+      "src/services/branch.service.js",
+      "src/services/decoration.service.js",
+      "src/services/auth.service.js"
     ]
   }
 }

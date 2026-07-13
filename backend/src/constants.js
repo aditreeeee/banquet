@@ -125,6 +125,11 @@ const PERMISSIONS = {
     CATERING_CREATE:      'catering:create',
     CATERING_UPDATE:      'catering:update',
 
+    // Decorations
+    DECORATIONS_READ:     'decorations:read',
+    DECORATIONS_CREATE:   'decorations:create',
+    DECORATIONS_UPDATE:   'decorations:update',
+
     // Notifications
     NOTIFICATIONS_READ:   'notifications:read',
     NOTIFICATIONS_MANAGE: 'notifications:manage',

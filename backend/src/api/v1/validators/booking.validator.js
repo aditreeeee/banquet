@@ -147,6 +147,19 @@ const resourcesSchema = Joi.object({
     ).required(),
 });
 
+const decorationsSchema = Joi.object({
+    decorations: Joi.array().items(
+        Joi.object({
+            decorationId:   Joi.number().integer().positive().required(),
+            quantity:       Joi.number().integer().positive().required(),
+            packageId:      Joi.number().integer().positive().optional(),
+            installationAt: Joi.date().iso().optional(),
+            removalAt:      Joi.date().iso().optional(),
+            notes:          Joi.string().max(500).optional(),
+        })
+    ).required(),
+});
+
 const availabilitySchema = Joi.object({
     hallId:    Joi.number().integer().positive().required(),
     eventDate: Joi.date().iso().required(),
@@ -165,4 +178,5 @@ module.exports = {
     validateClone:        validate(cloneSchema),
     validateSlot:         validate(slotSchema),
     validateResources:    validate(resourcesSchema),
+    validateDecorations:  validate(decorationsSchema),
 };

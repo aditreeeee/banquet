@@ -411,6 +411,79 @@ const getInventoryCost = async ({ companyId, branchId, fromDate, toDate }) => {
     return rows[0].inventory_cost;
 };
 
+/**
+ * Decoration package/item performance for Owner Analytics — usage, revenue
+ * (same rental+install+removal, less discount, plus tax formula as
+ * booking.service.js's recalculateBookingTotal, computed here per-allocation
+ * rather than duplicated onto a stored column), cost (unit_cost snapshot),
+ * and utilization (allocated ÷ available stock) for the period.
+ */
+const getDecorationAnalytics = async ({ companyId, branchId, fromDate, toDate }) => {
+    const REVENUE_EXPR = `
+        (bd.quantity_allocated * di.rental_price + di.installation_cost + di.removal_cost)
+        * (1 - di.discount_percent / 100) * (1 + di.tax_percent / 100)`;
+
+    const packageBreakdown = await executeQuery(
+        `SELECT dp.package_id, dp.package_name,
+                COUNT(DISTINCT bd.booking_id) AS bookings_count,
+                ISNULL(SUM(bd.quantity_allocated), 0) AS total_quantity,
+                ISNULL(SUM(${REVENUE_EXPR}), 0) AS revenue
+         FROM BookingDecorations bd
+         JOIN DecorationItems di ON di.decoration_id = bd.decoration_id
+         JOIN DecorationPackages dp ON dp.package_id = bd.package_id
+         JOIN Bookings b ON b.booking_id = bd.booking_id
+         WHERE b.company_id = @companyId
+           AND (@branchId IS NULL OR b.branch_id = @branchId)
+           AND b.event_date BETWEEN @fromDate AND @toDate
+           AND b.status NOT IN ('draft', 'cancelled')
+         GROUP BY dp.package_id, dp.package_name
+         ORDER BY bookings_count DESC`,
+        { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+    );
+
+    const totals = await executeQuery(
+        `SELECT ISNULL(SUM(${REVENUE_EXPR}), 0) AS total_revenue,
+                ISNULL(SUM(bd.quantity_allocated * di.unit_cost), 0) AS total_cost
+         FROM BookingDecorations bd
+         JOIN DecorationItems di ON di.decoration_id = bd.decoration_id
+         JOIN Bookings b ON b.booking_id = bd.booking_id
+         WHERE b.company_id = @companyId
+           AND (@branchId IS NULL OR b.branch_id = @branchId)
+           AND b.event_date BETWEEN @fromDate AND @toDate
+           AND b.status NOT IN ('draft', 'cancelled')`,
+        { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+    );
+
+    const itemUtilization = await executeQuery(
+        `SELECT di.decoration_id, di.decoration_name, di.quantity_available,
+                ISNULL(SUM(bd.quantity_allocated), 0) AS quantity_allocated,
+                CASE WHEN di.quantity_available > 0
+                     THEN CAST(ISNULL(SUM(bd.quantity_allocated), 0) * 100.0 / di.quantity_available AS DECIMAL(5,2))
+                     ELSE 0 END AS utilization_pct
+         FROM DecorationItems di
+         LEFT JOIN BookingDecorations bd ON bd.decoration_id = di.decoration_id
+             AND bd.booking_id IN (
+                 SELECT booking_id FROM Bookings
+                 WHERE company_id = @companyId
+                   AND (@branchId IS NULL OR branch_id = @branchId)
+                   AND event_date BETWEEN @fromDate AND @toDate
+                   AND status NOT IN ('draft', 'cancelled')
+             )
+         WHERE di.company_id = @companyId AND di.is_active = 1
+         GROUP BY di.decoration_id, di.decoration_name, di.quantity_available
+         ORDER BY quantity_allocated DESC`,
+        { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+    );
+
+    return {
+        packageBreakdown,
+        totalRevenue: totals[0].total_revenue,
+        totalCost: totals[0].total_cost,
+        profitability: Number(totals[0].total_revenue) - Number(totals[0].total_cost),
+        itemUtilization,
+    };
+};
+
 const getMonthlyComparison = async ({ companyId, branchId, currentFrom, currentTo, previousFrom, previousTo }) => {
     const query = (fromDate, toDate) => executeQuery(
         `SELECT COUNT(*) AS bookings_count, ISNULL(SUM(total_amount), 0) AS revenue
@@ -442,5 +515,6 @@ module.exports = {
     getTopCustomers,
     getCancellationAndRefundRates,
     getInventoryCost,
+    getDecorationAnalytics,
     getMonthlyComparison,
 };

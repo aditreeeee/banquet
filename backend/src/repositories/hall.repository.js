@@ -104,7 +104,7 @@ const create = async (data) => {
             name:      data.hallName,
             code:      data.hallCode || generateHallCode(data.hallName),
             desc:      data.description || null,
-            hallType:  data.hallType || null,
+            hallType:  data.hallType || 'main_hall',
             capacity:  data.capacity        || 0,
             capacitySeated:   data.capacitySeated   || data.capacity || 0,
             capacityStanding: data.capacityStanding || 0,

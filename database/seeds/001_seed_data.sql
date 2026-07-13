@@ -420,10 +420,14 @@ VALUES
     (1, 'Jain Special',    'veg',      500.00,   50, 'Specially crafted Jain vegetarian menu');
 GO
 
--- Demo Sample Coupon
-INSERT INTO coupons (company_id, coupon_code, coupon_name, discount_type, discount_value, max_discount_amount, min_booking_amount, usage_limit, valid_from, valid_to)
-VALUES (1, 'GRAND20', 'Grand Launch Offer', 'percentage', 20.00, 15000.00, 50000.00, 100,
-    '2026-01-01 00:00:00', '2026-12-31 23:59:59');
+-- Demo Sample Coupons
+INSERT INTO coupons (company_id, coupon_code, coupon_name, description, discount_type, discount_value, max_discount_amount, min_booking_amount, usage_limit, valid_from, valid_to)
+VALUES
+    (1, 'GRAND20',  'Grand Launch Offer',   '20% off to celebrate our launch',            'percentage', 20.00, 15000.00, 50000.00, 100, '2026-01-01 00:00:00', '2026-12-31 23:59:59'),
+    (1, 'WELCOME10','Welcome Offer',        '10% off for first-time bookings',            'percentage', 10.00,  5000.00, 20000.00, 500, '2026-01-01 00:00:00', '2026-12-31 23:59:59'),
+    (1, 'FLAT5000', 'Flat 5000 Off',        'Flat discount on large bookings',            'flat',      5000.00,     NULL, 75000.00,  50, '2026-01-01 00:00:00', '2026-12-31 23:59:59'),
+    (1, 'WEDDING15','Wedding Season Special','15% off weekday wedding bookings',           'percentage', 15.00, 20000.00, 40000.00, 200, '2026-01-01 00:00:00', '2026-12-31 23:59:59'),
+    (1, 'FESTIVE500','Festive Flat 500',    'Small flat discount during festive months',  'flat',       500.00,     NULL,  5000.00, NULL, '2026-01-01 00:00:00', '2026-12-31 23:59:59');
 GO
 
 PRINT 'Seed data inserted successfully.';

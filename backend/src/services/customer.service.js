@@ -27,7 +27,8 @@ const getAll = async (query, actor) => {
     return { rows, meta: buildMeta(total, p), stats };
 };
 
-const getById = async (id, companyId) => {
+const getById = async (id, actor) => {
+    const companyId = resolveCompanyScope(actor);
     const c = await repo.findById(id, companyId);
     if (!c) throw new NotFoundError('Customer');
     // customers/detail.html's Reviews tab reads c.reviews — this was never
@@ -80,7 +81,8 @@ const update = async (id, data, actor) => {
     return repo.update(id, actor.companyId, normalized);
 };
 
-const getBookingHistory = async (id, companyId, query) => {
+const getBookingHistory = async (id, actor, query) => {
+    const companyId = resolveCompanyScope(actor);
     const existing = await repo.findById(id, companyId);
     if (!existing) throw new NotFoundError('Customer');
 

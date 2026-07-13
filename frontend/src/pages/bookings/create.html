@@ -1658,26 +1658,29 @@ function renderStagedDecorations() {
         </table>`;
 }
 
-/* â”€â”€ Customer search â”€â”€ */
-const demoCustomers = [
-    { customer_id: 1, first_name: 'Arjun', last_name: 'Sharma', email: 'arjun@example.com', phone: '+91-9876543210' },
-    { customer_id: 2, first_name: 'Priya', last_name: 'Patel', email: 'priya@example.com', phone: '+91-9123456780' },
-    { customer_id: 3, first_name: 'Rahul', last_name: 'Gupta', email: 'rahul@example.com', phone: '+91-9988776655' },
-    { customer_id: 4, first_name: 'Anjali', last_name: 'Singh', email: 'anjali@example.com', phone: '+91-9811122233' },
-    { customer_id: 5, first_name: 'Kavita', last_name: 'Joshi', email: 'kavita@example.com', phone: '+91-9654321098' },
-];
-
-function renderCustomerSuggestions(list, query = '') {
+/* ── Customer search — real API results only. A previous version fell back
+   to a hardcoded demo customer list whenever the search API returned zero
+   matches OR threw, meaning a genuine prospective customer with no matches
+   would see fake people as suggestions; selecting one attached a bogus
+   customer_id (1-5) to a real booking. Empty/error states now say so
+   explicitly instead of substituting fake data. ── */
+function renderCustomerSuggestions(list, query = '', state = 'ok') {
     const wrap = document.getElementById('customerSuggestions');
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery || !list.length) {
-        wrap.innerHTML = '';
+    if (!normalizedQuery) { wrap.innerHTML = ''; return; }
+
+    if (state === 'error') {
+        wrap.innerHTML = `<div style="position:absolute;top:100%;left:0;right:0;z-index:1050;margin-top:6px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:10px 14px;font-size:12.5px;color:var(--color-danger)">Search failed — try again, or use "+ New Customer".</div>`;
+        return;
+    }
+    if (!list.length) {
+        wrap.innerHTML = `<div style="position:absolute;top:100%;left:0;right:0;z-index:1050;margin-top:6px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:10px 14px;font-size:12.5px;color:var(--text-muted)">No matching customers — use "+ New Customer" to add them.</div>`;
         return;
     }
     wrap.innerHTML = `<div style="position:absolute;top:100%;left:0;right:0;z-index:1050;margin-top:6px;background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);max-height:230px;overflow-y:auto">
         ${list.map(c => `<div class="dropdown-item" style="padding:10px 14px;cursor:pointer" onclick="selectCustomer(${c.customer_id}, '${(c.first_name + ' ' + c.last_name).replace(/'/g, "\\'")}', '${(c.email || '').replace(/'/g, "\\'")}')">
-            <div style="font-size:13px;font-weight:600">${c.first_name} ${c.last_name}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${c.email || ''}${c.phone ? ' • ' + c.phone : ''}</div>
+            <div style="font-size:13px;font-weight:600">${Utils.escapeHtml(c.first_name)} ${Utils.escapeHtml(c.last_name)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${Utils.escapeHtml(c.email) || ''}${c.phone ? ' • ' + Utils.escapeHtml(c.phone) : ''}</div>
         </div>`).join('')}
     </div>`;
 }
@@ -1689,10 +1692,9 @@ const searchCustomers = Utils.debounce(async (q) => {
     try {
         const res = await API.customers.list({ search: value, limit: 6 });
         const list = Array.isArray(res?.data?.customers) ? res.data.customers : [];
-        renderCustomerSuggestions(list.length ? list : demoCustomers.filter(c => [c.first_name, c.last_name, c.email, c.phone].some(item => (item || '').toLowerCase().includes(value.toLowerCase()))), value);
-    } catch {
-        const list = demoCustomers.filter(c => [c.first_name, c.last_name, c.email, c.phone].some(item => (item || '').toLowerCase().includes(value.toLowerCase())));
         renderCustomerSuggestions(list, value);
+    } catch {
+        renderCustomerSuggestions([], value, 'error');
     }
 }, 300);
 
@@ -1896,14 +1898,17 @@ async function applyCoupon() {
     const res = document.getElementById('couponResult');
     if (!code) return;
     try {
-        const validateCoupon = API.coupons?.validate || (() => Promise.reject(new Error('Coupon service unavailable')));
-        const r = await validateCoupon({ coupon_code: code, subtotal: state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal });
-        state.discountAmt = r?.data?.discount_amount || 0;
+        const r = await API.coupons.validate({ coupon_code: code, subtotal: state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal });
+        state.discountAmt = r?.data?.discountAmount || 0;
         state.couponCode = code;
         res.innerHTML = `<span style="color:var(--color-success)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg> ${code} applied — saving ${Utils.formatCurrency(state.discountAmt)}</span>`;
         calculatePrice();
-    } catch {
-        res.innerHTML = `<span style="color:var(--color-danger)">Invalid or expired coupon</span>`;
+    } catch (err) {
+        state.discountAmt = 0;
+        state.couponCode = '';
+        const message = err?.message || 'Invalid or expired coupon';
+        res.innerHTML = `<span style="color:var(--color-danger)">${Utils.escapeHtml(message)}</span>`;
+        calculatePrice();
     }
 }
 

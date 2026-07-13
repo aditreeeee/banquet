@@ -1573,6 +1573,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // quotation-creation form); other modals on this page (detail/clone/
     // convert) are read/action modals, not unsaved-work forms.
     FormDraft.autoSaveForm('quotation_draft', '#builderModal');
+
+    // Deep link from Sales Pipeline's "Convert to Quotation" — leads/index.html
+    // creates the quotation via the API then sends the user here to view it.
+    const openId = new URLSearchParams(location.search).get('quotation_id');
+    if (openId) openDetailModal(parseInt(openId, 10));
 });
 </script>
 </body>

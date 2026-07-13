@@ -601,6 +601,10 @@ const mondayOf = (dateStr) => {
   return dt.toISOString().slice(0,10);
 };
 
+// Multi-day bookings occupy every date from event_date_iso through
+// event_end_date_iso (inclusive), not just their start date.
+const spansDate = (b, d) => d >= b.event_date_iso && d <= (b.event_end_date_iso || b.event_date_iso);
+
 const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDate, setAnchorDate, onSelectBooking, onHoverBooking, onMoveBooking }) => {
   // Three distinct aggregation levels: hourly = single day / 24 hour columns,
   // daily = 7 individual day columns (unchanged), weekly = 6 week columns,
@@ -711,7 +715,7 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
         {halls.map(h=>{
           const hallBookings = barsForHall(h.hall_id);
           const seatedCap    = h.capacity_seated || h.capacity || 0;
-          const anchorBookings = hallBookings.filter(b=>b.event_date_iso===anchorDate);
+          const anchorBookings = hallBookings.filter(b=>spansDate(b,anchorDate));
           const occupancy    = anchorBookings.reduce((s,b)=>s+(b.guest_count||0),0);
           const available    = Math.max(0, seatedCap - occupancy);
           const bookingStatus = h.is_under_maintenance ? 'Maintenance'
@@ -750,7 +754,7 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
                   );
                 })}
                 {granularity==='hourly'
-                  ? hallBookings.filter(b=>b.event_date_iso===anchorDate).map(b=>{
+                  ? hallBookings.filter(b=>spansDate(b,anchorDate)).map(b=>{
                       const startH = hourOf(b.event_time_start), endH = Math.max(startH+1, hourOf(b.event_time_end)||24);
                       // Setup/cleanup/cool-off buffers reserve the hall before/after the event itself —
                       // shown as a lighter extension of the same bar so conflicts during buffers are visible too.
@@ -790,7 +794,7 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
                   : granularity==='weekly'
                   ? days.map((weekStart,i)=>{
                       const weekEnd = addDays(weekStart,6);
-                      const weekBookings = hallBookings.filter(b=>b.event_date_iso>=weekStart && b.event_date_iso<=weekEnd);
+                      const weekBookings = hallBookings.filter(b=>b.event_date_iso<=weekEnd && (b.event_end_date_iso||b.event_date_iso)>=weekStart);
                       if (!weekBookings.length) return <div key={weekStart} style={{gridColumn:`${i+1} / ${i+2}`,pointerEvents:'none'}}/>;
                       const guestTotal = weekBookings.reduce((s,b)=>s+(b.guest_count||0),0);
                       return (
@@ -805,7 +809,7 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
                       );
                     })
                   : days.map((d,i)=>{
-                      const dayBookings = hallBookings.filter(b=>b.event_date_iso===d);
+                      const dayBookings = hallBookings.filter(b=>spansDate(b,d));
                       if (!dayBookings.length) return <div key={d} style={{gridColumn:`${i+1} / ${i+2}`,pointerEvents:'none'}}/>;
                       return (
                         <div key={d} style={{gridColumn:`${i+1} / ${i+2}`,display:'flex',flexDirection:'column',gap:2,padding:'3px 2px',pointerEvents:'none'}}>
@@ -846,7 +850,7 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
 
 /* ── Context Panel (right) — syncs with selected date / hovered / selected booking ── */
 const ContextPanel = ({ anchorDate, bookings, halls, hoveredBooking, onSelectBooking }) => {
-  const dayBookings = useMemo(()=>bookings.filter(b=>b.event_date_iso===anchorDate && b.status!=='cancelled'), [bookings,anchorDate]);
+  const dayBookings = useMemo(()=>bookings.filter(b=>spansDate(b,anchorDate) && b.status!=='cancelled'), [bookings,anchorDate]);
   const busyHalls = new Set(dayBookings.map(b=>b.hall_id));
   const revenue = dayBookings.reduce((s,b)=>s+(b.amount_paid||0),0);
   const guestTotal = dayBookings.reduce((s,b)=>s+(b.guest_count||0),0);
@@ -934,7 +938,7 @@ const CommandCenterView = () => {
         guard(API.customers.list({ limit:1 }), 'customers'),
       ]);
       setHalls(hallsRes?.data?.halls || hallsRes?.data || []);
-      const rows = (bookingsRes?.data?.bookings || []).map(b => ({ ...b, event_date_iso: dateOnly(b.event_date) }));
+      const rows = (bookingsRes?.data?.bookings || []).map(b => ({ ...b, event_date_iso: dateOnly(b.event_date), event_end_date_iso: b.event_end_date ? dateOnly(b.event_end_date) : dateOnly(b.event_date) }));
       setBookings(rows);
       setInventorySnapshot(Array.isArray(invRes?.data) ? invRes.data : []);
       setPendingTotal((pendingRes?.data?.pending || []).length);

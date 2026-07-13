@@ -305,6 +305,15 @@ const API = (() => {
             bookingHistory: (id,p) => request('GET', `/customers/${id}/booking-history`, { params: p }),
         },
 
+        /* ─ Coupons ─ */
+        coupons: {
+            list:     (p)  => request('GET',  '/coupons',          { params: p }),
+            get:      (id) => request('GET',  `/coupons/${id}`),
+            create:   (d)  => request('POST', '/coupons',          { body: d }),
+            update:   (id,d) => request('PUT', `/coupons/${id}`,   { body: d }),
+            validate: (d)  => request('POST', '/coupons/validate', { body: d }),
+        },
+
         /* ─ Payments ─ */
         payments: {
             list:     (p)    => request('GET',  '/payments',          { params: p }),

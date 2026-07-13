@@ -230,6 +230,7 @@ function leadCard(l) {
         <div class="lead-actions">
             ${canGoBack ? `<button class="btn-ghost" onclick="moveStage(${l.lead_id}, '${STAGES[stageIdx - 1].key}')">← Back</button>` : ''}
             ${canAdvance ? `<button class="btn-primary-brand" onclick="moveStage(${l.lead_id}, '${STAGES[stageIdx + 1].key}')">Advance →</button>` : ''}
+            ${l.stage === 'quotation' ? `<button class="btn-primary-brand" data-require-perm="quotations:create" onclick="convertToQuotation(${l.lead_id})">Convert to Quotation</button>` : ''}
             ${l.stage === 'confirmed' ? `<button class="btn-primary-brand" style="background:var(--color-success)" onclick="openConvertModal(${l.lead_id})">Convert to Booking</button>` : ''}
             ${!['completed', 'lost'].includes(l.stage) ? `<button class="btn-ghost" style="color:var(--color-danger)" onclick="openLostModal(${l.lead_id})">Mark Lost</button>` : ''}
             ${['inquiry', 'lead', 'lost'].includes(l.stage) ? `<button class="btn-ghost" onclick="openCampaignModal(${l.lead_id})">Send Campaign</button>` : ''}
@@ -309,6 +310,16 @@ async function submitLost() {
         loadLeads();
     } catch (err) {
         Utils.toast(err.message || 'Failed to update stage', 'error');
+    }
+}
+
+async function convertToQuotation(leadId) {
+    try {
+        const res = await API.quotations.create({ leadId });
+        Utils.toast('Quotation created', 'success');
+        window.location.href = `../quotations/index.html?quotation_id=${res.data.quotation_id}`;
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to create quotation', 'error');
     }
 }
 

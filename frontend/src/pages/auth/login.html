@@ -371,6 +371,16 @@
     const emailParam = Utils.getQueryParam('email');
     if (emailParam) document.getElementById('email').value = emailParam;
 
+    // Session-timeout redirect (?reason=timeout) — set by Auth.logout('timeout')
+    // when the idle/absolute-lifetime watchdog (auth.js) or a failed silent
+    // token refresh ends the session, vs. a deliberate manual logout.
+    if (Utils.getQueryParam('reason') === 'timeout') {
+        const alertEl = document.getElementById('loginAlert');
+        alertEl.textContent = 'Your session has expired due to inactivity. Please sign in again.';
+        alertEl.className = 'alert-auth error';
+        alertEl.style.display = 'block';
+    }
+
     // Demo fill
     function fillDemo() {
         document.getElementById('email').value    = 'superadmin@banquetpro.com';
@@ -413,7 +423,8 @@
         Utils.showLoader(btn, 'Signing in…');
 
         try {
-            await Auth.login(email, password);
+            const remember = document.getElementById('remember')?.checked || false;
+            await Auth.login(email, password, remember);
             alert.textContent  = 'Login successful! Redirecting…';
             alert.className    = 'alert-auth success';
             alert.style.display = 'block';

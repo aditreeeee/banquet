@@ -78,8 +78,12 @@ const logout = async (req, res) => {
     // Accept token from cookie or Authorization header body
     const refreshToken = req.cookies?.refreshToken || req.body?.refresh_token;
     const userId       = req.user?.user_id;
+    // 'timeout' when the client's idle/absolute-lifetime watchdog is the one
+    // ending the session (see auth.js) vs. the default 'manual' logout —
+    // recorded in the audit log by authService.logout.
+    const reason = req.body?.reason === 'timeout' ? 'timeout' : 'manual';
 
-    await authService.logout(refreshToken, userId);
+    await authService.logout(refreshToken, userId, reason, req.user?.company_id);
 
     // Clear the cookie
     res.clearCookie('refreshToken', { path: '/api/v1/auth' });
@@ -90,7 +94,7 @@ const logout = async (req, res) => {
 // ─── POST /auth/logout-all ────────────────────────────────────────────────────
 
 const logoutAll = async (req, res) => {
-    await authService.logoutAll(req.user.user_id);
+    await authService.logoutAll(req.user.user_id, req.user.company_id);
     res.clearCookie('refreshToken', { path: '/api/v1/auth' });
     return response.success(res, null, 'Logged out from all devices');
 };
@@ -110,10 +114,18 @@ const refresh = async (req, res) => {
     }
 
     const meta   = getMeta(req);
-    const tokens = await authService.refreshTokens(refreshToken, meta);
+    // `extend: true` is sent by the "Stay Signed In" button on the session
+    // warning modal (vs. the frequent silent background proactive refresh),
+    // so only that click gets its own audit-log entry — logging every
+    // background refresh would flood the audit trail with noise.
+    const tokens = await authService.refreshTokens(refreshToken, meta, { extend: !!req.body?.extend });
 
-    // Rotate cookie
-    res.cookie('refreshToken', tokens.refreshToken, REFRESH_COOKIE_OPTIONS);
+    // Rotate cookie with the SAME lifetime the session started with — using
+    // the fixed 7-day REFRESH_COOKIE_OPTIONS unconditionally here used to
+    // silently downgrade a 30-day "Keep Me Signed In" session to 7 days on
+    // its very next background refresh (rotation happens ~every 12 min while
+    // active), defeating the feature within the first refresh cycle.
+    res.cookie('refreshToken', tokens.refreshToken, tokens.isExtended ? REFRESH_COOKIE_OPTIONS_EXTENDED : REFRESH_COOKIE_OPTIONS);
 
     return response.success(res, {
         accessToken:  tokens.accessToken,

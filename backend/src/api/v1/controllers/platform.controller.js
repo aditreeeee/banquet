@@ -19,13 +19,33 @@ const getAllUsers = async (req, res) => { const { rows, meta } = await svc.getAl
 // the caller happens to be scoped/impersonating as). This always reads and
 // writes the one global value every tenant's logins share.
 const getSessionTimeout = async (req, res) => response.success(res, await settingsService.getSessionPolicy());
+
+// Field -> [min, max] validation range, mirroring settings.service.js's own
+// clampedInt bounds so a bad value 422s here instead of silently clamping.
+const POLICY_FIELD_RANGES = {
+    accessTokenMinutes:         [1, 1440],
+    idleTimeoutMinutes:         [1, 1440],
+    absoluteSessionHours:       [1, 168],
+    warningBeforeLogoutMinutes: [1, 60],
+    keepSignedInDays:           [1, 365],
+    maxConcurrentSessions:      [0, 100],
+};
+
 const updateSessionTimeout = async (req, res) => {
-    const minutes = parseInt(req.body.accessTokenMinutes, 10);
-    if (!Number.isFinite(minutes) || minutes < 1 || minutes > 1440) {
-        return res.status(422).json({ success: false, message: 'accessTokenMinutes must be between 1 and 1440' });
+    const policy = {};
+    for (const [field, [min, max]] of Object.entries(POLICY_FIELD_RANGES)) {
+        if (req.body[field] === undefined) continue;
+        const n = parseInt(req.body[field], 10);
+        if (!Number.isFinite(n) || n < min || n > max) {
+            return res.status(422).json({ success: false, message: `${field} must be between ${min} and ${max}` });
+        }
+        policy[field] = n;
     }
-    await settingsService.updateSessionPolicy(minutes, { userId: req.user.user_id });
-    return response.success(res, await settingsService.getSessionPolicy(), 'Session timeout updated');
+    if (!Object.keys(policy).length) {
+        return res.status(422).json({ success: false, message: 'No valid session policy fields provided' });
+    }
+    const updated = await settingsService.updateSessionPolicy(policy, { userId: req.user.user_id });
+    return response.success(res, updated, 'Session policy updated');
 };
 
 module.exports = {

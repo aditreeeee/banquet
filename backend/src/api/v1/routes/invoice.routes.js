@@ -91,15 +91,23 @@ router.get('/', requirePermission(PERMISSIONS.INVOICES_READ), async (req, res) =
 });
 
 // Get single invoice
+// Includes the issuing Company/Property's own name/address/phone/email/GST —
+// this is a document sent to the customer, so it must show the real tenant's
+// details, never generic platform branding (see buildInvoiceHTML in
+// invoices/index.html, which was previously hardcoding "BanquetPro").
 router.get('/:id', requirePermission(PERMISSIONS.INVOICES_READ), async (req, res) => {
     const rows = await executeQuery(
         `SELECT i.*,
                 b.booking_ref,
                 CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
-                c.email AS customer_email, c.phone AS customer_phone
+                c.email AS customer_email, c.phone AS customer_phone,
+                co.company_name, co.address_line1 AS company_address_line1,
+                co.address_line2 AS company_address_line2, co.phone AS company_phone,
+                co.email AS company_email, co.gst_number AS company_gst_number
          FROM Invoices i
          JOIN Bookings  b ON b.booking_id  = i.booking_id
          JOIN Customers c ON c.customer_id = i.customer_id
+         LEFT JOIN Companies co ON co.company_id = i.company_id
          WHERE i.invoice_id = @id AND i.company_id = @companyId`,
         {
             id:        parseInt(req.params.id, 10),

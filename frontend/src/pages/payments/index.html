@@ -262,6 +262,7 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/formDraft.js"></script>
 <script src="../../../public/assets/js/sidebar.js"></script>
 <script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
@@ -771,7 +772,10 @@ async function importPaymentsCsv(file) {
 
 const handlePaySearch = Utils.debounce(() => loadPayments(1), 350);
 
-document.addEventListener('DOMContentLoaded', () => loadPayments(1));
+document.addEventListener('DOMContentLoaded', () => {
+    loadPayments(1);
+    FormDraft.autoSaveForm('payment_draft', '#recordModal');
+});
 </script>
 </body>
 </html>

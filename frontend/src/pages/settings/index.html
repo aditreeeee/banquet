@@ -307,7 +307,7 @@
             <div class="settings-row">
                 <div><div class="settings-label">Session Timeout</div><div class="settings-desc">How long a login stays active before the access token expires and the user is signed out</div></div>
                 <div>
-                    <select class="form-select" id="sessionTimeoutMinutes" style="max-width:200px">
+                    <select class="form-select" id="sessionTimeoutMinutes" style="max-width:200px" disabled>
                         <option value="15" selected>15 minutes</option>
                         <option value="30">30 minutes</option>
                         <option value="60">1 hour</option>
@@ -316,6 +316,61 @@
                     </select>
                 </div>
             </div>
+            <!-- Session & Security — platform-wide, Super-Admin-editable only
+                 (see settings.service.js's getSessionPolicy/PLATFORM_SETTINGS_COMPANY_ID
+                 for why this isn't per-tenant like the rest of this page). Every
+                 authenticated role runs its client-side idle/absolute timers off
+                 these same values — see auth.js's session manager. -->
+            <div class="settings-row">
+                <div><div class="settings-label">Idle Session Timeout</div><div class="settings-desc">Log out automatically after this long with no clicks, typing, scrolling, navigation, or API activity</div></div>
+                <div>
+                    <select class="form-select" id="idleTimeoutMinutes" style="max-width:200px" disabled>
+                        <option value="15">15 minutes</option>
+                        <option value="30" selected>30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="120">2 hours</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Absolute Session Lifetime</div><div class="settings-desc">Hard cap on total session age from login, regardless of activity — cannot be extended by "Stay Signed In"</div></div>
+                <div>
+                    <select class="form-select" id="absoluteSessionHours" style="max-width:200px" disabled>
+                        <option value="4">4 hours</option>
+                        <option value="8" selected>8 hours</option>
+                        <option value="12">12 hours</option>
+                        <option value="24">24 hours</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Warning Before Logout</div><div class="settings-desc">How long before the idle timeout the "Session ending soon" modal appears</div></div>
+                <div>
+                    <select class="form-select" id="warningBeforeLogoutMinutes" style="max-width:200px" disabled>
+                        <option value="1">1 minute</option>
+                        <option value="2" selected>2 minutes</option>
+                        <option value="5">5 minutes</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Keep Me Signed In Duration</div><div class="settings-desc">How long the login persists when a user opts in at the login screen</div></div>
+                <div>
+                    <select class="form-select" id="keepSignedInDays" style="max-width:200px" disabled>
+                        <option value="7">7 days</option>
+                        <option value="14">14 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="60">60 days</option>
+                        <option value="90">90 days</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Maximum Concurrent Sessions</div><div class="settings-desc">Cap on simultaneous active logins per user (0 = unlimited). Oldest sessions are signed out automatically past the limit.</div></div>
+                <div><input type="number" class="form-control" id="maxConcurrentSessions" value="0" min="0" max="100" style="max-width:120px" disabled></div>
+            </div>
+            <p class="settings-desc" id="sessionPolicyReadOnlyNote" style="margin-top:-10px;margin-bottom:10px">Only a Super Admin can change these platform-wide session policies (use the page's "Save Changes" button above) — every company and branch shares the same values.</p>
             <div class="settings-row">
                 <div><div class="settings-label">Max Login Attempts</div><div class="settings-desc">Lock account after N failed attempts</div></div>
                 <div><input type="number" class="form-control" value="5" min="3" max="10" style="max-width:100px"></div>
@@ -452,17 +507,34 @@ let chargesLoaded = false;
         if (general.currency) document.getElementById('currency').value = general.currency;
     } catch (_) { /* leave fields at their HTML defaults — non-fatal */ }
 
-    // Session Timeout is platform-wide, not part of the per-tenant
-    // /settings payload above — every tenant admin can see the current
-    // value, but only a Super Admin can change it (see platform.routes.js).
+    // Session & Security policy is platform-wide, not part of the per-tenant
+    // /settings payload above — every authenticated user's client (see
+    // auth.js's session manager) reads these same values to run its own
+    // idle/absolute timers, but only a Super Admin can change them (see
+    // platform.routes.js).
+    const SESSION_POLICY_FIELDS = {
+        accessTokenMinutes:         'sessionTimeoutMinutes',
+        idleTimeoutMinutes:         'idleTimeoutMinutes',
+        absoluteSessionHours:       'absoluteSessionHours',
+        warningBeforeLogoutMinutes: 'warningBeforeLogoutMinutes',
+        keepSignedInDays:           'keepSignedInDays',
+        maxConcurrentSessions:      'maxConcurrentSessions',
+    };
     try {
         const res = await API.platform.getSessionTimeout();
-        if (res.data?.accessTokenMinutes) document.getElementById('sessionTimeoutMinutes').value = res.data.accessTokenMinutes;
-    } catch (_) { /* non-fatal — leave the field at its HTML default */ }
+        for (const [field, elId] of Object.entries(SESSION_POLICY_FIELDS)) {
+            if (res.data?.[field] !== undefined) document.getElementById(elId).value = res.data[field];
+        }
+    } catch (_) { /* non-fatal — leave the fields at their HTML defaults */ }
     if (!Auth.isSuperAdmin()) {
-        const el = document.getElementById('sessionTimeoutMinutes');
-        el.disabled = true;
-        el.title = 'Only a Super Admin can change the platform-wide session timeout';
+        for (const elId of Object.values(SESSION_POLICY_FIELDS)) {
+            const el = document.getElementById(elId);
+            el.disabled = true;
+            el.title = 'Only a Super Admin can change platform-wide session policies';
+        }
+    } else {
+        for (const elId of Object.values(SESSION_POLICY_FIELDS)) document.getElementById(elId).disabled = false;
+        document.getElementById('sessionPolicyReadOnlyNote').style.display = 'none';
     }
 })();
 function switchTab(tab) {
@@ -477,16 +549,22 @@ async function saveCurrentTab() {
     if (activeTab === 'charges') { return saveCharges(); }
     Utils.showLoader(btn, 'Saving…');
     try {
-        // Session Timeout is platform-wide (see platform.routes.js), not a
-        // per-tenant CompanySettings row — goes through its own endpoint,
-        // and only a Super Admin is allowed to change it.
+        // Session & Security policy is platform-wide (see platform.routes.js),
+        // not a per-tenant CompanySettings row — goes through its own
+        // endpoint, and only a Super Admin is allowed to change it.
         if (activeTab === 'security') {
             if (!Auth.isSuperAdmin()) {
-                Utils.toast('Only a Super Admin can change the platform-wide session timeout', 'error');
+                Utils.toast('Only a Super Admin can change platform-wide session policies', 'error');
                 return;
             }
-            const minutes = parseInt(document.getElementById('sessionTimeoutMinutes').value, 10);
-            await API.platform.setSessionTimeout(minutes);
+            await API.platform.setSessionTimeout({
+                accessTokenMinutes:         parseInt(document.getElementById('sessionTimeoutMinutes').value, 10),
+                idleTimeoutMinutes:         parseInt(document.getElementById('idleTimeoutMinutes').value, 10),
+                absoluteSessionHours:       parseInt(document.getElementById('absoluteSessionHours').value, 10),
+                warningBeforeLogoutMinutes: parseInt(document.getElementById('warningBeforeLogoutMinutes').value, 10),
+                keepSignedInDays:           parseInt(document.getElementById('keepSignedInDays').value, 10),
+                maxConcurrentSessions:      parseInt(document.getElementById('maxConcurrentSessions').value, 10),
+            });
             Utils.toast('Settings saved!', 'success');
             return;
         }

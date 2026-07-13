@@ -16,7 +16,7 @@ const Auth = (() => {
         } catch { return null; }
     }
     function setUser(user)    { localStorage.setItem(USER_KEY, JSON.stringify(user)); }
-    function clearUser()      { localStorage.removeItem(USER_KEY); }
+    function clearUser()      { localStorage.removeItem(USER_KEY); localStorage.removeItem('bnq_session_started_at'); }
 
     /* ── Session check ── */
     function isLoggedIn()     { return !!API.getToken() && !!getUser(); }
@@ -106,10 +106,12 @@ const Auth = (() => {
         return '../' + relativePath;
     }
 
-    function redirectToLogin() {
+    function redirectToLogin(reason = null) {
+        if (reason === 'timeout') window.dispatchEvent(new CustomEvent('bnq:session-timeout'));
         clearUser();
         API.clearToken();
-        window.location.href = resolvePage('auth/login.html');
+        const suffix = reason ? `?reason=${encodeURIComponent(reason)}` : '';
+        window.location.href = resolvePage('auth/login.html') + suffix;
     }
 
     function getDefaultPage() {
@@ -120,7 +122,7 @@ const Auth = (() => {
 
     /* ── Login ── */
     async function login(email, password, remember = false) {
-        const res  = await API.auth.login(email, password);
+        const res  = await API.auth.login(email, password, remember);
         const data = res.data;
         // Backend returns camelCase: accessToken (not access_token)
         API.setToken(data.accessToken);
@@ -138,15 +140,25 @@ const Auth = (() => {
             permissions: data.permissions || [],
             roles:       data.roles || [],
         });
+        markActivity();
+        initSessionManager();
         return data;
     }
 
-    /* ── Logout ── */
-    async function logout() {
-        try { await API.auth.logout(); } catch (_) { /* ignore */ }
+    /* ── Logout ──
+       reason: 'manual' (default, user-initiated) or 'timeout' (idle/absolute
+       session expiry — see initSessionManager below), recorded server-side
+       in the audit log and shown to the user on the next login page load. */
+    async function logout(reason = 'manual') {
+        // Dispatched before anything else so pages get the full listener
+        // window to synchronously autosave an in-progress form draft (see
+        // formDraft.js) before the redirect below fires.
+        if (reason === 'timeout') window.dispatchEvent(new CustomEvent('bnq:session-timeout'));
+        try { await API.auth.logout({ reason }); } catch (_) { /* ignore — logout must always succeed locally */ }
         clearUser();
         API.clearToken();
-        window.location.href = resolvePage('auth/login.html');
+        const suffix = reason === 'timeout' ? '?reason=timeout' : '';
+        window.location.href = resolvePage('auth/login.html') + suffix;
     }
 
     /* ── Refresh user profile ── */
@@ -200,73 +212,182 @@ const Auth = (() => {
         });
     }
 
-    /* ── Session manager: proactive refresh + inactivity timeout ──
-       Access tokens live 15 min (JWT_ACCESS_EXPIRES). Previously the token
-       would silently die and the *next* click after that would 401, trigger
-       a refresh, and hard-redirect to login the instant that refresh failed
-       for any reason — reading as a "sudden" logout with no warning.
-       This keeps active users refreshed ahead of expiry and only ends the
-       session after real inactivity, with a warning first. */
-    const IDLE_TIMEOUT_MS      = 30 * 60 * 1000; // log out after 30 min with no activity
-    const IDLE_WARNING_MS      = 60 * 1000;      // show a warning 60s before that
-    const PROACTIVE_REFRESH_MS = 12 * 60 * 1000; // refresh token every 12 min (< 15 min expiry) while active
+    /* ── Session manager: proactive refresh + configurable idle timeout +
+       absolute session lifetime + a real "Stay Signed In" / "Log Out Now"
+       modal — all thresholds come from Settings -> Security (Super-Admin
+       editable, see settings.service.js's getSessionPolicy), fetched once at
+       init with hardcoded fallbacks so the manager still works if that call
+       fails. Session start time is stored in localStorage (not just an
+       in-memory variable) so the absolute-lifetime clock survives page
+       reloads/navigation within the same login — only a fresh login resets
+       it, exactly like the server's own sessionStartedAt JWT claim it mirrors
+       (see auth.service.js buildTokenPayload). ── */
+    const SESSION_START_KEY = 'bnq_session_started_at';
 
-    let lastActivity   = Date.now();
-    let warningShown   = false;
-    let warningEl      = null;
+    const FALLBACK_POLICY = {
+        idleTimeoutMinutes: 30,
+        absoluteSessionHours: 8,
+        warningBeforeLogoutMinutes: 2,
+    };
+
+    let policy = { ...FALLBACK_POLICY };
+    let lastActivity  = Date.now();
+    let warningShown  = false;
+    let warningModalInst = null;
+    let countdownInterval = null;
 
     function markActivity() {
         lastActivity = Date.now();
         if (warningShown) dismissIdleWarning();
     }
 
-    function showIdleWarning(secondsLeft) {
-        warningShown = true;
-        if (!warningEl) {
-            warningEl = document.createElement('div');
-            warningEl.setAttribute('role', 'alertdialog');
-            warningEl.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;background:#1A2B4A;color:#fff;'
-                + 'padding:14px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);font:13px/1.4 Inter,sans-serif;max-width:300px;';
-            document.body.appendChild(warningEl);
+    function getSessionStartedAt() {
+        const raw = localStorage.getItem(SESSION_START_KEY);
+        return raw ? parseInt(raw, 10) : Date.now();
+    }
+
+    // Not every page loads Bootstrap's JS bundle — the React-based dashboard
+    // pages (dashboard/index.html, dashboard/command_center.html) render
+    // their own layout and don't include it. Use bootstrap.Modal when
+    // available and fall back to a plain fixed-overlay div otherwise, so the
+    // warning still works everywhere a user can be idle.
+    const hasBootstrapJs = () => typeof window.bootstrap?.Modal === 'function';
+
+    function ensureWarningModal() {
+        if (document.getElementById('bnqSessionWarningModal')) return;
+        const el = document.createElement('div');
+        if (hasBootstrapJs()) {
+            el.innerHTML = `
+            <div class="modal fade" id="bnqSessionWarningModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+              <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                  <div class="modal-header"><h5 class="modal-title">Session ending soon</h5></div>
+                  <div class="modal-body">
+                    <p style="color:var(--text-secondary, #555)">You'll be signed out due to inactivity in <strong id="bnqSessionCountdown">120</strong>s.</p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn-ghost" id="bnqLogOutNowBtn">Log Out Now</button>
+                    <button type="button" class="btn-primary-brand" id="bnqStaySignedInBtn">Stay Signed In</button>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+        } else {
+            el.innerHTML = `
+            <div id="bnqSessionWarningModal" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)">
+              <div style="background:#fff;color:#1A2B4A;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);padding:22px 24px;max-width:320px;font:14px/1.5 Inter,sans-serif">
+                <h5 style="margin:0 0 10px;font-size:16px;font-weight:700">Session ending soon</h5>
+                <p style="margin:0 0 16px">You'll be signed out due to inactivity in <strong id="bnqSessionCountdown">120</strong>s.</p>
+                <div style="display:flex;justify-content:flex-end;gap:10px">
+                  <button type="button" id="bnqLogOutNowBtn" style="background:none;border:1px solid #ccc;color:#1A2B4A;padding:7px 14px;border-radius:8px;cursor:pointer;font-weight:600">Log Out Now</button>
+                  <button type="button" id="bnqStaySignedInBtn" style="background:#C5A059;border:none;color:#1A2B4A;padding:7px 14px;border-radius:8px;cursor:pointer;font-weight:700">Stay Signed In</button>
+                </div>
+              </div>
+            </div>`;
         }
-        warningEl.innerHTML = `<b>Session ending soon</b><br>You'll be logged out due to inactivity in ${secondsLeft}s.`
-            + `<div style="margin-top:8px"><button id="bnqStaySignedIn" style="background:#C5A059;border:none;color:#1A2B4A;font-weight:600;`
-            + `padding:5px 12px;border-radius:6px;cursor:pointer;">Stay signed in</button></div>`;
-        document.getElementById('bnqStaySignedIn')?.addEventListener('click', markActivity);
+        document.body.appendChild(el);
+        document.getElementById('bnqStaySignedInBtn').addEventListener('click', async () => {
+            // extend:true tells the server this is an explicit "Stay Signed
+            // In" click, not a routine background refresh — it gets its own
+            // audit-log entry (user.session_extended) unlike the silent
+            // proactive refresh below.
+            try { await API.auth.refresh({ extend: true }); } catch (_) { /* fall through to logout on next watchdog tick */ }
+            markActivity();
+        });
+        document.getElementById('bnqLogOutNowBtn').addEventListener('click', () => {
+            dismissIdleWarning();
+            logout('manual');
+        });
+    }
+
+    function showIdleWarning(secondsLeft) {
+        const alreadyShowing = warningShown;
+        warningShown = true;
+        ensureWarningModal();
+        // Fired once per warning (not every countdown tick) so pages can
+        // save an in-progress form as a draft before the forced logout —
+        // see formDraft.js. Dispatched here rather than only right before
+        // logout() so there's a full warning window (default 2 min) to
+        // autosave, not just the instant before redirect.
+        if (!alreadyShowing) window.dispatchEvent(new CustomEvent('bnq:session-warning'));
+        document.getElementById('bnqSessionCountdown').textContent = secondsLeft;
+        if (!warningModalInst) {
+            const modalEl = document.getElementById('bnqSessionWarningModal');
+            warningModalInst = hasBootstrapJs() ? new bootstrap.Modal(modalEl) : { hide: () => modalEl.remove() };
+            if (hasBootstrapJs()) warningModalInst.show();
+        }
+        clearInterval(countdownInterval);
+        countdownInterval = setInterval(() => {
+            const el = document.getElementById('bnqSessionCountdown');
+            if (el) el.textContent = Math.max(0, Math.ceil((policy.idleTimeoutMinutes * 60000 - (Date.now() - lastActivity)) / 1000));
+        }, 1000);
     }
 
     function dismissIdleWarning() {
         warningShown = false;
-        if (warningEl) { warningEl.remove(); warningEl = null; }
+        clearInterval(countdownInterval);
+        warningModalInst?.hide();
+        warningModalInst = null;
+        // hasBootstrapJs()'s modal leaves the element in the DOM (bootstrap
+        // owns its lifecycle via fade transitions); the plain fallback path
+        // removes it directly in hide(). Either way, drop the stale node so
+        // the next warning starts clean rather than double-appending.
+        document.getElementById('bnqSessionWarningModal')?.remove();
     }
 
-    function initSessionManager() {
+    async function loadSessionPolicy() {
+        try {
+            const res = await API.platform.getSessionTimeout();
+            policy = { ...FALLBACK_POLICY, ...res.data };
+        } catch (_) { /* keep fallback defaults */ }
+    }
+
+    async function initSessionManager() {
         if (!isLoggedIn()) return;
+        if (!localStorage.getItem(SESSION_START_KEY)) localStorage.setItem(SESSION_START_KEY, String(Date.now()));
+
+        await loadSessionPolicy();
+
+        const idleTimeoutMs   = policy.idleTimeoutMinutes * 60 * 1000;
+        const warningMs       = policy.warningBeforeLogoutMinutes * 60 * 1000;
+        const absoluteMs      = policy.absoluteSessionHours * 60 * 60 * 1000;
+        const proactiveRefreshMs = Math.max(60000, Math.round(idleTimeoutMs * 0.4)); // refresh well inside the idle window while active
 
         ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach(evt =>
             window.addEventListener(evt, markActivity, { passive: true })
         );
 
-        // Proactive refresh — keeps the access token alive for as long as the user is active,
-        // so it never silently expires mid-session.
+        // Proactive refresh — keeps the access token alive for as long as the
+        // user is active, so it never silently expires mid-session.
         setInterval(() => {
             if (!isLoggedIn()) return;
             const idleFor = Date.now() - lastActivity;
-            if (idleFor < IDLE_TIMEOUT_MS) {
+            if (idleFor < idleTimeoutMs) {
                 API.auth.refresh({ silent: true }).catch(() => { /* try again next cycle */ });
             }
-        }, PROACTIVE_REFRESH_MS);
+        }, proactiveRefreshMs);
 
-        // Inactivity watchdog
+        // Idle + absolute-lifetime watchdog
         setInterval(() => {
             if (!isLoggedIn()) return;
-            const idleFor = Date.now() - lastActivity;
-            if (idleFor >= IDLE_TIMEOUT_MS) {
+
+            // Absolute Session Lifetime — hard cap regardless of activity;
+            // "Stay Signed In" cannot extend past this (matches the server's
+            // own enforcement in authenticate middleware / refreshTokens).
+            if (Date.now() - getSessionStartedAt() >= absoluteMs) {
                 dismissIdleWarning();
-                Utils?.toast?.('You have been logged out due to inactivity.', 'info');
-                logout();
-            } else if (idleFor >= IDLE_TIMEOUT_MS - IDLE_WARNING_MS) {
-                showIdleWarning(Math.ceil((IDLE_TIMEOUT_MS - idleFor) / 1000));
+                localStorage.removeItem(SESSION_START_KEY);
+                logout('timeout');
+                return;
+            }
+
+            const idleFor = Date.now() - lastActivity;
+            if (idleFor >= idleTimeoutMs) {
+                dismissIdleWarning();
+                localStorage.removeItem(SESSION_START_KEY);
+                logout('timeout');
+            } else if (idleFor >= idleTimeoutMs - warningMs) {
+                showIdleWarning(Math.ceil((idleTimeoutMs - idleFor) / 1000));
             }
         }, 1000);
     }

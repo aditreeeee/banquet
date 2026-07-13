@@ -114,19 +114,25 @@ const recordFailedLogin = async (userId, maxAttempts = 5, lockMinutes = 30) => {
 
 // ─── Refresh Tokens ───────────────────────────────────────────────────────────
 
-const saveRefreshToken = async ({ userId, tokenHash, expiresAt, ipAddress, userAgent }) => {
+const saveRefreshToken = async ({ userId, tokenHash, expiresAt, ipAddress, userAgent, isExtended, sessionStartedAt }) => {
     await executeQuery(
         `INSERT INTO RefreshTokens
-            (user_id, token_hash, expires_at, ip_address, user_agent, created_at)
+            (user_id, token_hash, expires_at, ip_address, user_agent, is_extended, session_started_at, created_at)
          VALUES
-            (@userId, @tokenHash, @expiresAt, @ip, @userAgent, GETUTCDATE())`,
-        { userId, tokenHash, expiresAt, ip: ipAddress || null, userAgent: userAgent || null }
+            (@userId, @tokenHash, @expiresAt, @ip, @userAgent, @isExtended, @sessionStartedAt, GETUTCDATE())`,
+        {
+            userId, tokenHash, expiresAt,
+            ip: ipAddress || null,
+            userAgent: userAgent || null,
+            isExtended: !!isExtended,
+            sessionStartedAt,
+        }
     );
 };
 
 const findRefreshToken = async (tokenHash) => {
     const rows = await executeQuery(
-        `SELECT rt.id, rt.user_id, rt.expires_at, rt.is_revoked
+        `SELECT rt.id, rt.user_id, rt.expires_at, rt.is_revoked, rt.is_extended, rt.session_started_at
          FROM RefreshTokens rt
          WHERE rt.token_hash = @tokenHash`,
         { tokenHash }
@@ -149,6 +155,26 @@ const revokeAllUserTokens = async (userId) => {
          SET is_revoked = 1, revoked_at = GETUTCDATE()
          WHERE user_id = @userId AND is_revoked = 0`,
         { userId }
+    );
+};
+
+/**
+ * Enforce "Maximum Concurrent Sessions" — after a new token is issued, revoke
+ * the oldest active (non-revoked, unexpired) sessions beyond the configured
+ * limit for this user. A limit of 0 means unlimited (nothing revoked).
+ */
+const enforceMaxConcurrentSessions = async (userId, maxSessions) => {
+    if (!maxSessions || maxSessions <= 0) return;
+    await executeQuery(
+        `;WITH ranked AS (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY created_at DESC) AS rn
+            FROM RefreshTokens
+            WHERE user_id = @userId AND is_revoked = 0 AND expires_at > GETUTCDATE()
+         )
+         UPDATE RefreshTokens
+         SET is_revoked = 1, revoked_at = GETUTCDATE()
+         WHERE id IN (SELECT id FROM ranked WHERE rn > @maxSessions)`,
+        { userId, maxSessions }
     );
 };
 
@@ -259,6 +285,7 @@ module.exports = {
     findRefreshToken,
     revokeRefreshToken,
     revokeAllUserTokens,
+    enforceMaxConcurrentSessions,
     savePasswordResetToken,
     findPasswordResetToken,
     applyPasswordReset,

@@ -49,6 +49,27 @@ const DEFAULTS = {
     // default of 15 minutes). Platform-wide, not per-company — see
     // PLATFORM_SETTINGS_COMPANY_ID/getSessionPolicy below.
     'session.access_token_minutes':      '15',
+    // Idle timeout: how long with no activity (click/type/scroll/nav/API call)
+    // before the client logs the user out. Enforced client-side (auth.js's
+    // session manager); the server has no notion of "idle" since it's
+    // stateless between requests.
+    'session.idle_timeout_minutes':      '30',
+    // Absolute session lifetime: hard cap on a session's total age from
+    // first login, regardless of activity — enforced server-side in the
+    // `authenticate` middleware via the JWT's sessionStartedAt claim, since
+    // this must hold even if a client is compromised/scripted to keep
+    // refreshing forever.
+    'session.absolute_session_hours':    '8',
+    // How long before the idle timeout fires the warning modal appears.
+    'session.warning_before_logout_minutes': '2',
+    // "Keep Me Signed In" — how long the refresh-token cookie survives
+    // browser close when the user opts in at login (vs. the short-lived
+    // default otherwise; see auth.service.js issueTokens()).
+    'session.keep_signed_in_days':       '30',
+    // Maximum simultaneous active sessions (refresh tokens) per user — 0
+    // means unlimited. Enforced in auth.service.js after each new login by
+    // revoking the oldest sessions beyond the limit.
+    'session.max_concurrent_sessions':   '0',
 };
 
 const cacheKey = (companyId) => `settings_${companyId}`;
@@ -127,13 +148,26 @@ const getCateringPolicy = async (companyId) => {
     return ['warn', 'block', 'off'].includes(policy) ? policy : 'warn';
 };
 
-/** How many minutes an access token stays valid before a user is signed
-    out — platform-wide (see PLATFORM_SETTINGS_COMPANY_ID above), so every
-    tenant's logins are governed by the same one value. */
+const clampedInt = (value, fallback, min, max) => {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
+};
+
+/** The full platform-wide session/security policy — every field an
+    authenticated user's client needs to run its own idle/absolute timers,
+    plus what only a Super Admin may change. Anchored to
+    PLATFORM_SETTINGS_COMPANY_ID (see comment above), so every tenant's
+    logins are governed by the same values. */
 const getSessionPolicy = async () => {
     const flat = await getFlatWithDefaults(PLATFORM_SETTINGS_COMPANY_ID);
-    const minutes = parseInt(flat['session.access_token_minutes'], 10);
-    return { accessTokenMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : 15 };
+    return {
+        accessTokenMinutes:          clampedInt(flat['session.access_token_minutes'], 15, 1, 1440),
+        idleTimeoutMinutes:          clampedInt(flat['session.idle_timeout_minutes'], 30, 1, 1440),
+        absoluteSessionHours:        clampedInt(flat['session.absolute_session_hours'], 8, 1, 168),
+        warningBeforeLogoutMinutes:  clampedInt(flat['session.warning_before_logout_minutes'], 2, 1, 60),
+        keepSignedInDays:            clampedInt(flat['session.keep_signed_in_days'], 30, 1, 365),
+        maxConcurrentSessions:       clampedInt(flat['session.max_concurrent_sessions'], 0, 0, 100),
+    };
 };
 
 /** Super-Admin-only write path for the platform-wide session policy — goes
@@ -141,9 +175,25 @@ const getSessionPolicy = async () => {
     PLATFORM_SETTINGS_COMPANY_ID rather than whichever tenant the caller
     happens to be scoped to, so the change is visible on the very next read
     (login or the automatic background token refresh — see auth.js's
-    silent refresh — whichever happens first for a currently-active user). */
-const updateSessionPolicy = async (accessTokenMinutes, actor) => {
-    await update(PLATFORM_SETTINGS_COMPANY_ID, 'access_token_minutes', accessTokenMinutes, 'session', actor);
+    silent refresh — whichever happens first for a currently-active user).
+    Accepts a partial policy object — only the provided keys are written,
+    each as its own audited settings.changed entry. */
+const SESSION_POLICY_FIELD_TO_KEY = {
+    accessTokenMinutes:         'access_token_minutes',
+    idleTimeoutMinutes:         'idle_timeout_minutes',
+    absoluteSessionHours:       'absolute_session_hours',
+    warningBeforeLogoutMinutes: 'warning_before_logout_minutes',
+    keepSignedInDays:           'keep_signed_in_days',
+    maxConcurrentSessions:      'max_concurrent_sessions',
+};
+
+const updateSessionPolicy = async (policy, actor) => {
+    for (const [field, key] of Object.entries(SESSION_POLICY_FIELD_TO_KEY)) {
+        if (policy[field] !== undefined) {
+            await update(PLATFORM_SETTINGS_COMPANY_ID, key, policy[field], 'session', actor);
+        }
+    }
+    return getSessionPolicy();
 };
 
 const getCurrency = async (companyId) => {

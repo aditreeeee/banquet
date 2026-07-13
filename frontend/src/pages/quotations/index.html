@@ -491,6 +491,7 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/formDraft.js"></script>
 <script src="../../../public/assets/js/sidebar.js"></script>
 <script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
@@ -1566,7 +1567,13 @@ async function submitConvert() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => loadQuotations(1));
+document.addEventListener('DOMContentLoaded', () => {
+    loadQuotations(1);
+    // Draft auto-save — see formDraft.js. Scoped to the builder modal (the
+    // quotation-creation form); other modals on this page (detail/clone/
+    // convert) are read/action modals, not unsaved-work forms.
+    FormDraft.autoSaveForm('quotation_draft', '#builderModal');
+});
 </script>
 </body>
 </html>

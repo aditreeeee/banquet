@@ -10,6 +10,7 @@ const NodeCache = require('node-cache');
 const { executeQuery } = require('../../../config/database');
 const { AuthError, ForbiddenError } = require('./errorHandler');
 const logger = require('../../../utils/logger');
+const settingsService = require('../../../services/settings.service');
 
 // Cache permissions per role (TTL 5 min — reduces DB calls)
 const permissionCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
@@ -50,6 +51,21 @@ const authenticate = async (req, res, next) => {
         // JWT errors (expired/invalid signature) propagate to the outer
         // catch below, which the global error handler maps to 401.
         const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+
+        // Absolute Session Lifetime — enforced here (not just at /auth/refresh)
+        // so a still-valid access token issued before the session's hard cap
+        // can't keep being used for regular API calls after that cap passes;
+        // the client's next 401 correctly forces a real re-login instead of a
+        // silent refresh (refreshTokens() applies the same check and revokes
+        // the token, so refresh would fail here too — this just fails fast
+        // without the extra round trip for every request in between).
+        if (decoded.sessionStartedAt) {
+            const policy = await settingsService.getSessionPolicy();
+            const sessionAgeMs = Date.now() - decoded.sessionStartedAt;
+            if (sessionAgeMs > policy.absoluteSessionHours * 60 * 60 * 1000) {
+                throw new AuthError('Session expired — please sign in again');
+            }
+        }
 
         // Load user (lightweight query)
         const result = await executeQuery(

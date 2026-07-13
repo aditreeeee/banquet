@@ -150,6 +150,7 @@
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
+<script src="../../../public/assets/js/formDraft.js"></script>
 <script src="../../../public/assets/js/sidebar.js"></script>
 <script>Sidebar.render();</script>
 <script src="../../../public/assets/js/app.js"></script>
@@ -293,10 +294,19 @@ function buildInvoiceHTML(inv) {
     const cgstAmount = parseFloat(inv.cgst_amount) || 0;
     const sgstAmount = parseFloat(inv.sgst_amount) || 0;
     const discount = parseFloat(inv.discount_amount) || 0;
+    // This document is sent to the customer — it must show the issuing
+    // Company/Property's own real name/address/phone/email/GST (from the
+    // Companies row GET /invoices/:id now joins in), never generic platform
+    // branding. Falls back to "BanquetPro" only if the join somehow came up
+    // empty, so an older cached response can't render a blank letterhead.
+    const companyAddress = [inv.company_address_line1, inv.company_address_line2].filter(Boolean).join(', ');
+    const companyContactLine = [companyAddress, inv.company_phone, inv.company_email].filter(Boolean).join(' · ');
     return `<div id="invoicePrintRoot" style="padding:32px;max-width:680px;margin:0 auto;font-family:Inter,sans-serif;background:white;color:#111827">
     <div style="display:flex;justify-content:space-between;margin-bottom:28px">
         <div>
-            <div style="font-size:22px;font-weight:800;color:#7C3AED"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg> BanquetPro</div>
+            <div style="font-size:22px;font-weight:800;color:#7C3AED"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M4 8.5 12 3l8 5.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path><path d="M9 10h6"></path></svg> ${inv.company_name || 'BanquetPro'}</div>
+            ${companyContactLine ? `<div style="font-size:11px;color:#6B7280;margin-top:4px">${companyContactLine}</div>` : ''}
+            ${inv.company_gst_number ? `<div style="font-size:11px;color:#6B7280">GSTIN: ${inv.company_gst_number}</div>` : ''}
         </div>
         <div style="text-align:right">
             <div style="font-size:24px;font-weight:800">TAX INVOICE</div>
@@ -323,7 +333,7 @@ function buildInvoiceHTML(inv) {
         <div>Amount in words: <strong>${amountInWords(inv.grand_total)}</strong></div>
         <div>${inv.payment_status === 'paid' ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg> PAID IN FULL' : `Balance Due: ${Utils.formatCurrency(inv.balance_due)}`}</div>
     </div>
-    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #E5E7EB;font-size:11.5px;color:#6B7280">Thank you for choosing BanquetPro.</div>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #E5E7EB;font-size:11.5px;color:#6B7280">Thank you for choosing ${inv.company_name || 'BanquetPro'}.</div>
     </div>`;
 }
 
@@ -462,7 +472,10 @@ function sendInvoiceEmail(){ emailInvoice(); }
 
 const handleSearch = Utils.debounce(() => loadInvoices(1), 350);
 
-document.addEventListener('DOMContentLoaded', () => loadInvoices(1));
+document.addEventListener('DOMContentLoaded', () => {
+    loadInvoices(1);
+    FormDraft.autoSaveForm('invoice_draft', '#generateModal');
+});
 </script>
 </body>
 </html>

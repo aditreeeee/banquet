@@ -13,8 +13,6 @@ const {
     verifyPassword,
     hashPassword,
     signAccessToken,
-    signRefreshToken,
-    verifyRefreshToken,
     generateToken,
     hashToken,
 } = require('../utils/encryption');
@@ -34,31 +32,42 @@ const LOCK_MINUTES         = parseInt(process.env.ACCOUNT_LOCK_MINUTES, 10) || 3
  * and permissions from UserRoles via the `authenticate` middleware, so these
  * claims are never used for authorization decisions.
  */
-const buildTokenPayload = (user) => ({
+/**
+ * sessionStartedAt is when this *session* (not this token) first began —
+ * carried through unchanged across every refresh/rotation so absolute
+ * session lifetime is measured from first login, never reset by activity
+ * (that's what idle-timeout is for). Only login() mints a new one.
+ */
+const buildTokenPayload = (user, sessionStartedAt) => ({
     userId:    user.user_id,
     email:     user.email,
     roleId:    user.role_id,
     roleSlug:  user.role_slug,
     companyId: user.company_id,
     branchId:  user.branch_id,
+    sessionStartedAt,
 });
 
 /**
  * Issue a new access + refresh token pair and persist the refresh token
- * @param {Object} user       - user row from DB
- * @param {Object} meta       - { ipAddress, userAgent }
- * @param {boolean} extended  - longer refresh expiry for "remember me"
+ * @param {Object} user             - user row from DB
+ * @param {Object} meta             - { ipAddress, userAgent }
+ * @param {boolean} extended        - longer refresh expiry for "Keep Me Signed In"
+ * @param {number} [sessionStartedAt] - ms epoch of session start; omit only
+ *   on the very first issuance (login), where it's set to now
  */
-const issueTokens = async (user, meta = {}, extended = false) => {
-    const payload = buildTokenPayload(user);
+const issueTokens = async (user, meta = {}, extended = false, sessionStartedAt = null) => {
+    const policy = await settingsService.getSessionPolicy();
+    const startedAt = sessionStartedAt || Date.now();
+    const payload = buildTokenPayload(user, startedAt);
 
-    const { accessTokenMinutes } = await settingsService.getSessionPolicy();
-    const accessToken  = signAccessToken(payload, `${accessTokenMinutes}m`);
+    const accessToken  = signAccessToken(payload, `${policy.accessTokenMinutes}m`);
     const refreshPlain = generateToken(32);                    // 64-char hex
     const refreshHash  = hashToken(refreshPlain);
 
-    // Expiry: 7 days normally, 30 days for remember_me
-    const daysToExpiry = extended ? 30 : 7;
+    // Expiry: 7 days normally, "Keep Me Signed In" duration (configurable,
+    // default 30 days) when the user opted in at login.
+    const daysToExpiry = extended ? policy.keepSignedInDays : 7;
     const expiresAt    = new Date(Date.now() + daysToExpiry * 24 * 60 * 60 * 1000);
 
     await authRepo.saveRefreshToken({
@@ -67,9 +76,17 @@ const issueTokens = async (user, meta = {}, extended = false) => {
         expiresAt,
         ipAddress: meta.ipAddress,
         userAgent: meta.userAgent,
+        isExtended: extended,
+        sessionStartedAt: new Date(startedAt),
     });
 
-    return { accessToken, refreshToken: refreshPlain };
+    // Maximum Concurrent Sessions — revoke the oldest active sessions beyond
+    // the configured limit now that this new one exists. A brand-new login
+    // is exactly the moment a user could exceed the cap, so this is the
+    // natural enforcement point (not a periodic sweep).
+    await authRepo.enforceMaxConcurrentSessions(user.user_id, policy.maxConcurrentSessions);
+
+    return { accessToken, refreshToken: refreshPlain, isExtended: extended };
 };
 
 // ─── Login ────────────────────────────────────────────────────────────────────
@@ -197,41 +214,68 @@ const register = async ({ first_name, last_name, email, phone, password, company
 // ─── Refresh ──────────────────────────────────────────────────────────────────
 
 /**
- * Rotate refresh tokens: validate old token, issue new pair, revoke old
+ * Rotate refresh tokens: validate old token, issue new pair, revoke old.
+ *
+ * The refresh token itself is an opaque random hex string (generateToken(32)
+ * in issueTokens), never a signed JWT — it was never valid input for
+ * verifyRefreshToken/jwt.verify, which throws JsonWebTokenError on any
+ * non-JWT string. That call used to run here unconditionally and always
+ * threw, meaning /auth/refresh silently failed on every single request
+ * regardless of whether the token was actually valid — sessions never
+ * survived past the access-token's own expiry, no matter how active the
+ * user was. Validation is (and always should have been) the DB hash lookup
+ * below, exactly like logout()/revokeRefreshToken() already do.
  */
-const refreshTokens = async (refreshToken, meta = {}) => {
-    // 1 — Verify JWT signature
-    let decoded;
-    try {
-        decoded = verifyRefreshToken(refreshToken);
-    } catch {
-        throw new AuthError('Invalid or expired refresh token');
-    }
-
-    // 2 — Look up hashed token in DB
+const refreshTokens = async (refreshToken, meta = {}, options = {}) => {
     const tokenHash = hashToken(refreshToken);
     const stored    = await authRepo.findRefreshToken(tokenHash);
 
     if (!stored || stored.is_revoked || new Date(stored.expires_at) < new Date()) {
         // Possible token reuse — revoke all tokens for this user (security)
-        if (decoded?.userId) {
-            await authRepo.revokeAllUserTokens(decoded.userId);
-            logger.warn('Refresh token reuse detected — all tokens revoked', { userId: decoded.userId });
+        if (stored?.user_id) {
+            await authRepo.revokeAllUserTokens(stored.user_id);
+            logger.warn('Refresh token reuse detected — all tokens revoked', { userId: stored.user_id });
         }
         throw new AuthError('Refresh token invalid or expired');
     }
 
-    // 3 — Revoke used token immediately (rotation)
+    // Absolute Session Lifetime — this caps total session age regardless of
+    // activity, so it is checked here (server-side, can't be bypassed by a
+    // scripted client that just keeps calling refresh) rather than only
+    // client-side like idle timeout. session_started_at is carried forward
+    // from the original login, not reset by rotation.
+    const policy = await settingsService.getSessionPolicy();
+    const sessionAgeMs = Date.now() - new Date(stored.session_started_at).getTime();
+    if (sessionAgeMs > policy.absoluteSessionHours * 60 * 60 * 1000) {
+        await authRepo.revokeRefreshToken(tokenHash);
+        throw new AuthError('Session expired — please sign in again');
+    }
+
+    // Revoke used token immediately (rotation)
     await authRepo.revokeRefreshToken(tokenHash);
 
-    // 4 — Load fresh user row (role/company may have changed)
-    const user = await authRepo.findById(decoded.userId);
+    // Load fresh user row (role/company may have changed)
+    const user = await authRepo.findById(stored.user_id);
     if (!user || !user.is_active) {
         throw new AuthError('Account not found or deactivated');
     }
 
-    // 5 — Issue new token pair
-    const tokens = await issueTokens(user, meta);
+    // Issue new token pair — is_extended and session_started_at both carry
+    // forward unchanged, so "Keep Me Signed In" doesn't degrade to a 7-day
+    // cookie on the very next silent refresh, and the absolute-lifetime
+    // clock keeps counting from the real session start.
+    const tokens = await issueTokens(user, meta, !!stored.is_extended, new Date(stored.session_started_at).getTime());
+
+    if (options.extend) {
+        await auditLogRepo.log({
+            companyId:  user.company_id,
+            userId:     user.user_id,
+            action:     'user.session_extended',
+            entityType: 'user',
+            entityId:   user.user_id,
+            description: `${user.email} extended their session ("Stay Signed In")`,
+        });
+    }
 
     return tokens;
 };
@@ -239,25 +283,52 @@ const refreshTokens = async (refreshToken, meta = {}) => {
 // ─── Logout ───────────────────────────────────────────────────────────────────
 
 /**
- * Revoke the provided refresh token (single-device logout)
+ * Revoke the provided refresh token (single-device logout).
+ * @param {string} reason - 'manual' (default) or 'timeout' (idle/absolute
+ *   session expiry client-side) — recorded in the audit log so "why did this
+ *   user get logged out" is answerable later, per the spec's audit
+ *   requirement to distinguish timeout from a deliberate logout.
  */
-const logout = async (refreshToken, userId) => {
+const logout = async (refreshToken, userId, reason = 'manual', companyId = null) => {
     try {
         const tokenHash = hashToken(refreshToken);
         await authRepo.revokeRefreshToken(tokenHash);
-        logger.info('User logged out', { userId });
+        logger.info('User logged out', { userId, reason });
     } catch (err) {
         // Do not throw — logout should always succeed from user's perspective
         logger.warn('Logout: could not revoke token', { error: err.message, userId });
+    }
+
+    if (userId) {
+        await auditLogRepo.log({
+            companyId,
+            userId,
+            action:     reason === 'timeout' ? 'user.session_timeout' : 'user.logout',
+            entityType: 'user',
+            entityId:   userId,
+            description: reason === 'timeout'
+                ? 'Session ended automatically due to inactivity or reaching the absolute session limit'
+                : 'User logged out',
+        });
     }
 };
 
 /**
  * Revoke all refresh tokens for a user (all-device logout)
  */
-const logoutAll = async (userId) => {
+const logoutAll = async (userId, companyId = null) => {
     await authRepo.revokeAllUserTokens(userId);
     logger.info('User logged out from all devices', { userId });
+    if (userId) {
+        await auditLogRepo.log({
+            companyId,
+            userId,
+            action:     'user.logout_all',
+            entityType: 'user',
+            entityId:   userId,
+            description: 'User logged out from all devices',
+        });
+    }
 };
 
 // ─── Me ───────────────────────────────────────────────────────────────────────

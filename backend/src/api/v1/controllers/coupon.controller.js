@@ -15,7 +15,7 @@ const getById = async (req, res) => response.success(res, await svc.getById(pars
 
 const create = async (req, res) => response.created(res, await svc.create(req.companyId, req.body, req.user.user_id), 'Coupon created');
 
-const update = async (req, res) => response.success(res, await svc.update(parseInt(req.params.id, 10), req.companyId, req.body), 'Coupon updated');
+const update = async (req, res) => response.success(res, await svc.update(parseInt(req.params.id, 10), req.companyId, req.body, req.user.user_id), 'Coupon updated');
 
 const validate = async (req, res) => {
     const { coupon_code, couponCode, subtotal } = req.body;

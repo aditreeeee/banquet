@@ -4,6 +4,7 @@
 'use strict';
 
 const couponRepo = require('../repositories/coupon.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 
 const list = (companyId, opts) => couponRepo.list(companyId, opts);
@@ -25,15 +26,33 @@ const create = async (companyId, data, createdBy) => {
     const existing = await couponRepo.findByCode(companyId, data.couponCode.trim().toUpperCase());
     if (existing) throw new ValidationError(`Coupon code "${data.couponCode}" already exists`);
 
-    return couponRepo.create(companyId, { ...data, couponCode: data.couponCode.trim().toUpperCase() }, createdBy);
+    const coupon = await couponRepo.create(companyId, { ...data, couponCode: data.couponCode.trim().toUpperCase() }, createdBy);
+
+    await auditLogRepo.log({
+        companyId, userId: createdBy,
+        action: 'coupon.created', entityType: 'coupon', entityId: coupon.coupon_id,
+        description: `Coupon "${coupon.coupon_code}" created`,
+        newValues: data,
+    });
+
+    return coupon;
 };
 
-const update = async (couponId, companyId, data) => {
-    await getById(couponId, companyId);
+const update = async (couponId, companyId, data, userId) => {
+    const existing = await getById(couponId, companyId);
     if (data.discountType && !['percentage', 'flat'].includes(data.discountType)) {
         throw new ValidationError('discountType must be "percentage" or "flat"');
     }
-    return couponRepo.update(couponId, companyId, data);
+    const updated = await couponRepo.update(couponId, companyId, data);
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'coupon.updated', entityType: 'coupon', entityId: couponId,
+        description: `Coupon "${existing.coupon_code}" updated`,
+        oldValues: existing, newValues: data,
+    });
+
+    return updated;
 };
 
 /**

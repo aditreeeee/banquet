@@ -7,6 +7,7 @@
 const { parse } = require('fast-csv');
 const { Readable } = require('stream');
 const resourceRepo = require('../repositories/resource.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 
 const CATEGORIES = ['furniture', 'decor', 'lighting', 'audio', 'visual', 'signage', 'custom'];
@@ -19,16 +20,34 @@ const getById = async (resourceId, companyId) => {
     return resource;
 };
 
-const create = async ({ resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable }, companyId) => {
+const create = async ({ resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable }, companyId, userId) => {
     if (!resourceName) throw new ValidationError('resourceName is required');
     if (category && !CATEGORIES.includes(category)) throw new ValidationError(`category must be one of: ${CATEGORIES.join(', ')}`);
-    return resourceRepo.create({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable });
+    const resource = await resourceRepo.create({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable });
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'resource.created', entityType: 'resource', entityId: resource.resource_id,
+        description: `Resource "${resource.resource_name}" created`,
+        newValues: { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable },
+    });
+
+    return resource;
 };
 
-const update = async (resourceId, data, companyId) => {
-    await getById(resourceId, companyId);
+const update = async (resourceId, data, companyId, userId) => {
+    const existing = await getById(resourceId, companyId);
     if (data.category && !CATEGORIES.includes(data.category)) throw new ValidationError(`category must be one of: ${CATEGORIES.join(', ')}`);
-    return resourceRepo.update(resourceId, companyId, data);
+    const updated = await resourceRepo.update(resourceId, companyId, data);
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'resource.updated', entityType: 'resource', entityId: resourceId,
+        description: `Resource "${existing.resource_name}" updated`,
+        oldValues: existing, newValues: data,
+    });
+
+    return updated;
 };
 
 const getAvailability = async ({ resourceId, eventDate, companyId }) => {
@@ -52,7 +71,7 @@ const getInventorySnapshot = (companyId, eventDate) => resourceRepo.getInventory
  * by availability/recommendation checks immediately — no separate activation
  * step or cache to invalidate.
  */
-const importCsv = (buffer, companyId) => new Promise((resolve, reject) => {
+const importCsv = (buffer, companyId, userId) => new Promise((resolve, reject) => {
     const rows = [];
     Readable.from(buffer)
         .pipe(parse({ headers: true, trim: true }))
@@ -76,7 +95,7 @@ const importCsv = (buffer, companyId) => new Promise((resolve, reject) => {
                         costPrice:         parseFloat(row.cost_price) || 0,
                         quantityAvailable: parseInt(row.quantity_available, 10) || 0,
                         isBillable:        String(row.is_billable).toLowerCase() === 'true',
-                    }, companyId);
+                    }, companyId, userId);
                     created++;
                 } catch (err) {
                     errors.push({ row: rowNum, message: err.message });

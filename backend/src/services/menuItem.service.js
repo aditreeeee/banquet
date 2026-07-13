@@ -7,6 +7,7 @@
 const { parse } = require('fast-csv');
 const { Readable } = require('stream');
 const menuItemRepo = require('../repositories/menuItem.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 
 const FOOD_TYPES = ['veg', 'non_veg', 'jain', 'vegan', 'mixed'];
@@ -19,17 +20,35 @@ const getById = async (itemId, companyId) => {
     return item;
 };
 
-const create = async (data, companyId) => {
+const create = async (data, companyId, userId) => {
     if (!data.itemName) throw new ValidationError('itemName is required');
     if (!data.categoryId) throw new ValidationError('categoryId is required');
     if (!data.foodType) throw new ValidationError('foodType is required');
     if (data.basePrice == null) throw new ValidationError('basePrice is required');
-    return menuItemRepo.create({ ...data, companyId });
+    const item = await menuItemRepo.create({ ...data, companyId });
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'menu_item.created', entityType: 'menu_item', entityId: item.item_id,
+        description: `Menu item "${item.item_name}" created`,
+        newValues: data,
+    });
+
+    return item;
 };
 
-const update = async (itemId, data, companyId) => {
-    await getById(itemId, companyId);
-    return menuItemRepo.update(itemId, companyId, data);
+const update = async (itemId, data, companyId, userId) => {
+    const existing = await getById(itemId, companyId);
+    const updated = await menuItemRepo.update(itemId, companyId, data);
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'menu_item.updated', entityType: 'menu_item', entityId: itemId,
+        description: `Menu item "${existing.item_name}" updated`,
+        oldValues: existing, newValues: data,
+    });
+
+    return updated;
 };
 
 const listCategories = (companyId) => menuItemRepo.listCategories(companyId);

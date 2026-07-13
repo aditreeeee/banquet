@@ -8,6 +8,7 @@
 const { parse } = require('fast-csv');
 const { Readable } = require('stream');
 const decorationRepo = require('../repositories/decoration.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 
 const NAME_MAX_LENGTH = 200;
@@ -45,13 +46,31 @@ const createItem = async (companyId, data, createdBy) => {
     if (!data.decorationName) throw new ValidationError('decorationName is required');
     validateItemFields(data);
     const decorationCode = data.decorationCode || await decorationRepo.nextItemCode(companyId);
-    return decorationRepo.createItem(companyId, { ...data, decorationCode }, createdBy);
+    const item = await decorationRepo.createItem(companyId, { ...data, decorationCode }, createdBy);
+
+    await auditLogRepo.log({
+        companyId, userId: createdBy,
+        action: 'decoration_item.created', entityType: 'decoration_item', entityId: item.decoration_id,
+        description: `Decoration item "${item.decoration_name}" created`,
+        newValues: data,
+    });
+
+    return item;
 };
 
-const updateItem = async (decorationId, companyId, data) => {
+const updateItem = async (decorationId, companyId, data, userId) => {
     validateItemFields(data);
-    await getItemById(decorationId, companyId);
-    return decorationRepo.updateItem(decorationId, companyId, data);
+    const existing = await getItemById(decorationId, companyId);
+    const updated = await decorationRepo.updateItem(decorationId, companyId, data);
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'decoration_item.updated', entityType: 'decoration_item', entityId: decorationId,
+        description: `Decoration item "${existing.decoration_name}" updated`,
+        oldValues: existing, newValues: data,
+    });
+
+    return updated;
 };
 
 /**
@@ -112,15 +131,44 @@ const getPackageById = async (packageId, companyId) => {
 
 const createPackage = async (companyId, data, createdBy) => {
     if (!data.packageName) throw new ValidationError('packageName is required');
-    return decorationRepo.createPackage(companyId, data, createdBy);
+    const pkg = await decorationRepo.createPackage(companyId, data, createdBy);
+
+    await auditLogRepo.log({
+        companyId, userId: createdBy,
+        action: 'decoration_package.created', entityType: 'decoration_package', entityId: pkg.package_id,
+        description: `Decoration package "${pkg.package_name}" created`,
+        newValues: data,
+    });
+
+    return pkg;
 };
 
-const updatePackage = async (packageId, companyId, data) => {
-    await getPackageById(packageId, companyId);
-    return decorationRepo.updatePackage(packageId, companyId, data);
+const updatePackage = async (packageId, companyId, data, userId) => {
+    const existing = await getPackageById(packageId, companyId);
+    const updated = await decorationRepo.updatePackage(packageId, companyId, data);
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'decoration_package.updated', entityType: 'decoration_package', entityId: packageId,
+        description: `Decoration package "${existing.package_name}" updated`,
+        oldValues: existing, newValues: data,
+    });
+
+    return updated;
 };
 
-const deletePackage = (packageId, companyId) => decorationRepo.updatePackage(packageId, companyId, { isActive: false });
+const deletePackage = async (packageId, companyId, userId) => {
+    const existing = await getPackageById(packageId, companyId);
+    const result = await decorationRepo.updatePackage(packageId, companyId, { isActive: false });
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'decoration_package.deleted', entityType: 'decoration_package', entityId: packageId,
+        description: `Decoration package "${existing.package_name}" deleted`,
+    });
+
+    return result;
+};
 
 /**
  * A package's live price is derived from its linked items (rental + install +

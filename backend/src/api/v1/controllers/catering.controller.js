@@ -25,7 +25,7 @@ const createPackage = async (req, res) => {
     const { packageName, packageType, description, pricePerPlate, minPlates } = req.body;
     const pkg = await cateringService.createPackage(
         { packageName, packageType, description, pricePerPlate, minPlates },
-        req.companyId
+        req.companyId, req.user.user_id
     );
     return response.created(res, pkg, 'Catering package created');
 };
@@ -62,7 +62,7 @@ const syncPrice = async (req, res) => {
 };
 
 const deletePackage = async (req, res) => {
-    await cateringService.deletePackage(parseInt(req.params.id, 10), req.companyId);
+    await cateringService.deletePackage(parseInt(req.params.id, 10), req.companyId, req.user.user_id);
     return response.success(res, null, 'Catering package deleted');
 };
 

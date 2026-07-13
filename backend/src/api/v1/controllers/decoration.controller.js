@@ -18,7 +18,7 @@ const listItems = async (req, res) => {
 };
 const getItemById = async (req, res) => response.success(res, await svc.getItemById(parseInt(req.params.id, 10), req.companyId));
 const createItem  = async (req, res) => response.created(res, await svc.createItem(req.companyId, req.body, req.user.user_id), 'Decoration item created');
-const updateItem  = async (req, res) => response.success(res, await svc.updateItem(parseInt(req.params.id, 10), req.companyId, req.body), 'Decoration item updated');
+const updateItem  = async (req, res) => response.success(res, await svc.updateItem(parseInt(req.params.id, 10), req.companyId, req.body, req.user.user_id), 'Decoration item updated');
 const importCsv = async (req, res) => {
     if (!req.file) throw new ValidationError('CSV file is required');
     const result = await svc.importCsv(req.file.buffer, req.companyId, req.user.user_id);
@@ -29,8 +29,8 @@ const importCsv = async (req, res) => {
 const listPackages   = async (req, res) => response.success(res, await svc.listPackages(req.companyId));
 const getPackageById = async (req, res) => response.success(res, await svc.getPackageById(parseInt(req.params.id, 10), req.companyId));
 const createPackage  = async (req, res) => response.created(res, await svc.createPackage(req.companyId, req.body, req.user.user_id), 'Decoration package created');
-const updatePackage  = async (req, res) => response.success(res, await svc.updatePackage(parseInt(req.params.id, 10), req.companyId, req.body), 'Decoration package updated');
-const deletePackage  = async (req, res) => { await svc.deletePackage(parseInt(req.params.id, 10), req.companyId); return response.success(res, null, 'Decoration package deleted'); };
+const updatePackage  = async (req, res) => response.success(res, await svc.updatePackage(parseInt(req.params.id, 10), req.companyId, req.body, req.user.user_id), 'Decoration package updated');
+const deletePackage  = async (req, res) => { await svc.deletePackage(parseInt(req.params.id, 10), req.companyId, req.user.user_id); return response.success(res, null, 'Decoration package deleted'); };
 const getPackagePricing = async (req, res) => response.success(res, await svc.getPackagePricing(parseInt(req.params.id, 10), req.companyId));
 const addPackageItem = async (req, res) => {
     const items = await svc.addItemToPackage(parseInt(req.params.id, 10), req.companyId, parseInt(req.body.decorationId, 10), parseInt(req.body.quantity, 10) || 1);

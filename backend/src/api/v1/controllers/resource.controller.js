@@ -22,7 +22,7 @@ const create = async (req, res) => {
     const { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable } = req.body;
     const resource = await resourceService.create(
         { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable },
-        req.companyId
+        req.companyId, req.user.user_id
     );
     return response.created(res, resource, 'Resource created');
 };
@@ -32,7 +32,7 @@ const update = async (req, res) => {
     const resource = await resourceService.update(
         parseInt(req.params.id, 10),
         { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable },
-        req.companyId
+        req.companyId, req.user.user_id
     );
     return response.success(res, resource, 'Resource updated');
 };
@@ -65,7 +65,7 @@ const getRecommendations = async (req, res) => {
 
 const importCsv = async (req, res) => {
     if (!req.file) throw new ValidationError('CSV file is required');
-    const result = await resourceService.importCsv(req.file.buffer, req.companyId);
+    const result = await resourceService.importCsv(req.file.buffer, req.companyId, req.user.user_id);
     return response.success(res, result, `Imported ${result.created}/${result.totalRows} inventory items`);
 };
 

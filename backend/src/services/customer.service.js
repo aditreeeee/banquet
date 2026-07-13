@@ -5,6 +5,7 @@
 
 const repo = require('../repositories/customer.repository');
 const reviewRepo = require('../repositories/review.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ConflictError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
 const { resolveBranchScope, resolveCompanyScope } = require('../utils/branchScope');
@@ -63,7 +64,19 @@ const create = async (data, actor) => {
         const existing = await repo.findByEmail(normalized.email, actor.companyId);
         if (existing) throw new ConflictError('A customer with this email already exists');
     }
-    return repo.create({ ...normalized, companyId: actor.companyId });
+    const created = await repo.create({ ...normalized, companyId: actor.companyId });
+
+    await auditLogRepo.log({
+        companyId: actor.companyId,
+        userId: actor.userId,
+        action: 'customer.created',
+        entityType: 'customer',
+        entityId: created.customer_id,
+        description: `Customer "${created.first_name} ${created.last_name}" created`,
+        newValues: normalized,
+    });
+
+    return created;
 };
 
 const update = async (id, data, actor) => {
@@ -78,7 +91,29 @@ const update = async (id, data, actor) => {
             throw new ConflictError('A customer with this email already exists');
         }
     }
-    return repo.update(id, actor.companyId, normalized);
+    const updated = await repo.update(id, actor.companyId, normalized);
+
+    // isActive-only updates come from the deactivate ("delete") route — log
+    // that distinctly so the audit trail reads as a deactivation, not a
+    // no-op field edit.
+    const isDeactivation = normalized.isActive === false && Object.keys(data).length === 1;
+    await auditLogRepo.log({
+        companyId: actor.companyId,
+        userId: actor.userId,
+        action: isDeactivation ? 'customer.deactivated' : 'customer.updated',
+        entityType: 'customer',
+        entityId: id,
+        description: isDeactivation
+            ? `Customer "${existing.first_name} ${existing.last_name}" deactivated`
+            : `Customer "${existing.first_name} ${existing.last_name}" updated`,
+        oldValues: {
+            first_name: existing.first_name, last_name: existing.last_name, email: existing.email,
+            phone: existing.phone, is_active: existing.is_active,
+        },
+        newValues: normalized,
+    });
+
+    return updated;
 };
 
 const getBookingHistory = async (id, actor, query) => {

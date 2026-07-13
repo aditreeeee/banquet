@@ -7,20 +7,33 @@
 'use strict';
 
 const chargeRepo = require('../repositories/operationalCharge.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const { ValidationError } = require('../api/v1/middleware/errorHandler');
 
 const CALC_METHODS = ['fixed', 'hourly', 'percentage', 'complimentary'];
 
 const list = (companyId) => chargeRepo.list(companyId);
 
-const upsert = async (companyId, chargeType, data) => {
+const upsert = async (companyId, chargeType, data, userId) => {
     if (!chargeRepo.CHARGE_TYPES.includes(chargeType)) {
         throw new ValidationError(`charge_type must be one of: ${chargeRepo.CHARGE_TYPES.join(', ')}`);
     }
     if (data.calcMethod && !CALC_METHODS.includes(data.calcMethod)) {
         throw new ValidationError(`calc_method must be one of: ${CALC_METHODS.join(', ')}`);
     }
-    return chargeRepo.upsert(companyId, chargeType, data);
+    // This config feeds booking/quotation/invoice pricing directly, so
+    // changes to it are worth a clear audit trail of who changed what rate.
+    const before = (await chargeRepo.list(companyId)).find(c => c.charge_type === chargeType) || null;
+    const config = await chargeRepo.upsert(companyId, chargeType, data);
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'operational_charge.updated', entityType: 'operational_charge', entityId: config.config_id,
+        description: `Operational charge "${chargeType}" configuration updated`,
+        oldValues: before, newValues: data,
+    });
+
+    return config;
 };
 
 /**

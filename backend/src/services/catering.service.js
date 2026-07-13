@@ -8,6 +8,7 @@
 
 const cateringRepo = require('../repositories/catering.repository');
 const menuItemRepo = require('../repositories/menuItem.repository');
+const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 
 const listPackages = (companyId) => cateringRepo.listPackages(companyId);
@@ -18,10 +19,19 @@ const getPackage = async (packageId, companyId) => {
     return pkg;
 };
 
-const createPackage = async ({ packageName, packageType, description, pricePerPlate, minPlates }, companyId) => {
+const createPackage = async ({ packageName, packageType, description, pricePerPlate, minPlates }, companyId, userId) => {
     if (!packageName) throw new ValidationError('packageName is required');
     if (!packageType) throw new ValidationError('packageType is required (veg/non_veg/jain/mixed)');
-    return cateringRepo.createPackage({ companyId, packageName, packageType, description, pricePerPlate, minPlates });
+    const pkg = await cateringRepo.createPackage({ companyId, packageName, packageType, description, pricePerPlate, minPlates });
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'catering_package.created', entityType: 'catering_package', entityId: pkg.package_id,
+        description: `Catering package "${pkg.package_name}" created`,
+        newValues: { packageName, packageType, description, pricePerPlate, minPlates },
+    });
+
+    return pkg;
 };
 
 /**
@@ -93,9 +103,17 @@ const syncPackagePriceFromMenu = async (packageId, companyId) => {
 
 /** Soft-delete — packages already booked can't be hard-deleted without breaking
     historical bookings/invoices that reference them. */
-const deletePackage = async (packageId, companyId) => {
-    await getPackage(packageId, companyId);
-    return cateringRepo.setPackageActive(packageId, companyId, false);
+const deletePackage = async (packageId, companyId, userId) => {
+    const existing = await getPackage(packageId, companyId);
+    const result = await cateringRepo.setPackageActive(packageId, companyId, false);
+
+    await auditLogRepo.log({
+        companyId, userId,
+        action: 'catering_package.deleted', entityType: 'catering_package', entityId: packageId,
+        description: `Catering package "${existing.package_name}" deleted`,
+    });
+
+    return result;
 };
 
 module.exports = {

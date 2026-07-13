@@ -13,7 +13,7 @@ const list = async (req, res) => {
 
 const upsert = async (req, res) => {
     const { calcMethod, rateValue, isActive } = req.body;
-    const config = await chargeService.upsert(req.companyId, req.params.chargeType, { calcMethod, rateValue, isActive });
+    const config = await chargeService.upsert(req.companyId, req.params.chargeType, { calcMethod, rateValue, isActive }, req.user.user_id);
     return response.success(res, config, 'Operational charge config saved');
 };
 

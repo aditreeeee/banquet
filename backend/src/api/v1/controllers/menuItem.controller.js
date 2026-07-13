@@ -21,7 +21,7 @@ const create = async (req, res) => {
     const { categoryId, itemName, description, foodType, unit, basePrice, taxPercent, unitCost } = req.body;
     const item = await menuItemService.create(
         { categoryId, itemName, description, foodType, unit, basePrice, taxPercent, unitCost },
-        req.companyId
+        req.companyId, req.user.user_id
     );
     return response.created(res, item, 'Menu item created');
 };
@@ -31,7 +31,7 @@ const update = async (req, res) => {
     const item = await menuItemService.update(
         parseInt(req.params.id, 10),
         { itemName, description, basePrice, taxPercent, unitCost, isActive },
-        req.companyId
+        req.companyId, req.user.user_id
     );
     return response.success(res, item, 'Menu item updated');
 };

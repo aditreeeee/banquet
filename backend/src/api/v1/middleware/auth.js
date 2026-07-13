@@ -11,6 +11,7 @@ const { executeQuery } = require('../../../config/database');
 const { AuthError, ForbiddenError } = require('./errorHandler');
 const logger = require('../../../utils/logger');
 const settingsService = require('../../../services/settings.service');
+const { onInvalidate, broadcastInvalidate } = require('../../../utils/clusterCache');
 
 // Cache permissions per role (TTL 5 min — reduces DB calls)
 const permissionCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
@@ -269,13 +270,29 @@ const scopeToCompany = (req, res, next) => {
 // (e.g. "perms_2-5"), since permissions are now a union across roles. A single
 // role_id can appear in many different users' composite keys, so we clear any
 // cache entry whose key contains it rather than trying to reconstruct the key.
-const invalidatePermissionCache = (roleId) => {
+// Same PM2-cluster staleness problem as dashboard.service.js's cache: each
+// worker holds its own permissionCache/scopeCache, so a role-permission
+// change applied on the worker that handled the request would otherwise
+// leave every sibling worker enforcing the old permission set for up to
+// 5 minutes. invalidateLocalPermissionCache runs on this worker directly;
+// invalidatePermissionCache also broadcasts so every worker clears its copy.
+const invalidateLocalPermissionCache = (roleId) => {
     const needle = String(roleId);
     permissionCache.keys().forEach((key) => {
         const ids = key.replace('perms_', '').split('-');
         if (ids.includes(needle)) permissionCache.del(key);
     });
+    scopeCache.keys().forEach((key) => {
+        if (key.includes(`_${needle}_`) || key.includes(`_${needle}-`) || key.includes(`-${needle}_`)) scopeCache.del(key);
+    });
 };
+
+const invalidatePermissionCache = (roleId) => {
+    invalidateLocalPermissionCache(roleId);
+    broadcastInvalidate('permissions:invalidate', { roleId });
+};
+
+onInvalidate('permissions:invalidate', ({ roleId }) => invalidateLocalPermissionCache(roleId));
 
 module.exports = {
     authenticate,

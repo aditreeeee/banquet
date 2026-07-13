@@ -447,6 +447,16 @@ const seedExtendedDemoData = async (pool) => {
 
     // ── 1. Create / reset database ───────────────────────────────────────────
     if (RESET) {
+        // --reset unconditionally drops the database — if NODE_ENV is ever
+        // production (or unset, since an unset env in a real deployment is
+        // itself a misconfiguration we don't want to silently treat as safe),
+        // refuse rather than risk destroying live data from a mistyped command
+        // or a stale deploy script.
+        if (process.env.NODE_ENV !== 'development') {
+            fail(`Refusing to run --reset: NODE_ENV is "${process.env.NODE_ENV || '(unset)'}", not "development". ` +
+                 `Set NODE_ENV=development explicitly if you really mean to drop "${DB_NAME}".`);
+            return;
+        }
         warn(`--reset flag detected. Dropping database "${DB_NAME}" …`);
         await masterPool.request().batch(`
             IF DB_ID(N'${DB_NAME}') IS NOT NULL

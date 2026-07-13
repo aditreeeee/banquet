@@ -10,6 +10,7 @@ const { executeQuery } = require('../config/database');
 const NodeCache  = require('node-cache');
 const logger     = require('../utils/logger');
 const { CACHE_TTL } = require('../constants');
+const { onInvalidate, broadcastInvalidate } = require('../utils/clusterCache');
 
 const cache = new NodeCache({ stdTTL: CACHE_TTL.DASHBOARD, checkperiod: 30 });
 
@@ -101,12 +102,21 @@ const getBookingsByDate = async (scope, date) => {
 
 /**
  * Invalidate dashboard cache for a company (call after booking create/update/cancel)
+ * on THIS worker only — invalidateDashboardCache also broadcasts to every
+ * sibling PM2 cluster worker so a write handled by one worker doesn't leave
+ * the others serving a stale dashboard for up to 5 minutes (see clusterCache.js).
  */
-const invalidateDashboardCache = (companyId) => {
-    const periods = ['week', 'month', 'quarter', 'year'];
-    const keys    = cache.keys().filter(k => k.includes(`c${companyId}:`));
+const invalidateLocalCache = (companyId) => {
+    const keys = cache.keys().filter(k => k.includes(`c${companyId}:`));
     keys.forEach(k => cache.del(k));
     logger.debug('Dashboard cache invalidated', { companyId, keys: keys.length });
 };
+
+const invalidateDashboardCache = (companyId) => {
+    invalidateLocalCache(companyId);
+    broadcastInvalidate('dashboard:invalidate', { companyId });
+};
+
+onInvalidate('dashboard:invalidate', ({ companyId }) => invalidateLocalCache(companyId));
 
 module.exports = { getDashboardData, getBookingsByDate, invalidateDashboardCache };

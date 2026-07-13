@@ -341,6 +341,16 @@ const Utils = (() => {
         });
     }
 
+    /* ── HTML escaping — required before interpolating any admin- or
+       user-entered free text (names, addresses, etc.) into innerHTML.
+       Without this, a company/branch/user name containing markup executes
+       as stored XSS for every viewer of that dropdown/table. ── */
+    const _escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"']/g, ch => _escapeMap[ch]);
+    }
+
     return {
         loadCurrencySetting,
         formatCurrency, formatCurrencyShort, formatNumber, formatPercent,
@@ -355,6 +365,7 @@ const Utils = (() => {
         debounce, clone,
         getQueryParam, setTitle,
         eventColor, buildUrl, renderPagination,
+        escapeHtml,
     };
 })();
 

@@ -166,7 +166,10 @@
                     <div class="col-md-6">
                         <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
                             <span>Branch</span>
-                            <button type="button" class="btn-ghost" data-require-perm="branches:update" style="padding:0 6px;font-size:11px" onclick="openRenameModal('branch', document.getElementById('uBranch').value, document.getElementById('uBranch').selectedOptions[0]?.textContent)" title="Rename this Branch">Rename</button>
+                            <span>
+                                <button type="button" class="btn-ghost" data-require-perm="branches:create" style="padding:0 6px;font-size:11px" onclick="openAddBranchModal(document.getElementById('uCompany').value)" title="Add a Branch to this Company/Property">+ Add</button>
+                                <button type="button" class="btn-ghost" data-require-perm="branches:update" style="padding:0 6px;font-size:11px" onclick="openRenameModal('branch', document.getElementById('uBranch').value, document.getElementById('uBranch').selectedOptions[0]?.textContent, document.getElementById('uCompany').value)" title="Rename this Branch">Rename</button>
+                            </span>
                         </label>
                         <select class="form-select" id="uBranch">
                             <option value="">Unassigned</option>
@@ -233,7 +236,10 @@
                 <select class="form-select" id="ccCompanyId" onchange="onChangeCompanySelected()"><option value="">Loading…</option></select>
                 <label class="form-label" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
                     <span>New Branch</span>
-                    <button type="button" class="btn-ghost" data-require-perm="branches:update" style="padding:0 6px;font-size:11px" onclick="openRenameModal('branch', document.getElementById('ccBranchId').value, document.getElementById('ccBranchId').selectedOptions[0]?.textContent)" title="Rename this Branch">Rename</button>
+                    <span>
+                        <button type="button" class="btn-ghost" data-require-perm="branches:create" style="padding:0 6px;font-size:11px" onclick="openAddBranchModal(document.getElementById('ccCompanyId').value)" title="Add a Branch to this Company/Property">+ Add</button>
+                        <button type="button" class="btn-ghost" data-require-perm="branches:update" style="padding:0 6px;font-size:11px" onclick="openRenameModal('branch', document.getElementById('ccBranchId').value, document.getElementById('ccBranchId').selectedOptions[0]?.textContent, document.getElementById('ccCompanyId').value)" title="Rename this Branch">Rename</button>
+                    </span>
                 </label>
                 <select class="form-select" id="ccBranchId" disabled><option value="">Select a Property first</option></select>
                 <p style="font-size:12px;color:var(--text-muted);margin-top:6px">Leaving Branch unassigned is fine — it can be set later from Edit User.</p>
@@ -264,6 +270,31 @@
             <div class="modal-footer">
                 <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn-primary-brand" id="confirmRenameBtn" onclick="submitRename()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Branch — Super Admin only. Creates a new Branch under a given
+     Company/Property via POST /branches, then drops it straight into
+     whichever Branch dropdown was open (Add/Edit User form or Change
+     Property modal) without a page reload. -->
+<div class="modal fade" id="addBranchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Add Branch</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="abCompanyId">
+                <label class="form-label">Branch Name *</label>
+                <input type="text" class="form-control" id="abBranchName" placeholder="e.g. Andheri West Branch">
+                <label class="form-label" style="margin-top:12px">Address *</label>
+                <input type="text" class="form-control" id="abAddress" placeholder="Street, area, city">
+                <label class="form-label" style="margin-top:12px">Phone</label>
+                <input type="text" class="form-control" id="abPhone" placeholder="+91 98765 43210">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmAddBranchBtn" onclick="submitAddBranch()">Add Branch</button>
             </div>
         </div>
     </div>
@@ -334,7 +365,7 @@ async function loadCompanyFilterOptions() {
         const res = await API.companies.list({ limit: 500 });
         const companies = res.data?.companies || res.data || [];
         sel.innerHTML = '<option value="">All Companies/Properties</option>' +
-            companies.map(c => `<option value="${c.company_id}">${c.company_name}</option>`).join('');
+            companies.map(c => `<option value="${c.company_id}">${Utils.escapeHtml(c.company_name)}</option>`).join('');
         sel.value = current;
     } catch (err) {
         sel.innerHTML = '<option value="">Failed to load companies</option>';
@@ -356,7 +387,7 @@ async function onCompanyFilterChanged() {
         const res = await API.branches.list({ company_id: companyId });
         const branches = res.data || [];
         branchSel.innerHTML = '<option value="">All Branches</option>' +
-            branches.map(b => `<option value="${b.branch_id}">${b.branch_name}</option>`).join('');
+            branches.map(b => `<option value="${b.branch_id}">${Utils.escapeHtml(b.branch_name)}</option>`).join('');
     } catch (err) {
         branchSel.innerHTML = '<option value="">Failed to load branches</option>';
     }
@@ -404,15 +435,15 @@ function renderUsers(users) {
             <div style="display:flex;align-items:center;gap:10px">
                 <div class="avatar" style="width:34px;height:34px;font-size:12px;background:${ROLE_COLORS[u.role_name]||'#7C3AED'};color:#fff">${Utils.initials(u.first_name + ' ' + u.last_name)}</div>
                 <div>
-                    <div style="font-weight:600;font-size:13px">${u.first_name} ${u.last_name}${u.user_id === me ? ' <span style="font-size:10px;color:var(--brand-primary)">(you)</span>' : ''}</div>
-                    <div style="font-size:12px;color:var(--text-muted)">${u.email}</div>
+                    <div style="font-weight:600;font-size:13px">${Utils.escapeHtml(u.first_name)} ${Utils.escapeHtml(u.last_name)}${u.user_id === me ? ' <span style="font-size:10px;color:var(--brand-primary)">(you)</span>' : ''}</div>
+                    <div style="font-size:12px;color:var(--text-muted)">${Utils.escapeHtml(u.email)}</div>
                 </div>
             </div>
         </td>
-        ${showCompany ? `<td style="font-size:12px"><span title="company_id: ${u.company_id}">${u.company_name || '— Unassigned —'}</span></td>` : ''}
-        <td><span style="background:${ROLE_COLORS[u.role_name]}20;color:${ROLE_COLORS[u.role_name]};padding:3px 8px;border-radius:20px;font-size:11.5px;font-weight:600">${u.role_name}</span></td>
-        <td style="font-size:12.5px">${u.branch_name || '—'}</td>
-        ${showAdminCols ? `<td style="font-size:12px;color:var(--text-muted)">${u.created_by_name || '—'}</td>` : ''}
+        ${showCompany ? `<td style="font-size:12px"><span title="company_id: ${u.company_id}">${Utils.escapeHtml(u.company_name) || '— Unassigned —'}</span></td>` : ''}
+        <td><span style="background:${ROLE_COLORS[u.role_name]}20;color:${ROLE_COLORS[u.role_name]};padding:3px 8px;border-radius:20px;font-size:11.5px;font-weight:600">${Utils.escapeHtml(u.role_name)}</span></td>
+        <td style="font-size:12.5px">${Utils.escapeHtml(u.branch_name) || '—'}</td>
+        ${showAdminCols ? `<td style="font-size:12px;color:var(--text-muted)">${Utils.escapeHtml(u.created_by_name) || '—'}</td>` : ''}
         ${showAdminCols ? `<td style="font-size:12px;color:var(--text-muted)">${fmtDate(u.created_at)}</td>` : ''}
         ${showAdminCols ? `<td style="font-size:12px;color:var(--text-muted)">${fmtDate(u.updated_at)}</td>` : ''}
         <td style="font-size:12px;color:var(--text-muted)">${u.last_login || '—'}</td>
@@ -461,13 +492,13 @@ async function openUserDetails(id) {
         const u = res.data;
         document.querySelector('#userDetailsModal .modal-title').textContent = `${u.first_name} ${u.last_name || ''}`.trim();
         scopeEl.innerHTML = `
-            <div><strong>Company:</strong> ${u.company_name || 'Unassigned'}</div>
-            <div><strong>Property:</strong> ${u.company_name || 'Unassigned'}</div>
-            <div><strong>Branch:</strong> ${u.branch_name || 'All Branches'}</div>
-            <div><strong>Role:</strong> ${u.role_name}</div>
+            <div><strong>Company:</strong> ${Utils.escapeHtml(u.company_name) || 'Unassigned'}</div>
+            <div><strong>Property:</strong> ${Utils.escapeHtml(u.company_name) || 'Unassigned'}</div>
+            <div><strong>Branch:</strong> ${Utils.escapeHtml(u.branch_name) || 'All Branches'}</div>
+            <div><strong>Role:</strong> ${Utils.escapeHtml(u.role_name)}</div>
             <div><strong>Permissions:</strong> ${u.permission_count ?? '—'}</div>
-            <div><strong>Status:</strong> ${STATUS_LABELS[u.status] || u.status}</div>
-            <div><strong>Created By:</strong> ${u.created_by_name || '—'}</div>
+            <div><strong>Status:</strong> ${Utils.escapeHtml(STATUS_LABELS[u.status] || u.status)}</div>
+            <div><strong>Created By:</strong> ${Utils.escapeHtml(u.created_by_name) || '—'}</div>
             <div><strong>Created:</strong> ${u.created_at ? new Date(u.created_at).toLocaleString() : '—'}</div>
             <div><strong>Last Updated:</strong> ${u.updated_at ? new Date(u.updated_at).toLocaleString() : '—'}</div>
         `;
@@ -515,7 +546,7 @@ async function loadBranchesForCompany(companyId, selectedBranchId) {
         const res = await API.branches.list(params);
         const branches = res.data || [];
         sel.innerHTML = '<option value="">Unassigned</option>' +
-            branches.map(b => `<option value="${b.branch_id}">${b.branch_name}</option>`).join('');
+            branches.map(b => `<option value="${b.branch_id}">${Utils.escapeHtml(b.branch_name)}</option>`).join('');
         sel.value = selectedBranchId || '';
     } catch (err) {
         sel.innerHTML = '<option value="">Failed to load branches</option>';
@@ -533,10 +564,12 @@ async function onCompanyChanged() {
    entity across both open modals immediately, so there's no stale name
    floating around until the page is reloaded. ── */
 let renameModalInst;
-function openRenameModal(type, id, currentName) {
+let renameCompanyId = null;
+function openRenameModal(type, id, currentName, companyId) {
     if (!id) { Utils.toast(`Select a ${type === 'company' ? 'Company/Property' : 'Branch'} first`, 'error'); return; }
     document.getElementById('renameEntityType').value = type;
     document.getElementById('renameEntityId').value = id;
+    renameCompanyId = companyId || null;
     document.getElementById('renameModalTitle').textContent = type === 'company' ? 'Rename Company / Property' : 'Rename Branch';
     document.getElementById('renameFieldLabel').textContent = type === 'company' ? 'Company / Property Name' : 'Branch Name';
     document.getElementById('renameNewValue').value = (currentName || '').trim();
@@ -555,7 +588,13 @@ async function submitRename() {
         if (type === 'company') {
             await API.companies.update(id, { companyName: newName });
         } else {
-            await API.branches.update(id, { branchName: newName });
+            // Super Admin's write requests default to company_id=1 unless the
+            // target company is passed explicitly — without this, renaming a
+            // branch belonging to any other tenant returns 200 but silently
+            // updates zero rows (see scopeToCompany in backend/middleware/auth.js).
+            const body = { branchName: newName };
+            if (renameCompanyId) body.company_id = parseInt(renameCompanyId, 10);
+            await API.branches.update(id, body);
         }
         Utils.hideLoader(btn);
         renameModalInst?.hide();
@@ -574,6 +613,56 @@ async function submitRename() {
     }
 }
 
+/* ── Add Branch (Super Admin only) — creates a new Branch under a chosen
+   Company/Property via POST /branches. company_id is always sent explicitly
+   in the body for the same reason submitRename sends it: Super Admin write
+   requests default to company_id=1 otherwise. ── */
+let addBranchModalInst;
+function openAddBranchModal(companyId) {
+    if (!companyId) { Utils.toast('Select a Company/Property first', 'error'); return; }
+    document.getElementById('abCompanyId').value = companyId;
+    document.getElementById('abBranchName').value = '';
+    document.getElementById('abAddress').value = '';
+    document.getElementById('abPhone').value = '';
+    addBranchModalInst = new bootstrap.Modal(document.getElementById('addBranchModal'));
+    addBranchModalInst.show();
+}
+
+async function submitAddBranch() {
+    const companyId = document.getElementById('abCompanyId').value;
+    const branchName = document.getElementById('abBranchName').value.trim();
+    const address = document.getElementById('abAddress').value.trim();
+    const phone = document.getElementById('abPhone').value.trim();
+    if (!branchName) { Utils.toast('Branch name is required', 'error'); return; }
+    if (!address) { Utils.toast('Address is required', 'error'); return; }
+    const btn = document.getElementById('confirmAddBranchBtn');
+    Utils.showLoader(btn, 'Adding…');
+    try {
+        const res = await API.branches.create({
+            company_id: parseInt(companyId, 10),
+            branchName,
+            address,
+            phone: phone || undefined,
+        });
+        Utils.hideLoader(btn);
+        addBranchModalInst?.hide();
+        Utils.toast('Branch added', 'success');
+        const newBranchId = res.data?.branch_id;
+        // Refresh whichever Branch dropdown(s) currently reference this company
+        // so the new branch shows up immediately, pre-selected, no reload needed.
+        if (document.getElementById('uCompany').value == companyId) {
+            await loadBranchesForCompany(companyId, newBranchId);
+        }
+        if (document.getElementById('ccCompanyId').value == companyId) {
+            await onChangeCompanySelected();
+            if (newBranchId) document.getElementById('ccBranchId').value = newBranchId;
+        }
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to add branch', 'error');
+    }
+}
+
 async function loadCompanyDropdown(selectedCompanyId) {
     const sel = document.getElementById('uCompany');
     sel.innerHTML = '<option value="">Loading…</option>';
@@ -581,7 +670,7 @@ async function loadCompanyDropdown(selectedCompanyId) {
         const res = await API.companies.list({ is_active: 'true', limit: 500 });
         const companies = res.data?.companies || res.data || [];
         sel.innerHTML = '<option value="">Select Company/Property…</option>' +
-            companies.map(c => `<option value="${c.company_id}">${c.company_name}</option>`).join('');
+            companies.map(c => `<option value="${c.company_id}">${Utils.escapeHtml(c.company_name)}</option>`).join('');
         sel.value = selectedCompanyId || '';
     } catch (err) {
         sel.innerHTML = '<option value="">Failed to load companies</option>';
@@ -724,7 +813,7 @@ async function openChangeCompanyModal(userId, currentCompanyId, email) {
         const companies = res.data?.companies || res.data || [];
         sel.innerHTML = '<option value="">Select Property…</option>' + companies
             .filter(c => c.company_id !== currentCompanyId)
-            .map(c => `<option value="${c.company_id}">${c.company_name} (#${c.company_id})</option>`)
+            .map(c => `<option value="${c.company_id}">${Utils.escapeHtml(c.company_name)} (#${c.company_id})</option>`)
             .join('') || '<option value="">No other properties exist</option>';
     } catch (err) {
         sel.innerHTML = '<option value="">Failed to load properties</option>';
@@ -747,7 +836,7 @@ async function onChangeCompanySelected() {
         const res = await API.branches.list({ company_id: companyId, activeOnly: true });
         const branches = res.data || [];
         branchSel.innerHTML = '<option value="">Unassigned</option>' +
-            branches.map(b => `<option value="${b.branch_id}">${b.branch_name}</option>`).join('');
+            branches.map(b => `<option value="${b.branch_id}">${Utils.escapeHtml(b.branch_name)}</option>`).join('');
     } catch (err) {
         branchSel.innerHTML = '<option value="">Failed to load branches</option>';
     }

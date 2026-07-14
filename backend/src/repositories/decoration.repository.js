@@ -38,6 +38,7 @@ const ITEM_SELECT = `
            di.decoration_code, di.decoration_name, di.description, di.theme, di.color_scheme,
            di.vendor, di.unit, di.quantity_available, di.unit_cost, di.rental_price,
            di.installation_cost, di.removal_cost, di.tax_percent, di.discount_percent,
+           di.hsn_sac_code, di.tax_type,
            di.images, di.notes, di.is_active, di.created_by, di.created_at, di.updated_at
     FROM DecorationItems di
     LEFT JOIN DecorationCategories dc ON dc.category_id = di.category_id
@@ -71,12 +72,12 @@ const createItem = async (companyId, data, createdBy) => {
         `INSERT INTO DecorationItems
             (company_id, category_id, decoration_code, decoration_name, description, theme, color_scheme,
              vendor, unit, quantity_available, unit_cost, rental_price, installation_cost, removal_cost,
-             tax_percent, discount_percent, images, notes, is_active, created_by, created_at, updated_at)
+             tax_percent, discount_percent, hsn_sac_code, tax_type, images, notes, is_active, created_by, created_at, updated_at)
          OUTPUT INSERTED.decoration_id AS id
          VALUES
             (@companyId, @categoryId, @code, @name, @description, @theme, @colorScheme,
              @vendor, @unit, @quantityAvailable, @unitCost, @rentalPrice, @installationCost, @removalCost,
-             @taxPercent, @discountPercent, @images, @notes, 1, @createdBy, SYSUTCDATETIME(), SYSUTCDATETIME())`,
+             @taxPercent, @discountPercent, @hsnSacCode, @taxType, @images, @notes, 1, @createdBy, SYSUTCDATETIME(), SYSUTCDATETIME())`,
         {
             companyId,
             categoryId:        data.categoryId || null,
@@ -94,6 +95,8 @@ const createItem = async (companyId, data, createdBy) => {
             removalCost:       data.removalCost || 0,
             taxPercent:        data.taxPercent || 0,
             discountPercent:   data.discountPercent || 0,
+            hsnSacCode:        data.hsnSacCode || null,
+            taxType:           data.taxType || 'hsn',
             images:            data.images ? JSON.stringify(data.images) : null,
             notes:             data.notes || null,
             createdBy:         createdBy || null,
@@ -119,6 +122,8 @@ const updateItem = async (decorationId, companyId, data) => {
              removal_cost       = ISNULL(@removalCost,         removal_cost),
              tax_percent        = ISNULL(@taxPercent,          tax_percent),
              discount_percent   = ISNULL(@discountPercent,     discount_percent),
+             hsn_sac_code       = ISNULL(@hsnSacCode,          hsn_sac_code),
+             tax_type           = ISNULL(@taxType,              tax_type),
              images             = ISNULL(@images,              images),
              notes              = ISNULL(@notes,               notes),
              is_active          = ISNULL(@isActive,            is_active),
@@ -141,6 +146,8 @@ const updateItem = async (decorationId, companyId, data) => {
             removalCost:       data.removalCost != null ? data.removalCost : null,
             taxPercent:        data.taxPercent != null ? data.taxPercent : null,
             discountPercent:   data.discountPercent != null ? data.discountPercent : null,
+            hsnSacCode:        data.hsnSacCode != null ? data.hsnSacCode : null,
+            taxType:           data.taxType != null ? data.taxType : null,
             images:            data.images ? JSON.stringify(data.images) : null,
             notes:             data.notes != null ? data.notes : null,
             isActive:          data.isActive != null ? data.isActive : null,
@@ -221,10 +228,19 @@ const getPackageItems = async (packageId) => {
     );
 };
 
+// Upsert — the package builder UI re-calls this to change an already-linked
+// item's quantity (see decorations/index.html's item picker grid), which
+// would otherwise hit UQ_dpi_package_item on a plain INSERT.
 const addPackageItem = async (packageId, decorationId, quantity) => {
     await executeQuery(
-        `INSERT INTO DecorationPackageItems (package_id, decoration_id, quantity, created_at)
-         VALUES (@packageId, @decorationId, @qty, SYSUTCDATETIME())`,
+        `MERGE DecorationPackageItems AS target
+         USING (SELECT @packageId AS package_id, @decorationId AS decoration_id) AS src
+         ON target.package_id = src.package_id AND target.decoration_id = src.decoration_id
+         WHEN MATCHED THEN
+             UPDATE SET quantity = @qty
+         WHEN NOT MATCHED THEN
+             INSERT (package_id, decoration_id, quantity, created_at)
+             VALUES (@packageId, @decorationId, @qty, SYSUTCDATETIME());`,
         { packageId, decorationId, qty: quantity || 1 }
     );
 };
@@ -258,7 +274,7 @@ const allocateInTx = async (tx, { bookingId, companyId, decorations, eventDate }
          JOIN Bookings b ON b.booking_id = bd.booking_id
          WHERE bd.decoration_id IN (${decorationIds.map((_, i) => `@d${i}`).join(',')})
            AND b.event_date = @eventDate
-           AND b.status NOT IN ('cancelled', 'draft')
+           AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')
          GROUP BY bd.decoration_id`,
         decorationIds.reduce((p, id, i) => ({ ...p, [`d${i}`]: id }), { eventDate: new Date(eventDate) })
     );
@@ -327,7 +343,7 @@ const getInventorySnapshot = async (companyId, eventDate) => {
          LEFT JOIN BookingDecorations bd ON bd.decoration_id = di.decoration_id
              AND bd.booking_id IN (
                  SELECT booking_id FROM Bookings
-                 WHERE company_id = @companyId AND event_date = @eventDate AND status NOT IN ('cancelled', 'draft')
+                 WHERE company_id = @companyId AND event_date = @eventDate AND status NOT IN ('cancelled', 'draft', 'completed', 'archived')
              )
          WHERE di.company_id = @companyId AND di.is_active = 1
          GROUP BY di.decoration_id, di.decoration_name, dc.category_name, di.quantity_available

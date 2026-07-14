@@ -22,6 +22,55 @@ const getById = async (invoiceId, companyId) => {
 };
 
 /**
+ * HSN/SAC-grouped tax breakdown for Revenue Reports — catering items are the
+ * only booking line items with a per-line HSN/SAC snapshot today
+ * (BookingCateringItems.tax_percent, joined here to MenuItems for its
+ * hsn_sac_code); hall rental, decoration, resources and operational charges
+ * have no per-line tax snapshot yet, so they fall into a single "Other
+ * Charges" bucket taxed at the invoice's flat CGST+SGST rate. Returns a JSON
+ * string ready for Invoices.hsn_sac_breakdown, or null when there's nothing
+ * to break down (taxableAmount <= 0).
+ */
+const buildHsnSacBreakdown = async (tx, bookingId, companyId, taxableAmount, flatTaxPct) => {
+    if (!(taxableAmount > 0)) return null;
+
+    const cateringRows = await tx.execute(
+        `SELECT ISNULL(mi.hsn_sac_code, 'UNCLASSIFIED') AS hsn_sac_code, ISNULL(mi.tax_type, 'hsn') AS tax_type,
+                bci.tax_percent,
+                SUM(bci.quantity * bci.unit_price) AS taxable_value
+         FROM BookingCateringItems bci
+         JOIN BookingCateringSessions bcs ON bcs.session_id = bci.session_id
+         LEFT JOIN MenuItems mi ON mi.item_id = bci.item_id
+         WHERE bcs.booking_id = @bookingId AND bcs.company_id = @companyId
+         GROUP BY ISNULL(mi.hsn_sac_code, 'UNCLASSIFIED'), ISNULL(mi.tax_type, 'hsn'), bci.tax_percent`,
+        { bookingId, companyId }
+    );
+
+    const breakdown = cateringRows.map(r => ({
+        hsn_sac_code: r.hsn_sac_code,
+        tax_type: r.tax_type,
+        tax_percent: r.tax_percent,
+        taxable_value: Math.round(r.taxable_value * 100) / 100,
+        tax_amount: Math.round(r.taxable_value * (r.tax_percent / 100) * 100) / 100,
+    }));
+
+    const cateringTotal = breakdown.reduce((s, r) => s + r.taxable_value, 0);
+    const otherValue = Math.round((taxableAmount - cateringTotal) * 100) / 100;
+    if (otherValue > 0) {
+        breakdown.push({
+            hsn_sac_code: 'OTHER',
+            tax_type: 'sac',
+            tax_percent: flatTaxPct,
+            taxable_value: otherValue,
+            tax_amount: Math.round(otherValue * (flatTaxPct / 100) * 100) / 100,
+            label: 'Hall Rental, Decoration & Other Services',
+        });
+    }
+
+    return breakdown.length ? JSON.stringify(breakdown) : null;
+};
+
+/**
  * Generate an invoice for a booking — the booking's current total_amount is
  * the taxable base (already fully priced by booking.service.js's
  * recalculateBookingTotal), so this never re-derives revenue independently.
@@ -61,12 +110,15 @@ const generateForBooking = async (bookingId, actor) => {
         const sgstAmount = Math.round(taxableAmount * (sgstRate / 100) * 100) / 100;
         const grandTotal = taxableAmount + cgstAmount + sgstAmount;
 
+        const hsnSacBreakdown = await buildHsnSacBreakdown(tx, b.booking_id, actor.companyId, taxableAmount, cgstRate + sgstRate);
+
         const invoiceId = await invoiceRepo.create(tx, {
             invoiceNumber,
             companyId: actor.companyId,
             bookingId: b.booking_id,
             customerId: b.customer_id,
             taxableAmount, cgstRate, cgstAmount, sgstRate, sgstAmount, grandTotal,
+            hsnSacBreakdown,
             createdBy: actor.userId,
         });
 

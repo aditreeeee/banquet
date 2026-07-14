@@ -127,6 +127,7 @@ const create = async (tx, data) => {
              subtotal, discount_amount, taxable_amount,
              cgst_rate, cgst_amount, sgst_rate, sgst_amount,
              grand_total, amount_paid, balance_due,
+             hsn_sac_breakdown,
              payment_status, created_by, created_at)
          OUTPUT INSERTED.invoice_id AS insertId
          VALUES
@@ -135,8 +136,9 @@ const create = async (tx, data) => {
              @taxableAmount, 0, @taxableAmount,
              @cgstRate, @cgstAmount, @sgstRate, @sgstAmount,
              @grandTotal, 0, @grandTotal,
+             @hsnSacBreakdown,
              'pending', @createdBy, GETUTCDATE())`,
-        data
+        { ...data, hsnSacBreakdown: data.hsnSacBreakdown || null }
     );
     return result[0].insertId;
 };

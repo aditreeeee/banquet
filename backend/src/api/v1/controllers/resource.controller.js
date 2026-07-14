@@ -19,19 +19,19 @@ const getById = async (req, res) => {
 };
 
 const create = async (req, res) => {
-    const { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable } = req.body;
+    const { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable, hsnSacCode, taxType, taxPercent } = req.body;
     const resource = await resourceService.create(
-        { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable },
+        { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable, hsnSacCode, taxType, taxPercent },
         req.companyId, req.user.user_id
     );
     return response.created(res, resource, 'Resource created');
 };
 
 const update = async (req, res) => {
-    const { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable } = req.body;
+    const { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable, hsnSacCode, taxType, taxPercent } = req.body;
     const resource = await resourceService.update(
         parseInt(req.params.id, 10),
-        { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable },
+        { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable, hsnSacCode, taxType, taxPercent },
         req.companyId, req.user.user_id
     );
     return response.success(res, resource, 'Resource updated');

@@ -67,10 +67,10 @@
             <div class="table-responsive">
                 <table class="table">
                     <thead><tr>
-                        <th>Item</th><th>Category</th><th>Supplier</th><th>Available</th>
-                        <th>Reserved (selected date)</th><th>Customer Price</th><th>Cost Price</th><th>Billable</th><th></th>
+                        <th>Item</th><th>Category</th><th>Supplier</th><th>HSN Code</th><th>Available</th>
+                        <th>Reserved (selected date)</th><th>Customer Price</th><th>Tax %</th><th>Cost Price</th><th>Billable</th><th></th>
                     </tr></thead>
-                    <tbody id="resourcesBody"><tr><td colspan="9" class="text-center py-4">Loading…</td></tr></tbody>
+                    <tbody id="resourcesBody"><tr><td colspan="11" class="text-center py-4">Loading…</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -103,6 +103,10 @@
                     <div class="col-4"><label class="form-label">Quantity Available</label><input type="number" class="form-control" id="resQty" min="0"></div>
                     <div class="col-4"><label class="form-label">Customer Price</label><input type="number" class="form-control" id="resPrice" min="0" step="0.5"></div>
                     <div class="col-4"><label class="form-label">Cost Price</label><input type="number" class="form-control" id="resCost" min="0" step="0.5"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label">HSN Code</label><input type="text" class="form-control" id="resHsnCode" placeholder="e.g. 9403" maxlength="15"></div>
+                    <div class="col-6"><label class="form-label">Tax %</label><input type="number" class="form-control" id="resTaxPercent" value="18" min="0" max="100" step="0.5"></div>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="resBillable">
@@ -143,14 +147,14 @@ function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(
 
 async function loadResources() {
     const tbody = document.getElementById('resourcesBody');
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4">Loading…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4">Loading…</td></tr>';
     try {
         const res = await API.resources.list();
         resources = res.data || [];
         document.getElementById('snapshotDate').value = todayISO();
         await loadSnapshot();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4" style="color:var(--color-danger)">${e.message || 'Failed to load inventory'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4" style="color:var(--color-danger)">${e.message || 'Failed to load inventory'}</td></tr>`;
     }
 }
 
@@ -169,7 +173,7 @@ function renderResources() {
     const catFilter = document.getElementById('categoryFilter').value;
     const filtered = resources.filter(r => !catFilter || r.category === catFilter);
 
-    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4">No inventory items found.</td></tr>'; }
+    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4">No inventory items found.</td></tr>'; }
     else {
         tbody.innerHTML = filtered.map(r => {
             const snap = snapshot[r.resource_id];
@@ -180,9 +184,11 @@ function renderResources() {
                 <td style="font-weight:600">${r.resource_name}</td>
                 <td><span class="cat-badge" style="background:${CATEGORY_COLOR[r.category]}22;color:${CATEGORY_COLOR[r.category]}">${r.category}</span></td>
                 <td>${r.supplier || '—'}</td>
+                <td>${r.hsn_sac_code || '—'}</td>
                 <td>${Utils.formatNumber(r.quantity_available)}</td>
                 <td style="color:${shortage?'var(--color-danger)':'inherit'};font-weight:${shortage?700:400}">${reserved}${shortage ? ' ⚠ full' : ''}</td>
                 <td>${Utils.formatCurrency(r.unit_price)}</td>
+                <td>${r.tax_percent}%</td>
                 <td>${Utils.formatCurrency(r.cost_price)}</td>
                 <td>${r.is_billable ? '<span class="cat-badge" style="background:var(--color-success)22;color:var(--color-success)">Billable</span>' : '<span style="color:var(--text-muted);font-size:11px">Internal</span>'}</td>
                 <td style="display:flex;gap:4px">
@@ -243,6 +249,8 @@ function openResourceModal() {
     document.getElementById('resQty').value = '';
     document.getElementById('resPrice').value = '';
     document.getElementById('resCost').value = '';
+    document.getElementById('resHsnCode').value = '';
+    document.getElementById('resTaxPercent').value = 18;
     document.getElementById('resBillable').checked = false;
     new bootstrap.Modal(document.getElementById('resourceModal')).show();
 }
@@ -258,6 +266,8 @@ function editResource(id) {
     document.getElementById('resQty').value = r.quantity_available;
     document.getElementById('resPrice').value = r.unit_price;
     document.getElementById('resCost').value = r.cost_price;
+    document.getElementById('resHsnCode').value = r.hsn_sac_code || '';
+    document.getElementById('resTaxPercent').value = r.tax_percent;
     document.getElementById('resBillable').checked = !!r.is_billable;
     new bootstrap.Modal(document.getElementById('resourceModal')).show();
 }
@@ -270,6 +280,8 @@ async function saveResource() {
         quantityAvailable: parseInt(document.getElementById('resQty').value, 10) || 0,
         unitPrice: parseFloat(document.getElementById('resPrice').value) || 0,
         costPrice: parseFloat(document.getElementById('resCost').value) || 0,
+        hsnSacCode: document.getElementById('resHsnCode').value.trim() || undefined,
+        taxPercent: parseFloat(document.getElementById('resTaxPercent').value) || 0,
         isBillable: document.getElementById('resBillable').checked,
     };
     if (!payload.resourceName) { Utils.toast('Item name is required', 'error'); return; }

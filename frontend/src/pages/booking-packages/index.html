@@ -84,6 +84,8 @@
                     <div class="col-4"><label class="form-label">Setup (min)</label><input type="number" class="form-control" id="pSetupMin" min="0" value="0"></div>
                     <div class="col-4"><label class="form-label">Cleanup (min)</label><input type="number" class="form-control" id="pCleanupMin" min="0" value="0"></div>
                     <div class="col-4"><label class="form-label">Cool-Off (min)</label><input type="number" class="form-control" id="pCooloffMin" min="0" value="0"></div>
+                    <div class="col-6"><label class="form-label">SAC Code</label><input type="text" class="form-control" id="pSacCode" placeholder="e.g. 9963" maxlength="15"></div>
+                    <div class="col-6"><label class="form-label">Tax %</label><input type="number" class="form-control" id="pTaxPercent" min="0" max="100" step="0.5" value="18"></div>
                     <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" id="pDescription" rows="2"></textarea></div>
                 </div>
             </div>
@@ -143,6 +145,7 @@ function renderPackages(rows) {
             <div style="font-size:12px;color:var(--text-muted)">
                 ${p.included_hours ? p.included_hours + ' hrs included · ' : ''}Overtime ${Utils.formatCurrency(p.overtime_rate_per_hour)}/hr (max ${p.max_extension_hours}hrs)
                 · Setup ${p.default_setup_minutes}m / Cleanup ${p.default_cleanup_minutes}m / Cool-off ${p.default_cooloff_minutes}m
+                · SAC ${p.hsn_sac_code || '—'} · Tax ${p.tax_percent || 0}%
             </div>
         </div>
         <div style="text-align:right;min-width:110px">
@@ -177,6 +180,8 @@ function openCreateModal() {
     document.getElementById('pSetupMin').value = 0;
     document.getElementById('pCleanupMin').value = 0;
     document.getElementById('pCooloffMin').value = 0;
+    document.getElementById('pSacCode').value = '';
+    document.getElementById('pTaxPercent').value = 18;
     document.getElementById('pDescription').value = '';
     toggleIncludedHours();
     pkgModalInst = new bootstrap.Modal(document.getElementById('pkgModal'));
@@ -196,6 +201,8 @@ function openEditModal(p) {
     document.getElementById('pSetupMin').value = p.default_setup_minutes;
     document.getElementById('pCleanupMin').value = p.default_cleanup_minutes;
     document.getElementById('pCooloffMin').value = p.default_cooloff_minutes;
+    document.getElementById('pSacCode').value = p.hsn_sac_code || '';
+    document.getElementById('pTaxPercent').value = p.tax_percent != null ? p.tax_percent : 18;
     document.getElementById('pDescription').value = p.description || '';
     toggleIncludedHours();
     pkgModalInst = new bootstrap.Modal(document.getElementById('pkgModal'));
@@ -215,6 +222,8 @@ async function submitPackage() {
         defaultSetupMinutes: parseInt(document.getElementById('pSetupMin').value, 10) || 0,
         defaultCleanupMinutes: parseInt(document.getElementById('pCleanupMin').value, 10) || 0,
         defaultCooloffMinutes: parseInt(document.getElementById('pCooloffMin').value, 10) || 0,
+        hsnSacCode: document.getElementById('pSacCode').value.trim() || undefined,
+        taxPercent: parseFloat(document.getElementById('pTaxPercent').value) || 0,
         description: document.getElementById('pDescription').value || undefined,
     };
     if (!data.packageName) { Utils.toast('Package name is required', 'error'); return; }

@@ -8,7 +8,7 @@ const { executeQuery } = require('../config/database');
 
 const SELECT_COMPUTED = `
     mi.item_id, mi.company_id, mi.category_id, mc.category_name, mi.item_name, mi.description, mi.food_type, mi.unit,
-    mi.base_price, mi.tax_percent, mi.unit_cost, mi.is_active, mi.created_at,
+    mi.base_price, mi.tax_percent, mi.hsn_sac_code, mi.tax_type, mi.unit_cost, mi.is_active, mi.created_at,
     CAST(mi.base_price * mi.tax_percent / 100 AS DECIMAL(10,2)) AS tax_amount,
     CAST(mi.base_price - mi.unit_cost AS DECIMAL(10,2)) AS margin,
     CAST(mi.base_price * (1 + mi.tax_percent / 100) AS DECIMAL(10,2)) AS final_price
@@ -41,11 +41,11 @@ const listCategories = async (companyId) => {
     );
 };
 
-const create = async ({ companyId, categoryId, itemName, description, foodType, unit, basePrice, taxPercent, unitCost }) => {
+const create = async ({ companyId, categoryId, itemName, description, foodType, unit, basePrice, taxPercent, hsnSacCode, taxType, unitCost }) => {
     const result = await executeQuery(
-        `INSERT INTO MenuItems (company_id, category_id, item_name, description, food_type, unit, base_price, tax_percent, unit_cost, is_active, created_at)
+        `INSERT INTO MenuItems (company_id, category_id, item_name, description, food_type, unit, base_price, tax_percent, hsn_sac_code, tax_type, unit_cost, is_active, created_at)
          OUTPUT INSERTED.item_id AS id
-         VALUES (@companyId, @categoryId, @itemName, @description, @foodType, @unit, @basePrice, @taxPercent, @unitCost, 1, GETUTCDATE())`,
+         VALUES (@companyId, @categoryId, @itemName, @description, @foodType, @unit, @basePrice, @taxPercent, @hsnSacCode, @taxType, @unitCost, 1, GETUTCDATE())`,
         {
             companyId,
             categoryId,
@@ -55,21 +55,25 @@ const create = async ({ companyId, categoryId, itemName, description, foodType, 
             unit:        unit || 'plate',
             basePrice,
             taxPercent:  taxPercent || 0,
+            hsnSacCode:  hsnSacCode || null,
+            taxType:     taxType    || 'hsn',
             unitCost:    unitCost   || 0,
         }
     );
     return findById(result[0].id, companyId);
 };
 
-const update = async (itemId, companyId, { itemName, description, basePrice, taxPercent, unitCost, isActive }) => {
+const update = async (itemId, companyId, { itemName, description, basePrice, taxPercent, hsnSacCode, taxType, unitCost, isActive }) => {
     await executeQuery(
         `UPDATE MenuItems
-         SET item_name   = ISNULL(@itemName,   item_name),
-             description = ISNULL(@description, description),
-             base_price  = ISNULL(@basePrice,  base_price),
-             tax_percent = ISNULL(@taxPercent, tax_percent),
-             unit_cost   = ISNULL(@unitCost,   unit_cost),
-             is_active   = ISNULL(@isActive,   is_active)
+         SET item_name    = ISNULL(@itemName,    item_name),
+             description  = ISNULL(@description, description),
+             base_price   = ISNULL(@basePrice,   base_price),
+             tax_percent  = ISNULL(@taxPercent,  tax_percent),
+             hsn_sac_code = ISNULL(@hsnSacCode,  hsn_sac_code),
+             tax_type     = ISNULL(@taxType,     tax_type),
+             unit_cost    = ISNULL(@unitCost,    unit_cost),
+             is_active    = ISNULL(@isActive,    is_active)
          WHERE item_id = @itemId AND company_id = @companyId`,
         {
             itemId,
@@ -78,6 +82,8 @@ const update = async (itemId, companyId, { itemName, description, basePrice, tax
             description: description || null,
             basePrice:   basePrice   || null,
             taxPercent:  taxPercent  != null ? taxPercent : null,
+            hsnSacCode:  hsnSacCode  || null,
+            taxType:     taxType     || null,
             unitCost:    unitCost    != null ? unitCost   : null,
             isActive:    isActive    != null ? isActive   : null,
         }

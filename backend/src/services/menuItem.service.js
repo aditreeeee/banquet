@@ -88,6 +88,7 @@ const importCsv = (buffer, companyId) => new Promise((resolve, reject) => {
                         unit:        row.unit || 'plate',
                         basePrice,
                         taxPercent:  parseFloat(row.tax_percent) || 0,
+                        hsnSacCode:  row.hsn_sac_code || null,
                         unitCost:    parseFloat(row.unit_cost) || 0,
                     });
                     created++;

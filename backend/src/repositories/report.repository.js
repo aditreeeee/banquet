@@ -320,6 +320,76 @@ const getSummaryStats = async ({ companyId, branchId, fromDate, toDate }) => {
     return rows[0];
 };
 
+/**
+ * GST actually collected via generated invoices in the date range — distinct
+ * from Bookings.total_amount (the taxable base), this sums the tax invoices
+ * were raised for (invoice_date, not event_date, since that's when the tax
+ * liability was actually created). Cancelled invoices are excluded, same as
+ * every other revenue figure in this file.
+ */
+const getGstCollected = async ({ companyId, branchId, fromDate, toDate }) => {
+    const rows = await executeQuery(
+        `SELECT ISNULL(SUM(i.cgst_amount + i.sgst_amount), 0) AS gst_collected
+         FROM Invoices i
+         JOIN Bookings b ON b.booking_id = i.booking_id
+         WHERE (@companyId IS NULL OR i.company_id = @companyId)
+           AND (@branchId IS NULL OR b.branch_id = @branchId)
+           AND i.invoice_date BETWEEN @fromDate AND @toDate
+           AND i.is_cancelled = 0`,
+        {
+            companyId: companyId || null,
+            branchId: branchId || null,
+            fromDate: new Date(fromDate),
+            toDate:   new Date(toDate),
+        }
+    );
+    return rows[0].gst_collected;
+};
+
+/**
+ * Tax collected grouped by HSN/SAC code across every invoice raised in the
+ * range — parses each invoice's hsn_sac_breakdown JSON (see
+ * invoice.service.js buildHsnSacBreakdown) and re-aggregates in application
+ * code since SQL Server has no native JSON array-unnest prior to OPENJSON,
+ * which would need a per-row APPLY; simpler and clear enough at report-page
+ * volumes to do the grouping here.
+ */
+const getHsnSacBreakdown = async ({ companyId, branchId, fromDate, toDate }) => {
+    const rows = await executeQuery(
+        `SELECT i.hsn_sac_breakdown
+         FROM Invoices i
+         JOIN Bookings b ON b.booking_id = i.booking_id
+         WHERE (@companyId IS NULL OR i.company_id = @companyId)
+           AND (@branchId IS NULL OR b.branch_id = @branchId)
+           AND i.invoice_date BETWEEN @fromDate AND @toDate
+           AND i.is_cancelled = 0
+           AND i.hsn_sac_breakdown IS NOT NULL`,
+        {
+            companyId: companyId || null,
+            branchId: branchId || null,
+            fromDate: new Date(fromDate),
+            toDate:   new Date(toDate),
+        }
+    );
+
+    const grouped = new Map();
+    for (const row of rows) {
+        let items;
+        try { items = JSON.parse(row.hsn_sac_breakdown); } catch { continue; }
+        for (const item of items) {
+            const key = `${item.hsn_sac_code}:${item.tax_percent}`;
+            const existing = grouped.get(key) || {
+                hsn_sac_code: item.hsn_sac_code, tax_type: item.tax_type,
+                tax_percent: item.tax_percent, taxable_value: 0, tax_amount: 0,
+            };
+            existing.taxable_value += Number(item.taxable_value) || 0;
+            existing.tax_amount    += Number(item.tax_amount) || 0;
+            grouped.set(key, existing);
+        }
+    }
+    return Array.from(grouped.values()).sort((a, b) => b.tax_amount - a.tax_amount);
+};
+
 // ─── Owner Analytics ────────────────────────────────────────────────────────
 
 const getRevenuePerHall = async ({ companyId, branchId, fromDate, toDate }) => {
@@ -517,4 +587,6 @@ module.exports = {
     getInventoryCost,
     getDecorationAnalytics,
     getMonthlyComparison,
+    getGstCollected,
+    getHsnSacBreakdown,
 };

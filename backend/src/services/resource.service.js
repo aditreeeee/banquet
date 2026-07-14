@@ -20,16 +20,17 @@ const getById = async (resourceId, companyId) => {
     return resource;
 };
 
-const create = async ({ resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable }, companyId, userId) => {
+const create = async (data, companyId, userId) => {
+    const { resourceName, category } = data;
     if (!resourceName) throw new ValidationError('resourceName is required');
     if (category && !CATEGORIES.includes(category)) throw new ValidationError(`category must be one of: ${CATEGORIES.join(', ')}`);
-    const resource = await resourceRepo.create({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable });
+    const resource = await resourceRepo.create({ ...data, companyId });
 
     await auditLogRepo.log({
         companyId, userId,
         action: 'resource.created', entityType: 'resource', entityId: resource.resource_id,
         description: `Resource "${resource.resource_name}" created`,
-        newValues: { resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable },
+        newValues: data,
     });
 
     return resource;

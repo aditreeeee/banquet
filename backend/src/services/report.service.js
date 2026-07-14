@@ -48,11 +48,13 @@ const getRevenueReport = async (query, actor) => {
     const priorFrom = shiftYearBack(from);
     const priorTo   = shiftYearBack(to);
 
-    const [series, priorYearSeries, summary, refundedAmount] = await Promise.all([
+    const [series, priorYearSeries, summary, refundedAmount, gstCollected, hsnBreakdown] = await Promise.all([
         reportRepo.getRevenueReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to, groupBy }),
         reportRepo.getRevenueReport({ companyId: actor.companyId, branchId, fromDate: priorFrom, toDate: priorTo, groupBy }),
         reportRepo.getSummaryStats({  companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getRefundedAmount({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getGstCollected({  companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getHsnSacBreakdown({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
     ]);
 
     // Year-over-year per bucket — matched by position (bucket N this year vs bucket N last
@@ -71,8 +73,9 @@ const getRevenueReport = async (query, actor) => {
     const cancelledAmount = seriesWithYoy.reduce((s, r) => s + (Number(r.cancelled_amount) || 0), 0);
 
     const data = {
-        summary: { ...summary, refunded_amount: refundedAmount, net_revenue: netRevenue, cancelled_amount: cancelledAmount },
+        summary: { ...summary, refunded_amount: refundedAmount, net_revenue: netRevenue, cancelled_amount: cancelledAmount, gst_collected: gstCollected },
         series: seriesWithYoy,
+        hsn_breakdown: hsnBreakdown,
         from, to, groupBy,
     };
     cache.set(key, data);

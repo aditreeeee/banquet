@@ -131,6 +131,19 @@
             </div>
         </div>
 
+        <!-- HSN/SAC tax breakdown -->
+        <div class="report-card" style="margin-top:20px">
+            <h6 style="font-size:14px;font-weight:700;margin-bottom:14px">Tax Collected by HSN/SAC</h6>
+            <div class="table-responsive">
+                <table class="table" style="font-size:13px">
+                    <thead>
+                        <tr><th>HSN/SAC Code</th><th>Type</th><th>Rate</th><th>Taxable Value</th><th>Tax Collected</th></tr>
+                    </thead>
+                    <tbody id="hsnBreakdownBody"><tr><td colspan="5" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
     </main>
     <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
 </div>
@@ -196,7 +209,7 @@ function normalizeApiRevenue(res) {
             total_revenue:  s.total_revenue ?? 0,
             total_bookings: s.total_bookings ?? 0,
             avg_value:      s.total_bookings ? (s.total_revenue || 0) / s.total_bookings : 0,
-            gst:            0, // no tax-rate setting exists yet to compute this from
+            gst:            s.gst_collected ?? 0,
             cancel_amount:  s.cancelled_amount ?? 0,
             refunded_amount: s.refunded_amount ?? 0,
             net_revenue:    s.net_revenue ?? s.total_revenue ?? 0,
@@ -218,6 +231,7 @@ function normalizeApiRevenue(res) {
             net:      r.total_revenue,
             yoy_change: r.yoy_change,
         })),
+        hsnBreakdown: Array.isArray(res.hsn_breakdown) ? res.hsn_breakdown : [],
     };
 }
 
@@ -240,6 +254,7 @@ async function loadReport() {
         renderEventTypeChart({ labels:[], values:[] });
         renderTopHalls([]);
         renderTable([]);
+        renderHsnBreakdown([]);
         return;
     }
     lastRevenueData = data;
@@ -249,6 +264,22 @@ async function loadReport() {
     renderEventTypeChart({ labels:[], values:[] });
     renderTopHalls([]);
     renderTable(data.table);
+    renderHsnBreakdown(data.hsnBreakdown);
+}
+
+/* ---------- HSN/SAC tax breakdown ---------- */
+function renderHsnBreakdown(rows) {
+    const tbody = document.getElementById('hsnBreakdownBody');
+    if (!tbody) return;
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3" style="color:var(--text-muted)">No invoiced tax data for this period.</td></tr>'; return; }
+    tbody.innerHTML = rows.map(r => `
+        <tr>
+            <td>${r.hsn_sac_code}</td>
+            <td style="text-transform:uppercase">${r.tax_type}</td>
+            <td>${r.tax_percent}%</td>
+            <td>${Utils.formatCurrency(r.taxable_value)}</td>
+            <td style="font-weight:600">${Utils.formatCurrency(r.tax_amount)}</td>
+        </tr>`).join('');
 }
 
 /* ---------- KPIs ---------- */

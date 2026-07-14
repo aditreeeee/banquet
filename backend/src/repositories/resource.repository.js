@@ -14,7 +14,8 @@ const { executeQuery, withTransaction } = require('../config/database');
 const list = async (companyId) => {
     return executeQuery(
         `SELECT resource_id, resource_name, resource_type, category, supplier,
-                unit_price, cost_price, quantity_available, is_active, is_billable
+                unit_price, cost_price, quantity_available, is_active, is_billable,
+                hsn_sac_code, tax_type, tax_percent
          FROM Resources WHERE company_id = @companyId AND is_active = 1 ORDER BY category, resource_name`,
         { companyId }
     );
@@ -23,18 +24,19 @@ const list = async (companyId) => {
 const findById = async (resourceId, companyId) => {
     const rows = await executeQuery(
         `SELECT resource_id, company_id, resource_name, resource_type, category, supplier,
-                unit_price, cost_price, quantity_available, is_active, is_billable
+                unit_price, cost_price, quantity_available, is_active, is_billable,
+                hsn_sac_code, tax_type, tax_percent
          FROM Resources WHERE resource_id = @resourceId AND company_id = @companyId`,
         { resourceId, companyId }
     );
     return rows[0] || null;
 };
 
-const create = async ({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable }) => {
+const create = async ({ companyId, resourceName, resourceType, category, supplier, unitPrice, costPrice, quantityAvailable, isBillable, hsnSacCode, taxType, taxPercent }) => {
     const result = await executeQuery(
-        `INSERT INTO Resources (company_id, resource_name, resource_type, category, supplier, unit_price, cost_price, quantity_available, is_active, is_billable, created_at, updated_at)
+        `INSERT INTO Resources (company_id, resource_name, resource_type, category, supplier, unit_price, cost_price, quantity_available, is_active, is_billable, hsn_sac_code, tax_type, tax_percent, created_at, updated_at)
          OUTPUT INSERTED.resource_id AS id
-         VALUES (@companyId, @name, @type, @category, @supplier, @price, @cost, @qty, 1, @isBillable, SYSUTCDATETIME(), SYSUTCDATETIME())`,
+         VALUES (@companyId, @name, @type, @category, @supplier, @price, @cost, @qty, 1, @isBillable, @hsnSacCode, @taxType, @taxPercent, SYSUTCDATETIME(), SYSUTCDATETIME())`,
         {
             companyId,
             name: resourceName,
@@ -45,12 +47,15 @@ const create = async ({ companyId, resourceName, resourceType, category, supplie
             cost: costPrice || 0,
             qty: quantityAvailable || 0,
             isBillable: !!isBillable,
+            hsnSacCode: hsnSacCode || null,
+            taxType: taxType || 'hsn',
+            taxPercent: taxPercent || 0,
         }
     );
     return findById(result[0].id, companyId);
 };
 
-const update = async (resourceId, companyId, { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable }) => {
+const update = async (resourceId, companyId, { resourceName, category, supplier, unitPrice, costPrice, quantityAvailable, isActive, isBillable, hsnSacCode, taxType, taxPercent }) => {
     await executeQuery(
         `UPDATE Resources
          SET resource_name      = ISNULL(@name,     resource_name),
@@ -61,6 +66,9 @@ const update = async (resourceId, companyId, { resourceName, category, supplier,
              quantity_available = ISNULL(@qty,      quantity_available),
              is_active          = ISNULL(@isActive, is_active),
              is_billable        = ISNULL(@isBillable, is_billable),
+             hsn_sac_code       = ISNULL(@hsnSacCode, hsn_sac_code),
+             tax_type           = ISNULL(@taxType,    tax_type),
+             tax_percent        = ISNULL(@taxPercent, tax_percent),
              updated_at         = SYSUTCDATETIME()
          WHERE resource_id = @resourceId AND company_id = @companyId`,
         {
@@ -73,6 +81,9 @@ const update = async (resourceId, companyId, { resourceName, category, supplier,
             cost:     costPrice         || null,
             qty:      quantityAvailable || null,
             isActive: isActive != null ? isActive : null,
+            hsnSacCode: hsnSacCode || null,
+            taxType: taxType || null,
+            taxPercent: taxPercent != null ? taxPercent : null,
             isBillable: isBillable != null ? isBillable : null,
         }
     );
@@ -94,7 +105,7 @@ const getAllocatedInTx = async (tx, { resourceId, eventDate, excludeBookingId })
          JOIN Bookings b ON b.booking_id = br.booking_id
          WHERE br.resource_id = @resourceId
            AND b.event_date = @eventDate
-           AND b.status NOT IN ('cancelled', 'draft')
+           AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')
            AND (@excludeId IS NULL OR br.booking_id <> @excludeId)`,
         {
             resourceId,
@@ -136,7 +147,7 @@ const allocateInTx = async (tx, { bookingId, companyId, resources, eventDate }) 
          JOIN Bookings b ON b.booking_id = br.booking_id
          WHERE br.resource_id IN (${resourceIds.map((_, i) => `@r${i}`).join(',')})
            AND b.event_date = @eventDate
-           AND b.status NOT IN ('cancelled', 'draft')
+           AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')
          GROUP BY br.resource_id`,
         resourceIds.reduce((p, id, i) => ({ ...p, [`r${i}`]: id }), { eventDate: new Date(eventDate) })
     );
@@ -193,7 +204,7 @@ const getAvailability = async ({ resourceId, eventDate, companyId }) => {
          JOIN Bookings b ON b.booking_id = br.booking_id
          WHERE br.resource_id = @resourceId
            AND b.event_date = @eventDate
-           AND b.status NOT IN ('cancelled', 'draft')`,
+           AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')`,
         { resourceId, eventDate: new Date(eventDate) }
     );
     const allocated = rows[0].allocated;
@@ -234,7 +245,7 @@ const getInventorySnapshot = async (companyId, eventDate) => {
          LEFT JOIN BookingResources br ON br.resource_id = r.resource_id
              AND br.booking_id IN (
                  SELECT booking_id FROM Bookings
-                 WHERE company_id = @companyId AND event_date = @eventDate AND status NOT IN ('cancelled', 'draft')
+                 WHERE company_id = @companyId AND event_date = @eventDate AND status NOT IN ('cancelled', 'draft', 'completed', 'archived')
              )
          WHERE r.company_id = @companyId AND r.is_active = 1
          GROUP BY r.resource_id, r.resource_name, r.category, r.quantity_available

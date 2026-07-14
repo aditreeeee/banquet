@@ -828,8 +828,30 @@ const seedExtendedDemoData = async (pool) => {
         BEGIN
             ALTER TABLE MenuItems ADD unit_cost DECIMAL(10,2) NOT NULL DEFAULT 0;
         END
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MenuItems') AND name = 'hsn_sac_code')
+        BEGIN
+            ALTER TABLE MenuItems ADD hsn_sac_code NVARCHAR(15) NULL;
+        END
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MenuItems') AND name = 'tax_type')
+        BEGIN
+            ALTER TABLE MenuItems ADD tax_type NVARCHAR(10) NOT NULL DEFAULT 'hsn' CONSTRAINT CHK_mi_tax_type CHECK (tax_type IN ('hsn','sac'));
+        END
     `);
-    ok('MenuItems tax/cost columns ensured.');
+    ok('MenuItems tax/HSN/cost columns ensured.');
+
+    // ── 3f2. Add HSN/SAC code + tax_type to CateringPackages, Resources,
+    // BookingPackages, DecorationItems, QuotationItems, Invoices — replaces
+    // the hardcoded 18% GST assumption with a per-item configurable rate +
+    // tax classification (HSN = goods, SAC = services). ──────────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('CateringPackages') AND name = 'hsn_sac_code')
+            ALTER TABLE CateringPackages ADD hsn_sac_code NVARCHAR(15) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('CateringPackages') AND name = 'tax_type')
+            ALTER TABLE CateringPackages ADD tax_type NVARCHAR(10) NOT NULL DEFAULT 'hsn' CONSTRAINT CHK_cp_tax_type CHECK (tax_type IN ('hsn','sac'));
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('CateringPackages') AND name = 'tax_percent')
+            ALTER TABLE CateringPackages ADD tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0;
+    `);
+    ok('CateringPackages tax/HSN columns ensured.');
 
     // ── 3g. Seed catering:* permissions (existing constant keys had no rows) ─
     const cateringPerms = [
@@ -1555,6 +1577,33 @@ const seedExtendedDemoData = async (pool) => {
     `);
     ok('BookingDecorations table ensured.');
 
+    // ── 3p2b. BookingServices — Step 7 "Additional Services" (Sound System,
+    // Photography, DJ, etc.) with negotiated pricing. catalog_price is the
+    // original list price at selection time, frozen forever for audit/
+    // comparison; negotiated_price/discount_amount are separately editable,
+    // final_price = negotiated_price - discount_amount is what's billed. ────
+    await pool.request().batch(`
+        IF OBJECT_ID(N'dbo.BookingServices', N'U') IS NULL
+        BEGIN
+            CREATE TABLE BookingServices (
+                booking_service_id  INT             NOT NULL IDENTITY(1,1),
+                booking_id          BIGINT          NOT NULL,
+                service_key         NVARCHAR(50)    NULL,
+                service_name        NVARCHAR(150)   NOT NULL,
+                catalog_price       DECIMAL(12,2)   NOT NULL,
+                negotiated_price    DECIMAL(12,2)   NOT NULL,
+                discount_amount     DECIMAL(12,2)   NOT NULL DEFAULT 0,
+                final_price         DECIMAL(12,2)   NOT NULL,
+                created_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_booking_services PRIMARY KEY (booking_service_id),
+                CONSTRAINT FK_bs_booking FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id),
+                CONSTRAINT CHK_bs_final_price CHECK (final_price >= 0)
+            );
+            CREATE INDEX IX_bs_booking ON BookingServices(booking_id);
+        END
+    `);
+    ok('BookingServices table ensured.');
+
     // ── 3p3. Seed decorations:* permissions, granted to the same roles as
     // resources:* (Super Admin=1, Company Admin=2, Branch Manager=3, Business
     // Owner=6, Operations Manager=7) — decorations are operational inventory,
@@ -1731,6 +1780,45 @@ const seedExtendedDemoData = async (pool) => {
     `);
     ok('Structured inventory columns ensured.');
 
+    // ── 3q1b. HSN/SAC code + tax fields for Resources (inventory), BookingPackages
+    // (services), DecorationItems (goods) and QuotationItems (traceability) —
+    // replaces the hardcoded 18% GST assumption with configurable per-item tax. ─
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'hsn_sac_code')
+            ALTER TABLE Resources ADD hsn_sac_code NVARCHAR(15) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'tax_type')
+            ALTER TABLE Resources ADD tax_type NVARCHAR(10) NOT NULL DEFAULT 'hsn' CONSTRAINT CHK_res_tax_type CHECK (tax_type IN ('hsn','sac'));
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Resources') AND name = 'tax_percent')
+            ALTER TABLE Resources ADD tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BookingPackages') AND name = 'hsn_sac_code')
+            ALTER TABLE BookingPackages ADD hsn_sac_code NVARCHAR(15) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BookingPackages') AND name = 'tax_type')
+            ALTER TABLE BookingPackages ADD tax_type NVARCHAR(10) NOT NULL DEFAULT 'sac' CONSTRAINT CHK_bp_tax_type CHECK (tax_type IN ('hsn','sac'));
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BookingPackages') AND name = 'tax_percent')
+            ALTER TABLE BookingPackages ADD tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0;
+    `);
+    if ((await pool.request().query(`SELECT 1 AS x WHERE OBJECT_ID('dbo.DecorationItems', 'U') IS NOT NULL`)).recordset.length) {
+        await pool.request().batch(`
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('DecorationItems') AND name = 'hsn_sac_code')
+                ALTER TABLE DecorationItems ADD hsn_sac_code NVARCHAR(15) NULL;
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('DecorationItems') AND name = 'tax_type')
+                ALTER TABLE DecorationItems ADD tax_type NVARCHAR(10) NOT NULL DEFAULT 'hsn' CONSTRAINT CHK_di_tax_type CHECK (tax_type IN ('hsn','sac'));
+        `);
+    }
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('QuotationItems') AND name = 'hsn_sac_code')
+            ALTER TABLE QuotationItems ADD hsn_sac_code NVARCHAR(15) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('QuotationItems') AND name = 'tax_type')
+            ALTER TABLE QuotationItems ADD tax_type NVARCHAR(10) NULL CONSTRAINT CHK_qi_tax_type CHECK (tax_type IN ('hsn','sac') OR tax_type IS NULL);
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Invoices') AND name = 'hsn_sac_breakdown')
+            ALTER TABLE Invoices ADD hsn_sac_breakdown NVARCHAR(MAX) NULL;
+    `);
+    ok('HSN/SAC + tax_percent columns ensured on Resources, BookingPackages, DecorationItems, QuotationItems, Invoices.');
+
     // ── 3q2. User registration approval workflow ──────────────────────────────
     // Separate from is_active (which stays the "disabled" toggle for already-
     // approved accounts) — default 'approved' so every existing user is
@@ -1747,6 +1835,54 @@ const seedExtendedDemoData = async (pool) => {
         END
     `);
     ok('User registration approval_status column ensured.');
+
+    // ── 3q3. Staff profile fields — Users are staff when given an operational
+    // role (no separate Staff table). "Current Assignment"/"Weekly Schedule"
+    // are deliberately NOT stored — derived live from BookingStaffAssignments/
+    // Bookings so they never drift out of sync with actual assignments. ──────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'employee_code')
+            ALTER TABLE Users ADD employee_code NVARCHAR(20) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'department')
+            ALTER TABLE Users ADD department NVARCHAR(50) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'designation')
+            ALTER TABLE Users ADD designation NVARCHAR(100) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'property_id')
+            ALTER TABLE Users ADD property_id INT NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'availability_status')
+            ALTER TABLE Users ADD availability_status NVARCHAR(20) NOT NULL DEFAULT 'available';
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'employment_status')
+            ALTER TABLE Users ADD employment_status NVARCHAR(20) NOT NULL DEFAULT 'active';
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'joining_date')
+            ALTER TABLE Users ADD joining_date DATE NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'skills')
+            ALTER TABLE Users ADD skills NVARCHAR(500) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'certifications')
+            ALTER TABLE Users ADD certifications NVARCHAR(500) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'emergency_contact_name')
+            ALTER TABLE Users ADD emergency_contact_name NVARCHAR(150) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'emergency_contact_phone')
+            ALTER TABLE Users ADD emergency_contact_phone NVARCHAR(20) NULL;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_users_employee_code')
+            CREATE UNIQUE INDEX UQ_users_employee_code ON Users(company_id, employee_code) WHERE employee_code IS NOT NULL;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_users_property')
+            ALTER TABLE Users ADD CONSTRAINT FK_users_property FOREIGN KEY (property_id) REFERENCES Banquets(banquet_id);
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_users_availability_status')
+            ALTER TABLE Users ADD CONSTRAINT CHK_users_availability_status
+                CHECK (availability_status IN ('available','on_duty','on_leave','off_duty'));
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_users_employment_status')
+            ALTER TABLE Users ADD CONSTRAINT CHK_users_employment_status
+                CHECK (employment_status IN ('active','on_leave','resigned','terminated'));
+    `);
+    ok('Staff profile columns ensured on Users.');
 
     // ── 3r. Configurable Operational Charges ──────────────────────────────────
     await pool.request().batch(`

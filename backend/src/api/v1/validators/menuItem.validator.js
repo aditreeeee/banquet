@@ -26,6 +26,8 @@ const createSchema = Joi.object({
     unit:        Joi.string().max(30).allow('', null),
     basePrice:   Joi.number().precision(2).min(0).required(),
     taxPercent:  Joi.number().min(0).max(100),
+    hsnSacCode:  Joi.string().max(15).allow('', null),
+    taxType:     Joi.string().valid('hsn', 'sac'),
     unitCost:    Joi.number().precision(2).min(0),
 }).unknown(true);
 
@@ -34,6 +36,8 @@ const updateSchema = Joi.object({
     description: Joi.string().max(1000).allow('', null),
     basePrice:   Joi.number().precision(2).min(0),
     taxPercent:  Joi.number().min(0).max(100),
+    hsnSacCode:  Joi.string().max(15).allow('', null),
+    taxType:     Joi.string().valid('hsn', 'sac'),
     unitCost:    Joi.number().precision(2).min(0),
     isActive:    Joi.boolean(),
 }).unknown(true);

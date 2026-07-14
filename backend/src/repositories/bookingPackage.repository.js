@@ -12,6 +12,7 @@ const COLUMNS = `
     package_id, company_id, package_name, package_category, calc_type,
     included_hours, base_price, overtime_rate_per_hour, max_extension_hours,
     default_setup_minutes, default_cleanup_minutes, default_cooloff_minutes,
+    hsn_sac_code, tax_type, tax_percent,
     description, is_active, created_at, updated_at
 `;
 
@@ -44,12 +45,14 @@ const createPackage = async (data) => {
             (company_id, package_name, package_category, calc_type, included_hours, base_price,
              overtime_rate_per_hour, max_extension_hours,
              default_setup_minutes, default_cleanup_minutes, default_cooloff_minutes,
+             hsn_sac_code, tax_type, tax_percent,
              description, is_active, created_at, updated_at)
          OUTPUT INSERTED.package_id AS id
          VALUES
             (@companyId, @packageName, @packageCategory, @calcType, @includedHours, @basePrice,
              @overtimeRate, @maxExtensionHours,
              @setupMinutes, @cleanupMinutes, @cooloffMinutes,
+             @hsnSacCode, @taxType, @taxPercent,
              @description, 1, SYSUTCDATETIME(), SYSUTCDATETIME())`,
         {
             companyId: data.companyId,
@@ -63,6 +66,9 @@ const createPackage = async (data) => {
             setupMinutes: data.defaultSetupMinutes || 0,
             cleanupMinutes: data.defaultCleanupMinutes || 0,
             cooloffMinutes: data.defaultCooloffMinutes || 0,
+            hsnSacCode: data.hsnSacCode || null,
+            taxType: data.taxType || 'sac',
+            taxPercent: data.taxPercent || 0,
             description: data.description || null,
         }
     );
@@ -82,6 +88,9 @@ const updatePackage = async (packageId, companyId, data) => {
              default_setup_minutes   = ISNULL(@setupMinutes,      default_setup_minutes),
              default_cleanup_minutes = ISNULL(@cleanupMinutes,    default_cleanup_minutes),
              default_cooloff_minutes = ISNULL(@cooloffMinutes,    default_cooloff_minutes),
+             hsn_sac_code            = ISNULL(@hsnSacCode,        hsn_sac_code),
+             tax_type                = ISNULL(@taxType,           tax_type),
+             tax_percent             = ISNULL(@taxPercent,        tax_percent),
              description             = ISNULL(@description,       description),
              updated_at              = SYSUTCDATETIME()
          WHERE package_id = @packageId AND company_id = @companyId`,
@@ -97,6 +106,9 @@ const updatePackage = async (packageId, companyId, data) => {
             setupMinutes: data.defaultSetupMinutes != null ? data.defaultSetupMinutes : null,
             cleanupMinutes: data.defaultCleanupMinutes != null ? data.defaultCleanupMinutes : null,
             cooloffMinutes: data.defaultCooloffMinutes != null ? data.defaultCooloffMinutes : null,
+            hsnSacCode: data.hsnSacCode != null ? data.hsnSacCode : null,
+            taxType: data.taxType != null ? data.taxType : null,
+            taxPercent: data.taxPercent != null ? data.taxPercent : null,
             description: data.description != null ? data.description : null,
         }
     );

@@ -61,6 +61,7 @@ const findById = async (quotationId, companyId) => {
 const getItems = async (quotationId) => {
     return executeQuery(
         `SELECT item_row_id, quotation_id, description, quantity, unit_price, tax_percent,
+                hsn_sac_code, tax_type,
                 CAST(quantity * unit_price AS DECIMAL(12,2)) AS line_subtotal,
                 CAST(quantity * unit_price * tax_percent / 100 AS DECIMAL(12,2)) AS line_tax,
                 CAST(quantity * unit_price * (1 + tax_percent / 100) AS DECIMAL(12,2)) AS line_total
@@ -134,11 +135,11 @@ const create = async (data) => {
     return findById(result[0].id, data.companyId);
 };
 
-const addItem = async (quotationId, { description, quantity, unitPrice, taxPercent }) => {
+const addItem = async (quotationId, { description, quantity, unitPrice, taxPercent, hsnSacCode, taxType }) => {
     await executeQuery(
-        `INSERT INTO QuotationItems (quotation_id, description, quantity, unit_price, tax_percent, created_at)
-         VALUES (@quotationId, @description, @quantity, @unitPrice, @taxPercent, SYSUTCDATETIME())`,
-        { quotationId, description, quantity: quantity || 1, unitPrice: unitPrice || 0, taxPercent: taxPercent || 0 }
+        `INSERT INTO QuotationItems (quotation_id, description, quantity, unit_price, tax_percent, hsn_sac_code, tax_type, created_at)
+         VALUES (@quotationId, @description, @quantity, @unitPrice, @taxPercent, @hsnSacCode, @taxType, SYSUTCDATETIME())`,
+        { quotationId, description, quantity: quantity || 1, unitPrice: unitPrice || 0, taxPercent: taxPercent || 0, hsnSacCode: hsnSacCode || null, taxType: taxType || null }
     );
 };
 

@@ -294,6 +294,8 @@ function buildInvoiceHTML(inv) {
     const cgstAmount = parseFloat(inv.cgst_amount) || 0;
     const sgstAmount = parseFloat(inv.sgst_amount) || 0;
     const discount = parseFloat(inv.discount_amount) || 0;
+    let hsnRows = [];
+    try { hsnRows = inv.hsn_sac_breakdown ? JSON.parse(inv.hsn_sac_breakdown) : []; } catch { hsnRows = []; }
     // This document is sent to the customer — it must show the issuing
     // Company/Property's own real name/address/phone/email/GST (from the
     // Companies row GET /invoices/:id now joins in), never generic platform
@@ -329,6 +331,13 @@ function buildInvoiceHTML(inv) {
             <tr style="background:#F5F3FF"><td style="padding:12px;font-weight:800;font-size:15px">GRAND TOTAL</td><td style="padding:12px;text-align:right;font-weight:800;font-size:15px;color:#7C3AED">${Utils.formatCurrency(inv.grand_total)}</td></tr>
         </tbody>
     </table>
+    ${hsnRows.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px">
+        <thead><tr style="background:#F9FAFB"><th style="padding:8px;text-align:left;border-bottom:1px solid #E5E7EB">HSN/SAC</th><th style="padding:8px;text-align:left;border-bottom:1px solid #E5E7EB">Type</th><th style="padding:8px;text-align:right;border-bottom:1px solid #E5E7EB">Taxable Value</th><th style="padding:8px;text-align:right;border-bottom:1px solid #E5E7EB">Rate</th><th style="padding:8px;text-align:right;border-bottom:1px solid #E5E7EB">Tax Amount</th></tr></thead>
+        <tbody>
+            ${hsnRows.map(r => `<tr><td style="padding:8px;border-bottom:1px solid #F3F4F6">${r.hsn_sac_code}${r.label ? ` <span style="color:#9CA3AF">(${r.label})</span>` : ''}</td><td style="padding:8px;border-bottom:1px solid #F3F4F6;text-transform:uppercase">${r.tax_type}</td><td style="padding:8px;text-align:right;border-bottom:1px solid #F3F4F6">${Utils.formatCurrency(r.taxable_value)}</td><td style="padding:8px;text-align:right;border-bottom:1px solid #F3F4F6">${r.tax_percent}%</td><td style="padding:8px;text-align:right;border-bottom:1px solid #F3F4F6">${Utils.formatCurrency(r.tax_amount)}</td></tr>`).join('')}
+        </tbody>
+    </table>` : ''}
     <div style="display:flex;justify-content:space-between;font-size:12px;color:#6B7280">
         <div>Amount in words: <strong>${amountInWords(inv.grand_total)}</strong></div>
         <div>${inv.payment_status === 'paid' ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><path d="M20 6 9 17l-5-5"></path></svg> PAID IN FULL' : `Balance Due: ${Utils.formatCurrency(inv.balance_due)}`}</div>

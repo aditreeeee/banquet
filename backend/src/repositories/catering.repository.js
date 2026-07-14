@@ -77,10 +77,19 @@ const getPackageItems = async (packageId) => {
     );
 };
 
+// Upsert — the package builder UI re-calls this to change an already-linked
+// item's quantity (see menu.html's item picker grid), which would otherwise
+// hit UQ_cpi_package_item on a plain INSERT.
 const addPackageItem = async (packageId, itemId, quantityPerPlate) => {
     await executeQuery(
-        `INSERT INTO CateringPackageItems (package_id, item_id, quantity_per_plate, created_at)
-         VALUES (@packageId, @itemId, @qty, SYSUTCDATETIME())`,
+        `MERGE CateringPackageItems AS target
+         USING (SELECT @packageId AS package_id, @itemId AS item_id) AS src
+         ON target.package_id = src.package_id AND target.item_id = src.item_id
+         WHEN MATCHED THEN
+             UPDATE SET quantity_per_plate = @qty
+         WHEN NOT MATCHED THEN
+             INSERT (package_id, item_id, quantity_per_plate, created_at)
+             VALUES (@packageId, @itemId, @qty, SYSUTCDATETIME());`,
         { packageId, itemId, qty: quantityPerPlate || 1 }
     );
 };

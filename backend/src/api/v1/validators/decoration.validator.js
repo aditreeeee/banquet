@@ -30,6 +30,8 @@ const itemCreateSchema = Joi.object({
     removalCost:       Joi.number().precision(2).min(0),
     taxPercent:        Joi.number().min(0).max(100),
     discountPercent:   Joi.number().min(0).max(100),
+    hsnSacCode:        Joi.string().max(15).allow('', null),
+    taxType:           Joi.string().valid('hsn', 'sac'),
 }).unknown(true);
 
 const itemUpdateSchema = Joi.object({
@@ -41,6 +43,8 @@ const itemUpdateSchema = Joi.object({
     removalCost:       Joi.number().precision(2).min(0),
     taxPercent:        Joi.number().min(0).max(100),
     discountPercent:   Joi.number().min(0).max(100),
+    hsnSacCode:        Joi.string().max(15).allow('', null),
+    taxType:           Joi.string().valid('hsn', 'sac'),
     isActive:          Joi.boolean(),
 }).unknown(true);
 

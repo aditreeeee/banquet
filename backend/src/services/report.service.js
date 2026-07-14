@@ -48,13 +48,21 @@ const getRevenueReport = async (query, actor) => {
     const priorFrom = shiftYearBack(from);
     const priorTo   = shiftYearBack(to);
 
-    const [series, priorYearSeries, summary, refundedAmount, gstCollected, hsnBreakdown] = await Promise.all([
+    const [
+        series, priorYearSeries, summary, refundedAmount, gstCollected, hsnBreakdown,
+        paymentBreakdown, topHalls, eventTypeBreakdown, couponImpact, composition,
+    ] = await Promise.all([
         reportRepo.getRevenueReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to, groupBy }),
         reportRepo.getRevenueReport({ companyId: actor.companyId, branchId, fromDate: priorFrom, toDate: priorTo, groupBy }),
         reportRepo.getSummaryStats({  companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getRefundedAmount({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getGstCollected({  companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
         reportRepo.getHsnSacBreakdown({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getPaymentReport({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getRevenuePerHall({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getEventTypeBreakdown({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getCouponImpact({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
+        reportRepo.getRevenueComposition({ companyId: actor.companyId, branchId, fromDate: from, toDate: to }),
     ]);
 
     // Year-over-year per bucket — matched by position (bucket N this year vs bucket N last
@@ -76,6 +84,11 @@ const getRevenueReport = async (query, actor) => {
         summary: { ...summary, refunded_amount: refundedAmount, net_revenue: netRevenue, cancelled_amount: cancelledAmount, gst_collected: gstCollected },
         series: seriesWithYoy,
         hsn_breakdown: hsnBreakdown,
+        payment_breakdown: paymentBreakdown,
+        top_halls: topHalls.filter(h => h.bookings_count > 0).slice(0, 8),
+        event_type_breakdown: eventTypeBreakdown,
+        coupon_impact: couponImpact,
+        composition,
         from, to, groupBy,
     };
     cache.set(key, data);

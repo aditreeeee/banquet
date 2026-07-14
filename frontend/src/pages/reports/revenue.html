@@ -62,9 +62,6 @@
             </div>
             <select id="branchFilter" class="form-select" style="width:auto" onchange="loadReport()">
                 <option value="">All Branches</option>
-                <option value="1">Main Branch</option>
-                <option value="2">North Branch</option>
-                <option value="3">South Branch</option>
             </select>
             <select id="groupBy" class="form-select" style="width:auto" onchange="loadReport()">
                 <option value="day">Group by Day</option>
@@ -90,7 +87,7 @@
                 <h6 style="font-size:14px;font-weight:700;margin:0">Revenue Trend</h6>
                 <div style="display:flex;gap:12px;font-size:12px">
                     <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#7C3AED;display:inline-block;border-radius:2px"></span> Revenue</span>
-                    <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#F59E0B;display:inline-block;border-radius:2px;border-style:dashed"></span> Target</span>
+                    <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#F59E0B;display:inline-block;border-radius:2px;border-style:dashed"></span> Same Period Last Year</span>
                 </div>
             </div>
             <div style="height:280px"><canvas id="revTrendChart"></canvas></div>
@@ -115,6 +112,24 @@
             <div class="report-card">
                 <h6 style="font-size:14px;font-weight:700;margin-bottom:14px">Top Halls</h6>
                 <div id="topHalls"></div>
+            </div>
+        </div>
+
+        <!-- Row: composition + coupon impact -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+            <!-- Revenue composition -->
+            <div class="report-card">
+                <h6 style="font-size:14px;font-weight:700;margin-bottom:4px">Revenue Composition</h6>
+                <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">What collected revenue is made of</p>
+                <div id="compositionBreakdown"></div>
+            </div>
+
+            <!-- Coupon / discount impact -->
+            <div class="report-card">
+                <h6 style="font-size:14px;font-weight:700;margin-bottom:4px">Coupon &amp; Discount Impact</h6>
+                <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">Revenue given up to promotions this period</p>
+                <div id="couponImpact"></div>
             </div>
         </div>
 
@@ -163,6 +178,17 @@
 <script>
 Auth.requireAuth('../auth/login.html');
 
+/* ---------- Branch filter (API-driven) ---------- */
+async function loadBranchFilter() {
+    try {
+        const res = await API.branches.list({ limit: 100 });
+        const branches = res.data?.branches || res.data || [];
+        const sel = document.getElementById('branchFilter');
+        sel.innerHTML = '<option value="">All Branches</option>' +
+            branches.map(b => `<option value="${b.branch_id}">${Utils.escapeHtml(b.branch_name)}</option>`).join('');
+    } catch (_) { /* keep "All Branches" only if this fails */ }
+}
+
 /* ---------- Range presets ---------- */
 let trendChart = null, eventChart = null;
 let currentRange = 'this_month';
@@ -194,16 +220,29 @@ function setRange(range) {
 }
 
 /* ---------- Normalize live API response into the shape this page renders ----------
-   The backend returns { summary, series, from, to, groupBy } (see report.service.js /
-   report.repository.js). Cancelled/refunded/net revenue and per-bucket YoY (vs the same
-   date range one year earlier) are computed server-side — see report.service.js's
-   getRevenueReport. Payment-method/event-type/hall breakdowns aren't computed server-side
-   yet, so those three panels render an explicit "not available" state (see renderMethodBreakdown/
-   renderEventTypeChart/renderTopHalls) rather than fabricated numbers. */
+   The backend returns { summary, series, payment_breakdown, top_halls,
+   event_type_breakdown, coupon_impact, composition, hsn_breakdown, from, to, groupBy }
+   (see report.service.js getRevenueReport). Cancelled/refunded/net revenue and per-bucket
+   YoY (vs the same date range one year earlier) are computed server-side. */
 function normalizeApiRevenue(res) {
     const s = res.summary || {};
     const series = Array.isArray(res.series) ? res.series : [];
     const firstYoy = series.find(r => r.yoy_change != null)?.yoy_change;
+
+    // Payment method breakdown — API groups by (payment_method, payment_type);
+    // this page shows one row per method, so re-aggregate across payment_type.
+    const methodTotals = new Map();
+    (res.payment_breakdown || []).forEach(p => {
+        const key = p.payment_method || 'other';
+        methodTotals.set(key, (methodTotals.get(key) || 0) + Number(p.total_amount || 0));
+    });
+    const methodSum = [...methodTotals.values()].reduce((a, b) => a + b, 0);
+    const methods = [...methodTotals.entries()]
+        .map(([method, amount]) => ({ method, amount, pct: methodSum ? Number((amount * 100 / methodSum).toFixed(1)) : 0 }))
+        .sort((a, b) => b.amount - a.amount);
+
+    const eventTypes = res.event_type_breakdown || [];
+
     return {
         kpi: {
             total_revenue:  s.total_revenue ?? 0,
@@ -217,9 +256,12 @@ function normalizeApiRevenue(res) {
             cancel_change: 0,
         },
         trend: {
-            labels:  series.map(r => r.period_label),
-            revenue: series.map(r => r.total_revenue),
-            target:  series.map(r => r.total_revenue),
+            labels:   series.map(r => r.period_label),
+            revenue:  series.map(r => r.total_revenue),
+            // Real same-period-last-year figures (see report.service.js
+            // seriesWithYoy) — nulls where there's no prior-year data, so
+            // Chart.js draws a gap instead of a misleading flat/zero line.
+            priorYear: series.map(r => r.prior_year_revenue),
         },
         table: series.map(r => ({
             period:   r.period_label,
@@ -232,6 +274,11 @@ function normalizeApiRevenue(res) {
             yoy_change: r.yoy_change,
         })),
         hsnBreakdown: Array.isArray(res.hsn_breakdown) ? res.hsn_breakdown : [],
+        methods,
+        eventTypes: { labels: eventTypes.map(e => e.event_type), values: eventTypes.map(e => Number(e.revenue) || 0) },
+        topHalls: (res.top_halls || []).map(h => ({ hall_name: h.hall_name, revenue: Number(h.revenue) || 0, bookings: h.bookings_count })),
+        couponImpact: res.coupon_impact || { redemptions: 0, totalDiscount: 0, byCoupon: [] },
+        composition: res.composition || null,
     };
 }
 
@@ -249,22 +296,26 @@ async function loadReport() {
     } catch (err) {
         Utils.toast(err.message || 'Failed to load revenue report', 'error');
         updateKPIs({ total_revenue:0, total_bookings:0, avg_value:0, gst:0, cancel_amount:0, refunded_amount:0, net_revenue:0, rev_change:0, book_change:0, avg_change:0, cancel_change:0 });
-        renderTrendChart({ labels:[], revenue:[], target:[] });
+        renderTrendChart({ labels:[], revenue:[], priorYear:[] });
         renderMethodBreakdown([]);
         renderEventTypeChart({ labels:[], values:[] });
         renderTopHalls([]);
         renderTable([]);
         renderHsnBreakdown([]);
+        renderComposition(null);
+        renderCouponImpact({ redemptions: 0, totalDiscount: 0, byCoupon: [] });
         return;
     }
     lastRevenueData = data;
     updateKPIs(data.kpi);
     renderTrendChart(data.trend);
-    renderMethodBreakdown([]);
-    renderEventTypeChart({ labels:[], values:[] });
-    renderTopHalls([]);
+    renderMethodBreakdown(data.methods);
+    renderEventTypeChart(data.eventTypes);
+    renderTopHalls(data.topHalls);
     renderTable(data.table);
     renderHsnBreakdown(data.hsnBreakdown);
+    renderComposition(data.composition);
+    renderCouponImpact(data.couponImpact);
 }
 
 /* ---------- HSN/SAC tax breakdown ---------- */
@@ -318,12 +369,12 @@ function renderTrendChart(d) {
             labels: d.labels,
             datasets: [
                 { label:'Revenue', data: d.revenue, borderColor:'#7C3AED', backgroundColor:'rgba(124,58,237,0.08)', borderWidth:2.5, fill:true, tension:.35, pointRadius:4, pointBackgroundColor:'#7C3AED' },
-                { label:'Target',  data: d.target,  borderColor:'#F59E0B', borderWidth:2, borderDash:[6,3], fill:false, tension:.35, pointRadius:0 },
+                { label:'Same Period Last Year', data: d.priorYear, borderColor:'#F59E0B', borderWidth:2, borderDash:[6,3], fill:false, tension:.35, pointRadius:0, spanGaps:false },
             ]
         },
         options: {
             responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false },
-            plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ' ' + Utils.formatCurrency(ctx.raw) } } },
+            plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ctx.raw == null ? ' No data' : ' ' + Utils.formatCurrency(ctx.raw) } } },
             scales: {
                 x: { grid:{ color:grid }, ticks:{ color:text, font:{ size:11 } } },
                 y: { grid:{ color:grid }, ticks:{ color:text, font:{ size:11 }, callback: v => '₹' + (v/100000).toFixed(0) + 'L' } }
@@ -336,7 +387,7 @@ function renderTrendChart(d) {
 const METHOD_COLORS = { upi:'#7C3AED', bank_transfer:'#2563EB', card:'#F59E0B', cash:'#10B981', online:'#EC4899' };
 function renderMethodBreakdown(items) {
     if (!items.length) {
-        document.getElementById('methodBreakdown').innerHTML = '<div class="text-center py-3" style="color:var(--text-muted);font-size:12px">Payment method breakdown not available yet</div>';
+        document.getElementById('methodBreakdown').innerHTML = '<div class="text-center py-3" style="color:var(--text-muted);font-size:12px">No completed payments in this period</div>';
         return;
     }
     const total = items.reduce((s, m) => s + m.amount, 0);
@@ -380,7 +431,7 @@ function renderEventTypeChart(d) {
 /* ---------- Top halls ---------- */
 function renderTopHalls(halls) {
     if (!halls.length) {
-        document.getElementById('topHalls').innerHTML = '<div class="text-center py-3" style="color:var(--text-muted);font-size:12px">Top halls breakdown not available yet</div>';
+        document.getElementById('topHalls').innerHTML = '<div class="text-center py-3" style="color:var(--text-muted);font-size:12px">No hall bookings in this period</div>';
         return;
     }
     const max = halls[0]?.revenue || 1;
@@ -397,6 +448,60 @@ function renderTopHalls(halls) {
             <span style="font-size:11px;color:var(--text-muted)">${h.bookings} bookings</span>
         </div>
     </div>`).join('');
+}
+
+/* ---------- Revenue composition ---------- */
+const COMPOSITION_COLORS = { venue_catering_services:'#7C3AED', decoration_revenue:'#EC4899', operational_charges:'#F59E0B' };
+const COMPOSITION_LABELS = { venue_catering_services:'Venue, Catering & Services', decoration_revenue:'Decoration', operational_charges:'Operational Charges & Surcharges' };
+function renderComposition(c) {
+    const box = document.getElementById('compositionBreakdown');
+    if (!c || !c.total_revenue) {
+        box.innerHTML = '<div class="text-center py-3" style="color:var(--text-muted);font-size:12px">No revenue in this period</div>';
+        return;
+    }
+    const keys = ['venue_catering_services', 'decoration_revenue', 'operational_charges'];
+    box.innerHTML = keys.map(k => {
+        const amount = c[k] || 0;
+        const pct = c.total_revenue ? (amount * 100 / c.total_revenue) : 0;
+        return `
+        <div class="method-row">
+            <div style="flex:1">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:12px;font-weight:500">${COMPOSITION_LABELS[k]}</span>
+                    <span style="font-size:12px;color:var(--text-muted)">${pct.toFixed(1)}%</span>
+                </div>
+                <div class="method-bar-wrap"><div class="method-bar" style="width:${pct.toFixed(1)}%;background:${COMPOSITION_COLORS[k]}"></div></div>
+            </div>
+            <span style="min-width:80px;text-align:right;font-size:12px;font-weight:700">${Utils.formatCurrencyShort(amount)}</span>
+        </div>`;
+    }).join('');
+}
+
+/* ---------- Coupon / discount impact ---------- */
+function renderCouponImpact(ci) {
+    const box = document.getElementById('couponImpact');
+    if (!ci || !ci.redemptions) {
+        box.innerHTML = '<div class="text-center py-3" style="color:var(--text-muted);font-size:12px">No coupons redeemed in this period</div>';
+        return;
+    }
+    const summaryHtml = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:var(--bg-surface-2);border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:18px;font-weight:800;color:var(--brand-primary)">${ci.redemptions}</div>
+                <div style="font-size:11px;color:var(--text-muted)">Redemptions</div>
+            </div>
+            <div style="background:var(--bg-surface-2);border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:18px;font-weight:800;color:var(--color-danger)">${Utils.formatCurrencyShort(ci.totalDiscount)}</div>
+                <div style="font-size:11px;color:var(--text-muted)">Discount Given</div>
+            </div>
+        </div>`;
+    const rowsHtml = (ci.byCoupon || []).slice(0, 6).map(c => `
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-color);font-size:12px">
+            <span class="coupon-code-chip" style="font-family:monospace;background:var(--bg-surface-2);padding:2px 8px;border-radius:5px;font-size:11px">${Utils.escapeHtml(c.coupon_code || '—')}</span>
+            <span style="color:var(--text-muted)">${c.redemptions}× redeemed</span>
+            <span style="font-weight:700;color:var(--color-danger)">-${Utils.formatCurrencyShort(c.total_discount)}</span>
+        </div>`).join('');
+    box.innerHTML = summaryHtml + rowsHtml;
 }
 
 /* ---------- Period table ---------- */
@@ -436,7 +541,7 @@ function exportPDF()   { exportReport('pdf'); }
 new MutationObserver(() => {
     if (!lastRevenueData) return;
     renderTrendChart(lastRevenueData.trend);
-    renderEventTypeChart({ labels:[], values:[] });
+    renderEventTypeChart(lastRevenueData.eventTypes);
 }).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
 
 /* ---------- Range button styles ---------- */
@@ -444,7 +549,7 @@ const rangeStyle = document.createElement('style');
 rangeStyle.textContent = `.range-btn{background:transparent;border:none;padding:5px 12px;border-radius:6px;font-size:12.5px;font-weight:500;cursor:pointer;color:var(--text-secondary);transition:.15s}.range-btn.active,.range-btn:hover{background:var(--bg-surface);color:var(--brand-primary);font-weight:600;box-shadow:var(--shadow-sm)}`;
 document.head.appendChild(rangeStyle);
 
-document.addEventListener('DOMContentLoaded', () => setRange('year'));
+document.addEventListener('DOMContentLoaded', () => { loadBranchFilter(); setRange('year'); });
 </script>
 </body>
 </html>

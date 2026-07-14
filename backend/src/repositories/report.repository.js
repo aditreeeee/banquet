@@ -554,6 +554,113 @@ const getDecorationAnalytics = async ({ companyId, branchId, fromDate, toDate })
     };
 };
 
+// ─── Revenue report — event type, coupon impact, composition ───────────────
+
+const getEventTypeBreakdown = async ({ companyId, branchId, fromDate, toDate }) => {
+    return executeQuery(
+        `SELECT
+            ISNULL(NULLIF(event_type, ''), 'Unspecified') AS event_type,
+            COUNT(*)                        AS bookings_count,
+            ISNULL(SUM(total_amount), 0)    AS revenue
+         FROM Bookings
+         WHERE company_id = @companyId
+           AND (@branchId IS NULL OR branch_id = @branchId)
+           AND event_date BETWEEN @fromDate AND @toDate
+           AND status NOT IN ('draft', 'cancelled')
+         GROUP BY event_type
+         ORDER BY revenue DESC`,
+        { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+    );
+};
+
+/**
+ * Discount impact from redeemed coupons in the date range (by booking's
+ * event_date, matching every other figure in this report). Sits alongside
+ * revenue rather than replacing it — total_amount on Bookings is already
+ * post-discount (see coupon.service.js apply()/booking.repository.js
+ * applyCoupon), so this exists purely to show how much of the collected
+ * revenue was given up to promotions, not to be subtracted again.
+ */
+const getCouponImpact = async ({ companyId, branchId, fromDate, toDate }) => {
+    const [summary, byCoupon] = await Promise.all([
+        executeQuery(
+            `SELECT
+                COUNT(DISTINCT b.booking_id)      AS redemptions,
+                ISNULL(SUM(b.discount_amount), 0) AS total_discount
+             FROM Bookings b
+             WHERE b.company_id = @companyId
+               AND (@branchId IS NULL OR b.branch_id = @branchId)
+               AND b.event_date BETWEEN @fromDate AND @toDate
+               AND b.status NOT IN ('draft', 'cancelled')
+               AND b.coupon_id IS NOT NULL`,
+            { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+        ),
+        executeQuery(
+            `SELECT
+                b.coupon_code,
+                COUNT(*)                          AS redemptions,
+                ISNULL(SUM(b.discount_amount), 0) AS total_discount,
+                ISNULL(SUM(b.total_amount), 0)    AS revenue_influenced
+             FROM Bookings b
+             WHERE b.company_id = @companyId
+               AND (@branchId IS NULL OR b.branch_id = @branchId)
+               AND b.event_date BETWEEN @fromDate AND @toDate
+               AND b.status NOT IN ('draft', 'cancelled')
+               AND b.coupon_id IS NOT NULL
+             GROUP BY b.coupon_code
+             ORDER BY total_discount DESC`,
+            { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+        ),
+    ]);
+    return { redemptions: summary[0].redemptions, totalDiscount: summary[0].total_discount, byCoupon };
+};
+
+/**
+ * How collected revenue breaks down into three buckets: Decoration (reuses
+ * the same figure getDecorationAnalytics already computes correctly from
+ * DecorationBookings, since decoration_charge alone is stale whenever a
+ * booking uses the catalog-allocation path — see booking.service.js
+ * recalculateBookingTotal), flat Operational Charges/Surcharges (these ARE
+ * reliable summed columns — setup/cleanup/cleaning/late-exit/
+ * extended-usage/cooloff/priority surcharge are never derived from a
+ * fallback branch), and "Venue, Catering & Services" as the remainder.
+ *
+ * That remainder is deliberately NOT split further into hall/catering/
+ * resources/services here — doing so precisely would mean re-implementing
+ * recalculateBookingTotal's branching (package pricing vs weekend-surcharge
+ * hall rates, per-session catering vs flat fallback, resource/service
+ * allocations) a second time in raw SQL, which risks quietly drifting out of
+ * sync with the real total. Deriving it as total_revenue minus the two
+ * reliable buckets guarantees this composition always sums to the same
+ * total_revenue figure shown elsewhere on the report, by construction.
+ */
+const getRevenueComposition = async ({ companyId, branchId, fromDate, toDate }) => {
+    const rows = await executeQuery(
+        `SELECT
+            ISNULL(SUM(total_amount), 0) AS total_revenue,
+            ISNULL(SUM(setup_charge + cleanup_charge + cleaning_charge + late_exit_charge + extended_usage_charge + cooloff_charge + priority_surcharge), 0) AS operational_charges
+         FROM Bookings
+         WHERE company_id = @companyId
+           AND (@branchId IS NULL OR branch_id = @branchId)
+           AND event_date BETWEEN @fromDate AND @toDate
+           AND status NOT IN ('draft', 'cancelled')`,
+        { companyId, branchId: branchId || null, fromDate: new Date(fromDate), toDate: new Date(toDate) }
+    );
+
+    const decoration = await getDecorationAnalytics({ companyId, branchId, fromDate, toDate });
+
+    const totalRevenue = Number(rows[0].total_revenue) || 0;
+    const operationalCharges = Number(rows[0].operational_charges) || 0;
+    const decorationRevenue = Number(decoration.totalRevenue) || 0;
+
+    return {
+        total_revenue: totalRevenue,
+        decoration_revenue: decorationRevenue,
+        operational_charges: operationalCharges,
+        venue_catering_services: Math.max(totalRevenue - decorationRevenue - operationalCharges, 0),
+    };
+};
+
 const getMonthlyComparison = async ({ companyId, branchId, currentFrom, currentTo, previousFrom, previousTo }) => {
     const query = (fromDate, toDate) => executeQuery(
         `SELECT COUNT(*) AS bookings_count, ISNULL(SUM(total_amount), 0) AS revenue
@@ -589,4 +696,7 @@ module.exports = {
     getMonthlyComparison,
     getGstCollected,
     getHsnSacBreakdown,
+    getEventTypeBreakdown,
+    getCouponImpact,
+    getRevenueComposition,
 };

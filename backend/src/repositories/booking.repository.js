@@ -49,32 +49,63 @@ const overlapParams = ({ eventDate, eventEndDate, startTime, endTime, setupMinut
 const checkAvailabilityInTx = async (tx, opts) => {
     const { hallId, excludeBookingId } = opts;
     const rows = await tx.execute(
-        `SELECT COUNT(*) AS conflict_count
+        `SELECT TOP 1 b.booking_id, b.booking_ref, b.event_name, b.event_date, b.event_end_date, b.event_time_start, b.event_time_end
          FROM Bookings b WITH (UPDLOCK, ROWLOCK, HOLDLOCK)
          WHERE b.hall_id = @hallId
            AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')
            AND (@excludeId IS NULL OR b.booking_id <> @excludeId)
-           AND (${OVERLAP_CONDITION})`,
+           AND (${OVERLAP_CONDITION})
+         ORDER BY b.event_date`,
         { hallId, excludeId: excludeBookingId || null, ...overlapParams(opts) }
     );
-    return rows[0].conflict_count === 0;
+    return { available: !rows.length, conflict: rows[0] || null };
+};
+
+/** Human-readable "<ref> (<event>) on <date range>, <time>" for a conflict row. */
+const describeConflict = (c) => {
+    if (!c) return '';
+    // event_date/event_end_date are DATE columns — read with UTC getters so the
+    // server process's local timezone can never shift the calendar day.
+    const fmt = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+    // event_time_start/end are TIME columns serialized on a 1970-01-01 epoch —
+    // they're literal wall-clock values, not real instants, so this must read
+    // UTC hour/minute directly rather than let toLocaleTimeString apply the
+    // server process's local timezone (which silently shifted 13:00 to 6:30pm).
+    const fmtTime = (t) => {
+        const d = new Date(t);
+        const h = d.getUTCHours(), m = d.getUTCMinutes();
+        const period = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 === 0 ? 12 : h % 12;
+        return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+    };
+    const dateRange = c.event_end_date && new Date(c.event_end_date).getTime() !== new Date(c.event_date).getTime()
+        ? `${fmt(c.event_date)} – ${fmt(c.event_end_date)}`
+        : fmt(c.event_date);
+    return `${c.booking_ref}${c.event_name ? ` (${c.event_name})` : ''} — ${dateRange}, ${fmtTime(c.event_time_start)}–${fmtTime(c.event_time_end)}`;
 };
 
 /**
- * Public availability check (no lock — for UI queries only)
+ * Public availability check (no lock — for UI queries only). Returns the
+ * conflicting booking's own details (ref/event/date range/time) when
+ * unavailable, not just a boolean — a multi-day booking can block a slot
+ * that looks free at a glance (its continuous occupancy runs from day-1
+ * start to day-N end, not just each day's own display window), so callers
+ * need to see *which* booking is responsible to make sense of the result.
  */
 const checkAvailability = async (opts) => {
     const { hallId, excludeBookingId } = opts;
     const rows = await executeQuery(
-        `SELECT COUNT(*) AS conflict_count
+        `SELECT TOP 1 b.booking_id, b.booking_ref, b.event_name, b.status,
+                b.event_date, b.event_end_date, b.event_time_start, b.event_time_end
          FROM Bookings b
          WHERE b.hall_id = @hallId
            AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')
            AND (@excludeId IS NULL OR b.booking_id <> @excludeId)
-           AND (${OVERLAP_CONDITION})`,
+           AND (${OVERLAP_CONDITION})
+         ORDER BY b.event_date`,
         { hallId, excludeId: excludeBookingId || null, ...overlapParams(opts) }
     );
-    return rows[0].conflict_count === 0;
+    return { available: !rows.length, conflict: rows[0] || null };
 };
 
 /**
@@ -127,7 +158,7 @@ const create = async (data) => {
     let createdBookingId = null;
 
     await withTransaction(async (tx) => {
-        const isAvailable = await checkAvailabilityInTx(tx, {
+        const { available, conflict } = await checkAvailabilityInTx(tx, {
             hallId:        data.hallId,
             eventDate:     data.eventDate,
             eventEndDate:  data.eventEndDate,
@@ -138,9 +169,9 @@ const create = async (data) => {
             cooloffMinutes: data.cooloffMinutes,
         });
 
-        if (!isAvailable) {
+        if (!available) {
             const { ConflictError } = require('../api/v1/middleware/errorHandler');
-            throw new ConflictError('Hall is not available for the selected date and time');
+            throw new ConflictError(`Hall is not available for the selected date and time — already booked by ${describeConflict(conflict)}`);
         }
 
         await assertHallNotBlocked(tx, data.hallId, data.eventDate, data.eventEndDate);
@@ -307,7 +338,7 @@ const findAll = async ({ companyId, branchId, status, hallId, customerId, fromDa
     const [rows, countRows, statusCountRows] = await Promise.all([
         executeQuery(
             `SELECT
-                b.booking_id, b.booking_ref, b.hall_id, b.event_date, b.event_time_start, b.event_time_end,
+                b.booking_id, b.booking_ref, b.hall_id, b.event_date, b.event_end_date, b.event_time_start, b.event_time_end,
                 b.event_name, b.event_type, b.guest_count, b.status,
                 b.total_amount, b.advance_paid, b.amount_paid,
                 b.is_priority, b.created_at,
@@ -455,7 +486,7 @@ const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eve
             );
         }
 
-        const isAvail  = await checkAvailabilityInTx(tx, {
+        const { available: isAvail, conflict } = await checkAvailabilityInTx(tx, {
             hallId: targetHallId,
             eventDate,
             eventEndDate:   resolvedEndDate,
@@ -469,7 +500,7 @@ const reschedule = async (bookingId, companyId, { eventDate, eventTimeStart, eve
 
         if (!isAvail) {
             const { ConflictError } = require('../api/v1/middleware/errorHandler');
-            throw new ConflictError('Hall is not available for the new date/time');
+            throw new ConflictError(`Hall is not available for the new date/time — already booked by ${describeConflict(conflict)}`);
         }
 
         await assertHallNotBlocked(tx, targetHallId, eventDate, resolvedEndDate);

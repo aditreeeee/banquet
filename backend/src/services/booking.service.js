@@ -116,11 +116,11 @@ const checkAvailability = async ({ hallId, eventDate, startTime, endTime, compan
     const hall = await hallRepo.findById(hallId, companyId);
     if (!hall) throw new NotFoundError('Hall');
 
-    const available = await bookingRepo.checkAvailability({
+    const { available, conflict } = await bookingRepo.checkAvailability({
         hallId, eventDate, startTime, endTime,
     });
 
-    return { available, hall };
+    return { available, hall, conflict };
 };
 
 /**

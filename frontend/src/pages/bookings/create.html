@@ -1237,12 +1237,23 @@ async function loadHalls() {
         });
         // Support both response shapes: { halls: [...] } or { data: { halls: [...] } }
         const halls = res.data?.halls || res.halls || [];
-        // Mark available based on capacity — server confirms on booking creation
-        const mapped = halls.map(h => ({
-            ...h,
-            available: (h.is_active === 1 || h.is_active === true) &&
-                       (h.capacity_seated >= state.guestCount || h.capacity >= state.guestCount),
-        }));
+        const capacityOk = halls.map(h =>
+            (h.is_active === 1 || h.is_active === true) &&
+            (h.capacity_seated >= state.guestCount || h.capacity >= state.guestCount)
+        );
+        // Real per-hall availability for the date/time already picked in Step 1 —
+        // a capacity-only badge previously always showed "Available" even when a
+        // genuine conflict (e.g. an overlapping multi-day booking) existed,
+        // which only surfaced as a surprise much later at Confirm.
+        let availabilityChecks = halls.map(() => true);
+        if (state.eventDate && state.startTime && state.endTime) {
+            availabilityChecks = await Promise.all(halls.map(h =>
+                API.bookings.checkAvail({ hallId: h.hall_id, eventDate: state.eventDate, startTime: state.startTime, endTime: state.endTime })
+                    .then(r => r.data?.available !== false)
+                    .catch(() => true) // fail open — server re-validates at submit regardless
+            ));
+        }
+        const mapped = halls.map((h, i) => ({ ...h, available: capacityOk[i] && availabilityChecks[i] }));
         renderHalls(mapped);
     } catch {
         // Demo halls (shown when API is unreachable)
@@ -1938,7 +1949,11 @@ async function runLiveAvailabilityCheck() {
         if (available && capOk) {
             el.innerHTML = `<div class="summary-validation ok"><span>✓</span><span>Hall is available for this date &amp; time${state.guestCount ? ' and capacity is sufficient' : ''}.</span></div>`;
         } else if (!available) {
-            el.innerHTML = `<div class="summary-validation bad"><span>⚠</span><span>This hall is already booked for the selected date/time — pick another slot or hall.</span></div>`;
+            const c = res.data?.conflict;
+            const conflictDetail = c
+                ? `Booked by <strong>${Utils.escapeHtml(c.booking_ref)}</strong>${c.event_name ? ` (${Utils.escapeHtml(c.event_name)})` : ''} — ${Utils.formatDate(c.event_date)}${c.event_end_date && c.event_end_date !== c.event_date ? ` – ${Utils.formatDate(c.event_end_date)}` : ''}, ${Utils.formatTime ? Utils.formatTime(c.event_time_start) + '–' + Utils.formatTime(c.event_time_end) : ''}. Multi-day bookings hold the hall for the entire date range, not just each day's own hours.`
+                : 'Pick another slot or hall.';
+            el.innerHTML = `<div class="summary-validation bad"><span>⚠</span><span>This hall is already booked for the selected date/time. ${conflictDetail}</span></div>`;
         } else {
             el.innerHTML = `<div class="summary-validation bad"><span>⚠</span><span>Guest count exceeds this hall's capacity — choose a larger hall or reduce guest count.</span></div>`;
         }

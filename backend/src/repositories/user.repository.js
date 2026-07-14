@@ -12,8 +12,12 @@ const BASE_SELECT = `
            u.is_active, u.is_email_verified, u.approval_status,
            u.last_login_at, u.created_at, u.updated_at,
            u.avatar_url, u.timezone,
+           u.employee_code, u.department, u.designation, u.property_id,
+           u.availability_status, u.employment_status, u.joining_date,
+           u.skills, u.certifications, u.emergency_contact_name, u.emergency_contact_phone,
            br.branch_name,
            c.company_name,
+           bq.banquet_name AS property_name,
            u.created_by,
            CASE WHEN creator.user_id IS NULL THEN NULL ELSE CONCAT(creator.first_name, ' ', creator.last_name) END AS created_by_name,
            (SELECT COUNT(DISTINCT rp.permission_id)
@@ -23,6 +27,7 @@ const BASE_SELECT = `
     JOIN Roles r ON r.role_id = u.role_id
     LEFT JOIN Branches br ON br.branch_id = u.branch_id
     LEFT JOIN Companies c ON c.company_id = u.company_id
+    LEFT JOIN Banquets bq ON bq.banquet_id = u.property_id
     LEFT JOIN Users creator ON creator.user_id = u.created_by
 `;
 
@@ -166,11 +171,17 @@ const create = async (data, passwordHash) => {
     const result = await executeQuery(
         `INSERT INTO Users
             (company_id, branch_id, role_id, first_name, last_name, email, phone,
-             password_hash, is_active, is_email_verified, created_by, created_at, updated_at)
+             password_hash, is_active, is_email_verified, created_by, created_at, updated_at,
+             employee_code, department, designation, property_id,
+             availability_status, employment_status, joining_date,
+             skills, certifications, emergency_contact_name, emergency_contact_phone)
          OUTPUT INSERTED.user_id AS id
          VALUES
             (@companyId, @branchId, @roleId, @firstName, @lastName, @email, @phone,
-             @passwordHash, 1, 0, @createdBy, GETUTCDATE(), GETUTCDATE())`,
+             @passwordHash, 1, 0, @createdBy, GETUTCDATE(), GETUTCDATE(),
+             @employeeCode, @department, @designation, @propertyId,
+             @availabilityStatus, @employmentStatus, @joiningDate,
+             @skills, @certifications, @emergencyContactName, @emergencyContactPhone)`,
         {
             companyId:    data.companyId,
             branchId:     data.branchId  || null,
@@ -181,6 +192,17 @@ const create = async (data, passwordHash) => {
             phone:        data.phone     || null,
             passwordHash,
             createdBy:    data.assignedBy || null,
+            employeeCode:            data.employeeCode || null,
+            department:              data.department || null,
+            designation:             data.designation || null,
+            propertyId:              data.propertyId || null,
+            availabilityStatus:      data.availabilityStatus || 'available',
+            employmentStatus:        data.employmentStatus || 'active',
+            joiningDate:             data.joiningDate ? new Date(data.joiningDate) : null,
+            skills:                  data.skills || null,
+            certifications:          data.certifications || null,
+            emergencyContactName:    data.emergencyContactName || null,
+            emergencyContactPhone:   data.emergencyContactPhone || null,
         }
     );
     const userId = result[0].id;
@@ -207,6 +229,17 @@ const update = async (userId, companyId, data) => {
              ${setBranch},
              role_id    = ISNULL(@roleId,    role_id),
              is_active  = ISNULL(@isActive,  is_active),
+             employee_code            = ISNULL(@employeeCode,           employee_code),
+             department               = ISNULL(@department,             department),
+             designation              = ISNULL(@designation,            designation),
+             property_id              = ISNULL(@propertyId,             property_id),
+             availability_status      = ISNULL(@availabilityStatus,     availability_status),
+             employment_status        = ISNULL(@employmentStatus,       employment_status),
+             joining_date             = ISNULL(@joiningDate,            joining_date),
+             skills                   = ISNULL(@skills,                 skills),
+             certifications           = ISNULL(@certifications,         certifications),
+             emergency_contact_name   = ISNULL(@emergencyContactName,   emergency_contact_name),
+             emergency_contact_phone  = ISNULL(@emergencyContactPhone,  emergency_contact_phone),
              updated_at = GETUTCDATE()
          WHERE user_id = @id AND company_id = @companyId`,
         {
@@ -218,6 +251,17 @@ const update = async (userId, companyId, data) => {
             branchId:  data.branchId  || null,
             roleId:    data.roleId    || null,
             isActive:  data.isActive  != null ? data.isActive : null,
+            employeeCode:            data.employeeCode != null ? data.employeeCode : null,
+            department:              data.department != null ? data.department : null,
+            designation:             data.designation != null ? data.designation : null,
+            propertyId:              data.propertyId != null ? data.propertyId : null,
+            availabilityStatus:      data.availabilityStatus || null,
+            employmentStatus:        data.employmentStatus || null,
+            joiningDate:             data.joiningDate ? new Date(data.joiningDate) : null,
+            skills:                  data.skills != null ? data.skills : null,
+            certifications:          data.certifications != null ? data.certifications : null,
+            emergencyContactName:    data.emergencyContactName != null ? data.emergencyContactName : null,
+            emergencyContactPhone:   data.emergencyContactPhone != null ? data.emergencyContactPhone : null,
         }
     );
     if (Array.isArray(data.roleIds) && data.roleIds.length) {

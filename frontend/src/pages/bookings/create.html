@@ -589,7 +589,7 @@
                                 <div class="price-row"><span class="label">Decoration</span><span class="value" id="prDecoration">—</span></div>
                                 <div class="price-row"><span class="label">Additional Services</span><span class="value" id="prServices">—</span></div>
                                 <div class="price-row green"><span class="label">Discount</span><span class="value" id="prDiscount">—</span></div>
-                                <div class="price-row"><span class="label">GST (18%)</span><span class="value" id="prTax">—</span></div>
+                                <div class="price-row"><span class="label">Tax (<span id="prTaxPct">—</span>%)</span><span class="value" id="prTax">—</span></div>
                                 <div class="price-row total"><span class="label">Grand Total</span><span class="value" id="prTotal">—</span></div>
                                 <div class="price-row" id="prPriorityRow" style="display:none"><span class="label">Priority Surcharge (20%, billed separately)</span><span class="value" id="prPriority">—</span></div>
                                 <div class="price-row"><span class="label">Advance Required (<span id="prAdvancePct">—</span>%)</span><span class="value" id="prAdvance" style="color:var(--color-warning);font-weight:700">—</span></div>
@@ -1746,9 +1746,24 @@ async function createCustomer() {
     }
 }
 
+/* Rebuilds state.selectedServices from whatever's currently checked/typed in
+   the grid — catalogPrice is read-only (never edited), negotiatedPrice and
+   discountAmount are staff-editable, finalPrice = negotiatedPrice - discountAmount
+   is what actually contributes to the booking total. */
 function syncServicesFromDOM() {
-    const selected = document.querySelectorAll('.svc-check:checked');
-    state.selectedServices = Array.from(selected).map(c => ({ id: parseInt(c.dataset.id), name: c.dataset.name, price: parseInt(c.dataset.price) }));
+    const rows = document.querySelectorAll('.svc-row');
+    state.selectedServices = Array.from(rows)
+        .filter(row => row.querySelector('.svc-check').checked)
+        .map(row => {
+            const id = parseInt(row.dataset.id, 10);
+            const name = row.dataset.name;
+            const catalogPrice = parseFloat(row.dataset.catalogPrice) || 0;
+            const negotiatedPrice = parseFloat(row.querySelector('.svc-nego').value);
+            const discountAmount = parseFloat(row.querySelector('.svc-disc').value) || 0;
+            const finalPrice = Math.max(0, (isNaN(negotiatedPrice) ? catalogPrice : negotiatedPrice) - discountAmount);
+            row.querySelector('.svc-final').textContent = Utils.formatCurrency(finalPrice);
+            return { id, name, catalogPrice, negotiatedPrice: isNaN(negotiatedPrice) ? catalogPrice : negotiatedPrice, discountAmount, price: finalPrice };
+        });
     state.servicesTotal = state.selectedServices.reduce((s, x) => s + x.price, 0);
     state.staffCount     = parseInt(document.getElementById('staffCount').value)     || null;
     state.cleanupCharge  = parseInt(document.getElementById('cleanupCharge').value)  || 0;
@@ -1756,18 +1771,56 @@ function syncServicesFromDOM() {
     calculatePrice();
 }
 
-/* â”€â”€ Services grid â”€â”€ */
+/* Toggles a row's negotiated-price/discount inputs in step with its checkbox. */
+function toggleServiceRow(id) {
+    const row = document.querySelector(`.svc-row[data-id="${id}"]`);
+    const checked = row.querySelector('.svc-check').checked;
+    row.querySelectorAll('.svc-nego, .svc-disc').forEach(el => { el.disabled = !checked; });
+    row.classList.toggle('svc-row-active', checked);
+    syncServicesFromDOM();
+}
+
+/* â”€â”€ Services grid â”€â”€
+   Each service shows its frozen catalog price alongside an editable
+   Negotiated Price and Discount — Final Agreed Price is computed from those
+   and is what's actually billed, while catalogPrice is preserved untouched
+   for comparison and audit history (see BookingServices table). */
 function renderServices() {
-    document.getElementById('servicesGrid').innerHTML = SERVICES.map(s => `
-    <div class="col-md-4 col-6">
-        <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;background:var(--bg-surface)">
-            <input type="checkbox" class="svc-check" data-id="${s.id}" data-name="${s.name}" data-price="${s.price}" onchange="syncServicesFromDOM()" style="accent-color:var(--brand-primary);width:16px;height:16px">
-            <div>
-                <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${s.name}</div>
-                <div style="font-size:11px;color:var(--text-muted)">${Utils.formatCurrency(s.price)}</div>
+    const existing = new Map(state.selectedServices.map(s => [s.id, s]));
+    document.getElementById('servicesGrid').innerHTML = SERVICES.map(s => {
+        const sel = existing.get(s.id);
+        const checked = !!sel;
+        const negotiatedPrice = sel && sel.negotiatedPrice != null ? sel.negotiatedPrice : s.price;
+        const discountAmount  = sel && sel.discountAmount  != null ? sel.discountAmount  : 0;
+        const finalPrice      = sel && sel.price           != null ? sel.price           : s.price;
+        return `
+    <div class="col-md-6">
+        <div class="svc-row ${checked ? 'svc-row-active' : ''}" data-id="${s.id}" data-name="${s.name}" data-catalog-price="${s.price}"
+             style="border:1px solid var(--border-color);border-radius:var(--radius-md);padding:12px 14px;background:var(--bg-surface)">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:8px">
+                <input type="checkbox" class="svc-check" ${checked ? 'checked' : ''} onchange="toggleServiceRow(${s.id})" style="accent-color:var(--brand-primary);width:16px;height:16px">
+                <div style="flex:1">
+                    <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${s.name}</div>
+                    <div style="font-size:11px;color:var(--text-muted)">Catalog Price: ${Utils.formatCurrency(s.price)}</div>
+                </div>
+            </label>
+            <div class="row g-2" style="padding-left:26px">
+                <div class="col-5">
+                    <label style="font-size:10.5px;color:var(--text-muted);margin-bottom:2px;display:block">Negotiated Price</label>
+                    <input type="number" class="form-control form-control-sm svc-nego" min="0" step="0.01" value="${negotiatedPrice}" ${checked ? '' : 'disabled'} oninput="syncServicesFromDOM()">
+                </div>
+                <div class="col-4">
+                    <label style="font-size:10.5px;color:var(--text-muted);margin-bottom:2px;display:block">Discount</label>
+                    <input type="number" class="form-control form-control-sm svc-disc" min="0" step="0.01" value="${discountAmount}" ${checked ? '' : 'disabled'} oninput="syncServicesFromDOM()">
+                </div>
+                <div class="col-3">
+                    <label style="font-size:10.5px;color:var(--text-muted);margin-bottom:2px;display:block">Final Price</label>
+                    <div class="svc-final" style="font-size:13px;font-weight:700;color:var(--brand-primary);padding-top:6px">${Utils.formatCurrency(finalPrice)}</div>
+                </div>
             </div>
-        </label>
-    </div>`).join('');
+        </div>
+    </div>`;
+    }).join('');
 }
 
 /* â”€â”€ Price calculation â”€â”€ */
@@ -1791,6 +1844,7 @@ function calculatePrice() {
     document.getElementById('prServices').textContent   = Utils.formatCurrency(state.servicesTotal);
     document.getElementById('prDiscount').textContent   = state.discountAmt > 0 ? '-' + Utils.formatCurrency(state.discountAmt) : '₹0';
     document.getElementById('prTax').textContent        = Utils.formatCurrency(tax);
+    document.getElementById('prTaxPct').textContent     = settingsTaxPct;
     document.getElementById('prTotal').textContent      = Utils.formatCurrency(state.grandTotal);
     document.getElementById('prPriorityRow').style.display = state.isPriority ? '' : 'none';
     document.getElementById('prPriority').textContent  = Utils.formatCurrency(state.prioritySurcharge);
@@ -1930,7 +1984,7 @@ function populateConfirmation() {
     document.getElementById('cfmPricing').innerHTML = `
         <div class="price-row"><span class="label">Subtotal</span><span class="value">${Utils.formatCurrency(state.hallBasePrice + state.cateringTotal + state.decorationAmt + state.servicesTotal)}</span></div>
         ${state.discountAmt > 0 ? `<div class="price-row green"><span class="label">Discount</span><span class="value">-${Utils.formatCurrency(state.discountAmt)}</span></div>` : ''}
-        <div class="price-row"><span class="label">GST (18%)</span><span class="value">${Utils.formatCurrency(state.taxAmt)}</span></div>
+        <div class="price-row"><span class="label">Tax (${settingsTaxPct}%)</span><span class="value">${Utils.formatCurrency(state.taxAmt)}</span></div>
         <div class="price-row total"><span class="label">Grand Total</span><span class="value">${Utils.formatCurrency(state.grandTotal)}</span></div>
         ${state.isPriority ? `<div class="price-row" style="color:var(--color-warning)"><span class="label">Priority Surcharge (20%, billed separately)</span><span class="value">${Utils.formatCurrency(state.prioritySurcharge)}</span></div>` : ''}`;
 }
@@ -2013,6 +2067,17 @@ async function submitBooking() {
                 }
             }
 
+            // Sync additional services — Step 7 is the source of truth for
+            // whatever's currently selected, negotiated price/discount included.
+            try {
+                await API.bookings.updateServices(editBookingId, state.selectedServices.map(s => ({
+                    serviceKey: s.id, serviceName: s.name,
+                    catalogPrice: s.catalogPrice, negotiatedPrice: s.negotiatedPrice, discountAmount: s.discountAmount,
+                })));
+            } catch (svcErr) {
+                Utils.toast(getErrorMessage(svcErr, 'Booking saved, but services could not be updated — please adjust them from the booking detail page.'), 'warning');
+            }
+
             const ref = res.data?.booking_ref || state.bookingRef || '';
             document.getElementById('successRef').textContent = ref;
             document.querySelector('#successModal h4').textContent = 'Booking Updated!';
@@ -2091,6 +2156,20 @@ async function submitBooking() {
                 })));
             } catch (decoErr) {
                 Utils.toast(getErrorMessage(decoErr, 'Booking created, but decorations couldn\'t be added — add them from Booking Details.'), 'warning');
+            }
+        }
+
+        // Services require a real booking_id too — same follow-up pattern as
+        // Catering/Decorations. catalogPrice is preserved for comparison/audit
+        // history even though negotiatedPrice/discountAmount are what's billed.
+        if (id && state.selectedServices.length) {
+            try {
+                await API.bookings.updateServices(id, state.selectedServices.map(s => ({
+                    serviceKey: s.id, serviceName: s.name,
+                    catalogPrice: s.catalogPrice, negotiatedPrice: s.negotiatedPrice, discountAmount: s.discountAmount,
+                })));
+            } catch (svcErr) {
+                Utils.toast(getErrorMessage(svcErr, 'Booking created, but services couldn\'t be added — add them from Booking Details.'), 'warning');
             }
         }
         document.getElementById('successRef').textContent = ref || '';
@@ -2217,6 +2296,22 @@ async function loadExistingBooking(id) {
             await loadDecorationCatalog();
             renderStagedDecorations();
         } catch (_) { /* non-fatal — decorations section will just start empty */ }
+
+        // Seed selected services (with their negotiated price/discount) from
+        // what's actually persisted today, same pattern as inventory/decorations.
+        try {
+            const svcRes = await API.bookings.services(id);
+            state.selectedServices = (svcRes.data || []).map(s => ({
+                id:              s.service_key,
+                name:            s.service_name,
+                catalogPrice:    Number(s.catalog_price) || 0,
+                negotiatedPrice: Number(s.negotiated_price) || 0,
+                discountAmount:  Number(s.discount_amount) || 0,
+                price:           Number(s.final_price) || 0,
+            }));
+            state.servicesTotal = state.selectedServices.reduce((sum, s) => sum + s.price, 0);
+            renderServices();
+        } catch (_) { /* non-fatal — services section will just start empty */ }
     } catch (err) {
         Utils.toast(getErrorMessage(err, 'Unable to load booking for editing.'), 'error');
     }
@@ -2359,7 +2454,7 @@ async function restoreBookingDraftIfAny() {
     if (targetStep >= 2) await loadBanquets();
     if (targetStep >= 3) await loadHalls();
     if (targetStep >= 6) await loadDecorationCatalog();
-    if (targetStep >= 7) await loadInventoryRecommendations();
+    if (targetStep >= 7) { await loadInventoryRecommendations(); renderServices(); }
     if (targetStep >= 8) calculatePrice();
     if (targetStep >= 9) populateConfirmation();
     state.currentStep = targetStep;

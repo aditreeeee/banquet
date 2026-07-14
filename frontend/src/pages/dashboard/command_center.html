@@ -66,7 +66,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(197,160,89,.28);border-radius:9999px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(197,160,89,.5)}
-#content h1,#content h2,#content h3,.kpi-val { font-family:'Playfair Display',serif; }
+#content h1,#content h2,#content h3 { font-family:'Playfair Display',serif; }
 .g-card{
   background:var(--surface);
   backdrop-filter:blur(20px) saturate(200%);
@@ -163,9 +163,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
   box-shadow:0 2px 10px rgba(26,43,74,.22)}
 .kpi-icon-wrap{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
   background:linear-gradient(148deg,rgba(197,160,89,.18) 0%,rgba(197,160,89,.06) 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
-.kpi-val{font-size:23px;font-weight:700;color:var(--text-primary);line-height:1}
-.kpi-label{font-size:11.5px;color:var(--text-secondary);font-weight:500;margin-top:3px}
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5);margin-bottom:14px}
+.kpi-val{font-size:30px;font-weight:700;color:var(--text-primary);line-height:1.15;letter-spacing:.01em}
+.kpi-label{font-size:12.5px;color:var(--text-secondary);font-weight:600;margin-top:6px;letter-spacing:.01em}
 .scroll-y{overflow-y:auto}
 .scroll-y::-webkit-scrollbar{width:4px}
 .scroll-y::-webkit-scrollbar-thumb{background:rgba(197,160,89,.2);border-radius:9999px}
@@ -439,11 +439,11 @@ const Topbar = ({ onMenu, darkMode, setDarkMode }) => {
 
 /* ── Clickable KPI card — every card is a shortcut to its module ── */
 const KPICard = ({ IconEl, label, value, color, sub, onClick }) => (
-  <Card hover style={{padding:'16px 18px',cursor:'pointer',minHeight:104,display:'flex',flexDirection:'column'}} onClick={onClick}>
-    <div className="kpi-icon-wrap" style={{background:`${color}1A`,color,marginBottom:10}}><IconEl/></div>
+  <Card hover style={{padding:'18px 20px',cursor:'pointer',minHeight:116,display:'flex',flexDirection:'column'}} onClick={onClick}>
+    <div className="kpi-icon-wrap" style={{background:`${color}1A`,color}}><IconEl/></div>
     <div className="kpi-val">{value}</div>
     <div className="kpi-label">{label}</div>
-    {sub && <div className="kpi-sub" style={{fontSize:10.5,color:'var(--text-muted)',marginTop:5}}>{sub}</div>}
+    {sub && <div className="kpi-sub" style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>{sub}</div>}
   </Card>
 );
 
@@ -615,8 +615,9 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
     : Array.from({length:7},(_,i)=>addDays(anchorDate,i-3));
   const cols = granularity==='hourly' ? 24 : days.length;
 
+  const RELEASED_STATUSES = ['cancelled', 'draft', 'completed', 'archived'];
   const barsForHall = (hallId) => {
-    return bookings.filter(b => b.hall_id===hallId && b.status!=='cancelled' && b.status!=='draft');
+    return bookings.filter(b => b.hall_id===hallId && !RELEASED_STATUSES.includes(b.status));
   };
 
   // ── Drag-and-drop move/resize state ──────────────────────────────────────
@@ -1035,7 +1036,7 @@ const CommandCenterView = () => {
         <KPICard IconEl={()=>I.calendar({width:18,height:18})}  color={C.purple} label="Active Events"  value={kpis.active}              sub="Scheduled today" onClick={()=>goOrToast('../bookings/index.html')}/>
         <KPICard IconEl={()=>I.creditCard({width:18,height:18})} color={C.red}  label="Pending Payments" value={pendingTotal}            sub="Awaiting collection" onClick={()=>goOrToast('../payments/index.html')}/>
         <KPICard IconEl={()=>I.alertTriangle({width:18,height:18})} color={kpis.shortageCount?C.red:C.slate} label="Inventory Alerts" value={kpis.shortageCount} sub="Resources at 0 remaining" onClick={()=>goOrToast('../inventory/index.html')}/>
-        <KPICard IconEl={()=>I.users({width:18,height:18})} color={C.teal} label="Staff Allocation" value={staffCount==null?'—':staffCount} sub={staffCount==null?'Loading…':`Assigned to today's ${kpis.active} event${kpis.active===1?'':'s'}`} onClick={()=>goOrToast('../staff/index.html')}/>
+        <KPICard IconEl={()=>I.users({width:18,height:18})} color={C.teal} label="Staff Allocation" value={staffCount==null?'Loading…':staffCount} sub={staffCount==null?'':`Assigned to today's ${kpis.active} event${kpis.active===1?'':'s'}`} onClick={()=>goOrToast('../staff/index.html')}/>
         <KPICard IconEl={()=>I.clipboardList({width:18,height:18})} color={C.amber} label="Catering" value={cateringCount} sub="Active packages" onClick={()=>goOrToast('../catering/menu.html')}/>
         <KPICard IconEl={()=>I.users({width:18,height:18})} color={C.purple} label="Total Customers" value={customerCount} sub="Manage customers" onClick={()=>goOrToast('../customers/index.html')}/>
         <KPICard IconEl={()=>I.trendingUp({width:18,height:18})} color={C.blue} label="Sales Pipeline" value={openLeadsCount} sub="Open leads & quotations" onClick={()=>goOrToast('../leads/index.html')}/>

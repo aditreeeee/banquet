@@ -182,6 +182,24 @@ const updateDecorations = async (req, res) => {
     return response.success(res, allocations, 'Decoration allocation updated');
 };
 
+const getServices = async (req, res) => {
+    const services = await bookingService.getServiceAllocations(
+        parseInt(req.params.id, 10),
+        req.companyId
+    );
+    return response.success(res, services);
+};
+
+const updateServices = async (req, res) => {
+    const services = await bookingService.updateServiceAllocations(
+        parseInt(req.params.id, 10),
+        req.companyId,
+        req.body.services || [],
+        { userId: req.user.user_id }
+    );
+    return response.success(res, services, 'Additional services updated');
+};
+
 const addSlot = async (req, res) => {
     const slot = await bookingService.addOccupancySlot(
         parseInt(req.params.id, 10),
@@ -249,6 +267,6 @@ const removeStaff = async (req, res) => {
 module.exports = {
     checkAvailability, checkAvailabilityPost, calculatePrice, getBookedDates, create, getAll, getById, getByRef,
     update, reschedule, updateStatus, cancel, getActivities, getResources, updateResources,
-    getDecorations, updateDecorations, getContacts, addContact, removeContact,
+    getDecorations, updateDecorations, getServices, updateServices, getContacts, addContact, removeContact,
     getStaff, assignStaff, removeStaff, clone, addSlot, getSlots,
 };

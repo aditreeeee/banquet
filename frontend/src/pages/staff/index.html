@@ -11,6 +11,12 @@
 <style>
 .staff-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:10px }
 .staff-avatar { width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary),#4F46E5);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px }
+.avail-badge { display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10.5px;font-weight:600;text-transform:capitalize }
+.avail-available { background:#DCFCE722;color:var(--color-success) }
+.avail-on_duty    { background:#DBEAFE22;color:var(--color-info) }
+.avail-on_leave   { background:#FEF3C722;color:var(--color-warning) }
+.avail-off_duty   { background:#F1F5F922;color:var(--text-muted) }
+.skill-tag { display:inline-block;padding:1px 7px;border-radius:6px;font-size:10.5px;background:var(--bg-surface-2);color:var(--text-muted);margin:1px 3px 1px 0 }
 </style>
 </head>
 <body>
@@ -105,13 +111,13 @@
                     <div class="col-md-6"><label class="form-label">First Name *</label><input type="text" class="form-control" id="staffFirstName"></div>
                     <div class="col-md-6"><label class="form-label">Last Name *</label><input type="text" class="form-control" id="staffLastName"></div>
                     <div class="col-md-6"><label class="form-label">Email *</label><input type="email" class="form-control" id="staffEmail"></div>
-                    <div class="col-md-6"><label class="form-label">Phone (Contact Details)</label><input type="tel" class="form-control" id="staffPhone" placeholder="+91 98765 43210"></div>
+                    <div class="col-md-6"><label class="form-label">Mobile</label><input type="tel" class="form-control" id="staffPhone" placeholder="+91 98765 43210"></div>
                     <div class="col-md-6">
                         <label class="form-label">Role(s) * <span style="font-weight:400;color:var(--text-muted)">(ctrl/cmd-click for multiple)</span></label>
                         <select class="form-select" id="staffRole" multiple size="4"></select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Branch (Availability/Assignment)</label>
+                        <label class="form-label">Branch</label>
                         <select class="form-select" id="staffBranch"><option value="">Unassigned</option></select>
                     </div>
                     <div class="col-md-6" id="staffPassFieldWrap">
@@ -125,6 +131,37 @@
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
+                    <div class="col-12"><hr style="margin:0"></div>
+                    <div class="col-md-4"><label class="form-label">Employee ID</label><input type="text" class="form-control" id="staffEmployeeCode" placeholder="e.g. EMP-0007"></div>
+                    <div class="col-md-4"><label class="form-label">Department</label><input type="text" class="form-control" id="staffDepartment" placeholder="e.g. Operations, F&amp;B, Housekeeping"></div>
+                    <div class="col-md-4"><label class="form-label">Designation</label><input type="text" class="form-control" id="staffDesignation" placeholder="e.g. Head Waiter"></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Property</label>
+                        <select class="form-select" id="staffProperty"><option value="">Unassigned</option></select>
+                    </div>
+                    <div class="col-md-6"><label class="form-label">Joining Date</label><input type="date" class="form-control" id="staffJoiningDate"></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Availability Status</label>
+                        <select class="form-select" id="staffAvailability">
+                            <option value="available">Available</option>
+                            <option value="on_duty">On Duty</option>
+                            <option value="on_leave">On Leave</option>
+                            <option value="off_duty">Off Duty</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Employment Status</label>
+                        <select class="form-select" id="staffEmploymentStatus">
+                            <option value="active">Active</option>
+                            <option value="on_leave">On Leave</option>
+                            <option value="resigned">Resigned</option>
+                            <option value="terminated">Terminated</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6"><label class="form-label">Skills <span style="font-weight:400;color:var(--text-muted)">(comma-separated)</span></label><input type="text" class="form-control" id="staffSkills" placeholder="e.g. Bartending, Sound Setup"></div>
+                    <div class="col-md-6"><label class="form-label">Certifications <span style="font-weight:400;color:var(--text-muted)">(comma-separated)</span></label><input type="text" class="form-control" id="staffCertifications" placeholder="e.g. Food Safety Level 2"></div>
+                    <div class="col-md-6"><label class="form-label">Emergency Contact Name</label><input type="text" class="form-control" id="staffEmergencyName"></div>
+                    <div class="col-md-6"><label class="form-label">Emergency Contact Phone</label><input type="tel" class="form-control" id="staffEmergencyPhone"></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -178,6 +215,15 @@ async function loadRoles() {
             sel.appendChild(o);
         });
     } catch (_) { /* branch assignment stays optional if this fails */ }
+    try {
+        const res = await API.banquets.list({ limit: 100 });
+        const sel = document.getElementById('staffProperty');
+        (res.data?.banquets || res.data || []).forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.banquet_id; o.textContent = p.banquet_name;
+            sel.appendChild(o);
+        });
+    } catch (_) { /* property assignment stays optional if this fails */ }
 }
 
 async function loadStaff() {
@@ -205,17 +251,29 @@ function renderStaff() {
     grid.innerHTML = filtered.map(u => {
         const name = `${u.first_name} ${u.last_name}`;
         const initials = (u.first_name[0]||'') + (u.last_name[0]||'');
+        const skillTags = (u.skills || '').split(',').map(s => s.trim()).filter(Boolean);
+        const ca = u.current_assignment;
         return `
         <div class="staff-card">
             <div style="display:flex;gap:12px;align-items:center">
                 <div class="staff-avatar">${initials.toUpperCase()}</div>
                 <div style="flex:1;min-width:0">
                     <div style="font-weight:700;font-size:14px">${name}</div>
-                    <div style="font-size:11.5px;color:var(--text-muted)">${u.role_name || Utils.titleCase(u.role_slug||'')}</div>
+                    <div style="font-size:11.5px;color:var(--text-muted)">${u.designation || u.role_name || Utils.titleCase(u.role_slug||'')}${u.employee_code ? ` · ${u.employee_code}` : ''}</div>
                 </div>
                 ${u.is_active ? '<span class="badge-status badge-confirmed">Active</span>' : '<span class="badge-status badge-cancelled">Inactive</span>'}
             </div>
             <div style="font-size:12px;color:var(--text-muted)">${u.email||''} ${u.phone?(' · '+u.phone):''}</div>
+            <div style="font-size:11.5px;color:var(--text-muted)">${[u.department, u.property_name, u.branch_name].filter(Boolean).join(' · ') || '—'}</div>
+            <div style="display:flex;align-items:center;gap:6px">
+                <span class="avail-badge avail-${u.availability_status||'available'}">${Utils.titleCase((u.availability_status||'available').replace('_',' '))}</span>
+                ${u.employment_status && u.employment_status !== 'active' ? `<span class="avail-badge" style="background:var(--color-danger)22;color:var(--color-danger)">${Utils.titleCase(u.employment_status.replace('_',' '))}</span>` : ''}
+            </div>
+            <div style="font-size:11.5px;color:var(--text-muted)">
+                <strong style="color:var(--text-primary)">Current Assignment:</strong>
+                ${ca ? `${ca.event_name || ca.booking_ref} — ${ca.hall_name || ''} (${Utils.formatDate(ca.event_date)})` : 'None'}
+            </div>
+            ${skillTags.length ? `<div>${skillTags.map(s => `<span class="skill-tag">${s}</span>`).join('')}</div>` : ''}
             <div style="display:flex;gap:8px;margin-top:4px">
                 <button class="btn-ghost" style="flex:1;font-size:12px" onclick="openSchedule(${u.user_id},'${name.replace(/'/g,"\\'")}')">View Schedule</button>
                 <button class="btn-primary-brand" style="flex:1;font-size:12px" onclick="openAssign(${u.user_id},'${name.replace(/'/g,"\\'")}')">Assign</button>
@@ -247,6 +305,17 @@ function openStaffModal(user = null) {
     const roleIds = (user?.role_ids && user.role_ids.length) ? user.role_ids : (user?.role_id ? [user.role_id] : []);
     [...document.getElementById('staffRole').options].forEach(o => { o.selected = roleIds.includes(parseInt(o.value, 10)); });
     document.getElementById('staffPassFieldWrap').style.display = user ? 'none' : '';
+    document.getElementById('staffEmployeeCode').value = user?.employee_code || '';
+    document.getElementById('staffDepartment').value = user?.department || '';
+    document.getElementById('staffDesignation').value = user?.designation || '';
+    document.getElementById('staffProperty').value = user?.property_id || '';
+    document.getElementById('staffJoiningDate').value = user?.joining_date ? user.joining_date.slice(0, 10) : '';
+    document.getElementById('staffAvailability').value = user?.availability_status || 'available';
+    document.getElementById('staffEmploymentStatus').value = user?.employment_status || 'active';
+    document.getElementById('staffSkills').value = user?.skills || '';
+    document.getElementById('staffCertifications').value = user?.certifications || '';
+    document.getElementById('staffEmergencyName').value = user?.emergency_contact_name || '';
+    document.getElementById('staffEmergencyPhone').value = user?.emergency_contact_phone || '';
     staffModalInst = staffModalInst || new bootstrap.Modal(document.getElementById('staffModal'));
     staffModalInst.show();
 }
@@ -273,6 +342,17 @@ async function saveStaff() {
         branch_id:  document.getElementById('staffBranch').value ? parseInt(document.getElementById('staffBranch').value) : null,
         status:     document.getElementById('staffStatus').value,
         password:   document.getElementById('staffPassword')?.value || undefined,
+        employeeCode: document.getElementById('staffEmployeeCode').value.trim() || undefined,
+        department:   document.getElementById('staffDepartment').value.trim() || undefined,
+        designation:  document.getElementById('staffDesignation').value.trim() || undefined,
+        propertyId:   document.getElementById('staffProperty').value ? parseInt(document.getElementById('staffProperty').value, 10) : undefined,
+        joiningDate:  document.getElementById('staffJoiningDate').value || undefined,
+        availabilityStatus: document.getElementById('staffAvailability').value,
+        employmentStatus:   document.getElementById('staffEmploymentStatus').value,
+        skills:         document.getElementById('staffSkills').value.trim() || undefined,
+        certifications: document.getElementById('staffCertifications').value.trim() || undefined,
+        emergencyContactName:  document.getElementById('staffEmergencyName').value.trim() || undefined,
+        emergencyContactPhone: document.getElementById('staffEmergencyPhone').value.trim() || undefined,
     };
     if (!data.first_name || !data.last_name || !data.email) { Utils.toast('First name, last name and email are required', 'error'); return; }
     if (!roleIds.length) { Utils.toast('Select at least one role', 'error'); return; }

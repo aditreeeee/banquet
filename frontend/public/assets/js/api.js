@@ -278,6 +278,8 @@ const API = (() => {
             updateResources: (id, resources) => request('PUT', `/bookings/${id}/resources`, { body: { resources } }),
             decorations:  (id)    => request('GET',  `/bookings/${id}/decorations`),
             updateDecorations: (id, decorations) => request('PUT', `/bookings/${id}/decorations`, { body: { decorations } }),
+            services:     (id)    => request('GET',  `/bookings/${id}/services`),
+            updateServices: (id, services) => request('PUT', `/bookings/${id}/services`, { body: { services } }),
             contacts:   (id)    => request('GET',  `/bookings/${id}/contacts`),
             addContact: (id,d)  => request('POST', `/bookings/${id}/contacts`, { body: d }),
             removeContact: (id,contactId) => request('DELETE', `/bookings/${id}/contacts/${contactId}`),

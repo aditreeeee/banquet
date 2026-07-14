@@ -5,6 +5,7 @@
 
 const userRepo    = require('../repositories/user.repository');
 const companyRepo = require('../repositories/company.repository');
+const bookingStaffRepo = require('../repositories/bookingStaff.repository');
 const auditLogRepo = require('../repositories/auditLog.repository');
 const { hashPassword } = require('../utils/encryption');
 const { NotFoundError, ConflictError, ForbiddenError, ValidationError } = require('../api/v1/middleware/errorHandler');
@@ -138,7 +139,14 @@ const getAll = async (query, actor) => {
         }),
         userRepo.getStats({ companyId, branchId }),
     ]);
-    return { rows: rows.map(mapUser), meta: buildMeta(total, p), stats };
+    // "Current Assignment" is derived live (never stored) — see
+    // bookingStaff.repository.js:getCurrentAssignments. Only meaningful for a
+    // single tenant's staff list, so skip it for the Super-Admin "every
+    // tenant" view (companyId === null) rather than running an unscoped query.
+    const assignments = companyId != null ? await bookingStaffRepo.getCurrentAssignments(companyId) : [];
+    const byUserId = new Map(assignments.map(a => [a.user_id, a]));
+    const rowsWithAssignment = rows.map(u => ({ ...u, current_assignment: byUserId.get(u.user_id) || null }));
+    return { rows: rowsWithAssignment.map(mapUser), meta: buildMeta(total, p), stats };
 };
 
 const getById = async (id, actor) => {
@@ -186,6 +194,17 @@ const create = async (data, actor) => {
         roleIds:   data.roleIds   ?? data.role_ids,
         branchId,
         assignedBy: actor.userId,
+        employeeCode:  data.employeeCode,
+        department:    data.department,
+        designation:   data.designation,
+        propertyId:    data.propertyId,
+        availabilityStatus: data.availabilityStatus,
+        employmentStatus:   data.employmentStatus,
+        joiningDate:   data.joiningDate,
+        skills:        data.skills,
+        certifications: data.certifications,
+        emergencyContactName:  data.emergencyContactName,
+        emergencyContactPhone: data.emergencyContactPhone,
     }, passwordHash);
 
     logger.info('User created', { newUserId: user.user_id, createdBy: actor.userId, companyId, branchId });
@@ -235,6 +254,17 @@ const update = async (id, data, actor) => {
         roleIds:   data.roleIds   ?? data.role_ids,
         isActive:  data.isActive != null ? data.isActive : statusToIsActive(data.status),
         assignedBy: actor.userId,
+        employeeCode:  data.employeeCode,
+        department:    data.department,
+        designation:   data.designation,
+        propertyId:    data.propertyId,
+        availabilityStatus: data.availabilityStatus,
+        employmentStatus:   data.employmentStatus,
+        joiningDate:   data.joiningDate,
+        skills:        data.skills,
+        certifications: data.certifications,
+        emergencyContactName:  data.emergencyContactName,
+        emergencyContactPhone: data.emergencyContactPhone,
     };
 
     const roleChangeRequested = mapped.roleId || (mapped.roleIds && mapped.roleIds.length);

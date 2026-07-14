@@ -14,6 +14,7 @@ const decorationRepo = require('../repositories/decoration.repository');
 const bookingContactRepo = require('../repositories/bookingContact.repository');
 const bookingStaffRepo = require('../repositories/bookingStaff.repository');
 const bookingCateringRepo = require('../repositories/bookingCatering.repository');
+const bookingServicesRepo = require('../repositories/bookingServices.repository');
 const bookingPackageRepo = require('../repositories/bookingPackage.repository');
 const notificationRepo = require('../repositories/notification.repository');
 const operationalChargeService = require('./operationalCharge.service');
@@ -681,6 +682,45 @@ const getDecorationAllocations = async (bookingId, companyId) => {
     return decorationRepo.getAllocationsForBooking(bookingId, companyId);
 };
 
+const getServiceAllocations = async (bookingId, companyId) => {
+    const booking = await bookingRepo.findById(bookingId, companyId);
+    if (!booking) throw new NotFoundError('Booking');
+    return bookingServicesRepo.getForBooking(bookingId, companyId);
+};
+
+/**
+ * Replace a booking's Step 7 "Additional Services" line items — each item
+ * carries catalogPrice (frozen, for comparison/audit history) alongside the
+ * separately editable negotiatedPrice/discountAmount; final_price
+ * (negotiatedPrice - discountAmount) is what actually contributes to
+ * total_amount, computed by bookingServicesRepo.reallocateForBooking. Same
+ * "delete then re-insert inside one transaction" + recalculate pattern as
+ * updateResourceAllocations/updateDecorationAllocations.
+ */
+const updateServiceAllocations = async (bookingId, companyId, services, actor) => {
+    const booking = await bookingRepo.findById(bookingId, companyId);
+    if (!booking) throw new NotFoundError('Booking');
+    if (['cancelled', 'completed', 'archived'].includes(booking.status)) {
+        throw new ValidationError(`Cannot update services for a ${booking.status} booking`);
+    }
+
+    await bookingServicesRepo.reallocateForBooking(bookingId, companyId, services);
+    await recalculateBookingTotal(bookingId, companyId);
+    dashService.invalidateDashboardCache(companyId);
+
+    await auditLogRepo.log({
+        companyId,
+        userId:     actor.userId,
+        action:     'booking.services_updated',
+        entityType: 'booking',
+        entityId:   bookingId,
+        description: `Additional services updated for booking ${booking.booking_ref}`,
+        newValues:  { services },
+    });
+
+    return bookingServicesRepo.getForBooking(bookingId, companyId);
+};
+
 /**
  * Reallocate a booking's decoration items to a new set of quantities — same
  * pattern as updateResourceAllocations (decorations are quantity-bound stock,
@@ -857,6 +897,12 @@ const recalculateBookingTotal = async (bookingId, companyId) => {
         'late_exit_charge', 'extended_usage_charge', 'cooloff_charge']
         .reduce((sum, col) => sum + (parseFloat(booking[col]) || 0), 0);
 
+    // Step 7 "Additional Services" — final_price (negotiated_price minus
+    // discount_amount) is what's billed; catalog_price is preserved on the
+    // row for comparison/audit only and never contributes to the total.
+    const serviceRows = await bookingServicesRepo.getForBooking(bookingId, companyId);
+    const serviceCost = serviceRows.reduce((sum, s) => sum + (parseFloat(s.final_price) || 0), 0);
+
     const newTotal = Number((
         hallPrice
         + prioritySurcharge
@@ -864,6 +910,7 @@ const recalculateBookingTotal = async (bookingId, companyId) => {
         + cateringCost
         + resourceCost
         + decorationCost
+        + serviceCost
     ).toFixed(2));
 
     if (newTotal !== parseFloat(booking.total_amount)) {
@@ -944,6 +991,8 @@ module.exports = {
     updateResourceAllocations,
     getDecorationAllocations,
     updateDecorationAllocations,
+    getServiceAllocations,
+    updateServiceAllocations,
     getContacts,
     addContact,
     removeContact,

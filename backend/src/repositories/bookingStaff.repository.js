@@ -66,4 +66,31 @@ const listForUser = async (userId, companyId) => {
     );
 };
 
-module.exports = { listForBooking, assign, updateStatus, remove, listForUser };
+/**
+ * Nearest current/upcoming assignment for every staff member in one query —
+ * powers the Staff Management grid's "Current Assignment" column without an
+ * N+1 call per staff card. "Current" means today-or-later and not on a
+ * cancelled/draft/completed/archived booking (same released-slot definition
+ * used by booking.repository.js's availability checks); ROW_NUMBER picks the
+ * single soonest one per user.
+ */
+const getCurrentAssignments = async (companyId) => {
+    return executeQuery(
+        `;WITH ranked AS (
+            SELECT bsa.user_id, b.booking_id, b.booking_ref, b.event_name, b.event_date,
+                   b.event_time_start, h.hall_name,
+                   ROW_NUMBER() OVER (PARTITION BY bsa.user_id ORDER BY b.event_date ASC, b.event_time_start ASC) AS rn
+            FROM BookingStaffAssignments bsa
+            JOIN Bookings b ON b.booking_id = bsa.booking_id
+            JOIN Halls h    ON h.hall_id    = b.hall_id
+            WHERE b.company_id = @companyId
+              AND b.event_date >= CAST(GETUTCDATE() AS DATE)
+              AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')
+        )
+        SELECT user_id, booking_id, booking_ref, event_name, event_date, event_time_start, hall_name
+        FROM ranked WHERE rn = 1`,
+        { companyId }
+    );
+};
+
+module.exports = { listForBooking, assign, updateStatus, remove, listForUser, getCurrentAssignments };

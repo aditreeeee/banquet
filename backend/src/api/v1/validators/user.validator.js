@@ -38,6 +38,19 @@ const nameAndRoleFields = {
     // chance to validate + reject it for non-super-admin callers.
     companyId:  Joi.number().integer().positive().allow(null),
     company_id: Joi.number().integer().positive().allow(null),
+    // Staff profile fields (see database/migrations/017_staff_profile.sql) —
+    // Users ARE staff when given an operational role, no separate Staff table.
+    employeeCode:  Joi.string().max(20).allow('', null),
+    department:    Joi.string().max(50).allow('', null),
+    designation:   Joi.string().max(100).allow('', null),
+    propertyId:    Joi.number().integer().positive().allow(null),
+    availabilityStatus: Joi.string().valid('available', 'on_duty', 'on_leave', 'off_duty'),
+    employmentStatus:   Joi.string().valid('active', 'on_leave', 'resigned', 'terminated'),
+    joiningDate:   Joi.date().allow('', null),
+    skills:        Joi.string().max(500).allow('', null),
+    certifications: Joi.string().max(500).allow('', null),
+    emergencyContactName:  Joi.string().max(150).allow('', null),
+    emergencyContactPhone: Joi.string().max(20).allow('', null),
 };
 
 const createSchema = Joi.object({

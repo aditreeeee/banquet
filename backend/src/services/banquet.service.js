@@ -105,4 +105,34 @@ const remove = async (id, actor) => {
     });
 };
 
-module.exports = { getAll, getById, create, update, setActive, remove };
+/**
+ * Property Token — Super Admin only (enforced at the route via requireRole,
+ * not re-checked here; this service trusts its callers same as every other
+ * banquet.service function). companyId is still threaded through so a
+ * company-scoped call (were one ever added) can't cross tenants by accident.
+ */
+const getToken = async (id, companyId) => {
+    const row = await repo.getToken(id, companyId);
+    if (!row) throw new NotFoundError('Banquet');
+    return { propertyToken: row.property_token, isActive: row.is_active };
+};
+
+const regenerateToken = async (id, actor) => {
+    const existing = await repo.findById(id, actor.companyId);
+    if (!existing) throw new NotFoundError('Banquet');
+
+    const newToken = await repo.regenerateToken(id, actor.companyId);
+
+    await auditLogRepo.log({
+        companyId:  existing.company_id,
+        userId:     actor.userId,
+        action:     'banquet.property_token_regenerated',
+        entityType: 'banquet',
+        entityId:   id,
+        description: `Property token regenerated for "${existing.banquet_name}" — every previously issued public URL/QR code for this property is now invalid`,
+    });
+
+    return { propertyToken: newToken };
+};
+
+module.exports = { getAll, getById, create, update, setActive, remove, getToken, regenerateToken };

@@ -5,7 +5,7 @@
 
 const { Router }           = require('express');
 const ctrl                 = require('../controllers/banquet.controller');
-const { requirePermission } = require('../middleware/auth');
+const { requirePermission, requireRole } = require('../middleware/auth');
 const { PERMISSIONS }      = require('../../../constants');
 
 const router = Router();
@@ -21,5 +21,12 @@ router.patch('/:id/deactivate',  requirePermission(PERMISSIONS.BANQUETS_UPDATE),
 // blocked while any hall still exists under the banquet. See
 // banquet.service.js:remove.
 router.delete('/:id',            requirePermission(PERMISSIONS.BANQUETS_DELETE), ctrl.remove);
+
+// Property Token — view/regenerate restricted to Super Admin only (not just
+// banquets:update), since regenerating invalidates every public URL/QR code
+// already printed/distributed for this property; a routine branch-manager
+// edit permission shouldn't carry that blast radius.
+router.get('/:id/token',            requireRole('super_admin'), ctrl.getToken);
+router.post('/:id/token/regenerate', requireRole('super_admin'), ctrl.regenerateToken);
 
 module.exports = router;

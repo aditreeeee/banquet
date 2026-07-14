@@ -90,6 +90,47 @@ router.get('/halls/:id/availability', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/public/properties/:token
+ * Resolves a Banquet by its opaque property_token — the identifier every new
+ * public-facing surface (inquiry forms, QR codes, online booking links)
+ * should embed in its URL instead of the raw banquet_id. Rejects unknown or
+ * inactive tokens the same way (generic 404) so a deactivated property's old
+ * QR codes/links don't leak whether the token itself was ever valid.
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+router.get('/properties/:token', async (req, res) => {
+    // A malformed token isn't just "not found" — passed straight to a
+    // UNIQUEIDENTIFIER comparison it throws a SQL conversion error (500),
+    // leaking that the lookup reached the database at all. Reject the shape
+    // before querying so every invalid input gets the same generic 404.
+    if (!UUID_RE.test(req.params.token)) {
+        return res.status(404).json({ success: false, statusCode: 404, code: 'NOT_FOUND', message: 'Property not found' });
+    }
+    const banquetRepo = require('../../../repositories/banquet.repository');
+    const banquet = await banquetRepo.findByToken(req.params.token);
+    if (!banquet || !banquet.is_active) {
+        return res.status(404).json({ success: false, statusCode: 404, code: 'NOT_FOUND', message: 'Property not found' });
+    }
+    // Only what a public inquiry/booking form needs — never company_id,
+    // banquet_id, financial fields, or anything else BASE_SELECT joins in.
+    return response.success(res, {
+        propertyToken: banquet.property_token,
+        name:          banquet.banquet_name,
+        description:   banquet.description,
+        address:       banquet.address,
+        city:          banquet.city,
+        state:         banquet.state,
+        phone:         banquet.phone,
+        email:         banquet.email,
+        imageUrl:      banquet.image_url,
+        totalCapacity: banquet.total_capacity,
+        avgRating:     banquet.avg_rating,
+        totalReviews:  banquet.total_reviews,
+    });
+});
+
+/**
  * PATCH /api/v1/public/quotations/accept/:token
  * Customer-facing acceptance link — no auth, mirrors the password-reset
  * token pattern. The token itself (random 24-byte hex, single-use per

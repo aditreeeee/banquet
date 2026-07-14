@@ -2031,6 +2031,18 @@ const seedExtendedDemoData = async (pool) => {
     `);
     ok('Promotion & Coupon Management (scoping, usage history, booking linkage) ensured.');
 
+    // ── 3u. Property Token — opaque public identifier on Banquets. See
+    // database/migrations/021_property_token.sql. ────────────────────────────
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Banquets') AND name = 'property_token')
+            ALTER TABLE Banquets ADD property_token UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_Banquets_property_token DEFAULT NEWID();
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('Banquets') AND name = 'UQ_Banquets_property_token')
+            CREATE UNIQUE INDEX UQ_Banquets_property_token ON Banquets(property_token);
+    `);
+    ok('Property Token (public identifier on Banquets) ensured.');
+
     // ── 4. Seed reference / lookup data ─────────────────────────────────────
     log('Seeding reference data …');
 

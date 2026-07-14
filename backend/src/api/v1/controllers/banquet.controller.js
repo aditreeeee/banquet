@@ -15,4 +15,7 @@ const activate   = async (req, res) => { await svc.setActive(parseInt(req.params
 const deactivate = async (req, res) => { await svc.setActive(parseInt(req.params.id, 10), false, actor(req)); return response.success(res, null, 'Banquet deactivated'); };
 const remove     = async (req, res) => { await svc.remove(parseInt(req.params.id, 10), actor(req)); return response.success(res, null, 'Banquet deleted'); };
 
-module.exports = { getAll, getById, create, update, activate, deactivate, remove };
+const getToken       = async (req, res) => response.success(res, await svc.getToken(parseInt(req.params.id, 10), req.companyId));
+const regenerateToken = async (req, res) => response.success(res, await svc.regenerateToken(parseInt(req.params.id, 10), actor(req)), 'Property token regenerated');
+
+module.exports = { getAll, getById, create, update, activate, deactivate, remove, getToken, regenerateToken };

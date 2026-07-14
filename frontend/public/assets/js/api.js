@@ -240,6 +240,8 @@ const API = (() => {
             activate:   (id)=> request('PATCH',  `/banquets/${id}/activate`),
             deactivate: (id)=> request('PATCH',  `/banquets/${id}/deactivate`),
             delete: (id)=> request('DELETE', `/banquets/${id}`),
+            getToken: (id)=> request('GET',  `/banquets/${id}/token`),
+            regenerateToken: (id)=> request('POST', `/banquets/${id}/token/regenerate`),
         },
 
         /* ─ Branches ─ */

@@ -9,7 +9,7 @@ const BASE_SELECT = `
     SELECT b.banquet_id, b.banquet_name, b.description, b.address_line1 AS address, b.city, b.state,
            b.pincode, b.gst_number, b.phone, b.email, b.cover_image_url AS image_url,
            b.total_capacity, b.average_rating AS avg_rating, b.total_reviews,
-           b.is_active, b.created_at,
+           b.is_active, b.created_at, b.property_token,
            b.company_id, b.branch_id,
            br.branch_name,
            co.company_name,
@@ -167,4 +167,41 @@ const softDelete = async (banquetId, companyId) => {
     );
 };
 
-module.exports = { findById, findAll, create, update, toggleActive, countActiveHalls, softDelete };
+/**
+ * Resolve a Banquet by its public property_token — the only identifier
+ * future public-facing URLs/QR codes/integrations should use, never the raw
+ * banquet_id. Also rejects inactive/soft-deleted properties so a deactivated
+ * venue's old QR codes/links stop resolving instead of silently 404ing deep
+ * inside a caller.
+ */
+const findByToken = async (token) => {
+    const rows = await executeQuery(
+        `${BASE_SELECT} WHERE b.property_token = @token AND b.deleted_at IS NULL`,
+        { token }
+    );
+    return rows[0] || null;
+};
+
+const getToken = async (banquetId, companyId) => {
+    const rows = await executeQuery(
+        `SELECT property_token, is_active FROM Banquets
+         WHERE banquet_id = @id AND (@companyId IS NULL OR company_id = @companyId) AND deleted_at IS NULL`,
+        { id: banquetId, companyId: companyId || null }
+    );
+    return rows[0] || null;
+};
+
+const regenerateToken = async (banquetId, companyId) => {
+    const rows = await executeQuery(
+        `UPDATE Banquets SET property_token = NEWID(), updated_at = GETUTCDATE()
+         OUTPUT INSERTED.property_token
+         WHERE banquet_id = @id AND (@companyId IS NULL OR company_id = @companyId) AND deleted_at IS NULL`,
+        { id: banquetId, companyId: companyId || null }
+    );
+    return rows[0]?.property_token || null;
+};
+
+module.exports = {
+    findById, findAll, create, update, toggleActive, countActiveHalls, softDelete,
+    findByToken, getToken, regenerateToken,
+};

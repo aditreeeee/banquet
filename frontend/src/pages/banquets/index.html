@@ -528,10 +528,62 @@ function openDrawer(id) {
         <button class="btn-ghost" style="flex:1" onclick="openModal(${b.banquet_id});closeDrawer()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> Edit</button>
     </div>
     <div style="margin-top:12px;font-size:12px;color:var(--text-muted)"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> ${b.phone||'—'} &nbsp; <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="8"></circle></svg> ${b.email||'—'}</div>
+    ${Auth.isSuperAdmin() ? `
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-color)">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px">Property Token <span style="font-weight:400;text-transform:none;letter-spacing:0">(Super Admin only)</span></div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">Opaque public identifier for this property — use it in inquiry forms, QR codes and online booking links instead of the internal ID. Regenerating invalidates every link/QR code already issued.</div>
+        <div id="propertyTokenBox" style="display:flex;align-items:center;gap:8px">
+            <span class="spinner-border spinner-border-sm"></span>
+        </div>
+    </div>` : ''}
     `;
     document.getElementById('drawerBackdrop').style.display = '';
     document.getElementById('detailDrawer').style.display   = '';
     loadDrawerReviews(id);
+    if (Auth.isSuperAdmin()) loadPropertyToken(id);
+}
+
+/* ── Property Token (Super Admin) ── */
+async function loadPropertyToken(banquetId) {
+    const box = document.getElementById('propertyTokenBox');
+    if (!box) return;
+    try {
+        const res = await API.banquets.getToken(banquetId);
+        renderPropertyToken(banquetId, res.data?.propertyToken);
+    } catch (err) {
+        box.innerHTML = `<span style="font-size:12px;color:var(--color-danger)">${err.message || 'Unable to load property token'}</span>`;
+    }
+}
+
+function renderPropertyToken(banquetId, token) {
+    const box = document.getElementById('propertyTokenBox');
+    if (!box) return;
+    box.innerHTML = `
+        <code style="flex:1;font-size:11px;padding:6px 10px;background:var(--bg-surface-2);border-radius:6px;overflow-x:auto;white-space:nowrap">${token}</code>
+        <button class="btn-ghost" style="font-size:11.5px;padding:5px 10px;flex-shrink:0" onclick="copyPropertyToken('${token}')">Copy</button>
+        <button class="btn-ghost" style="font-size:11.5px;padding:5px 10px;flex-shrink:0;color:var(--color-danger)" onclick="regeneratePropertyToken(${banquetId})">Regenerate</button>
+    `;
+}
+
+function copyPropertyToken(token) {
+    navigator.clipboard.writeText(token)
+        .then(() => Utils.toast('Property token copied', 'success'))
+        .catch(() => Utils.toast('Could not copy — select and copy manually', 'error'));
+}
+
+async function regeneratePropertyToken(banquetId) {
+    const ok = await Utils.confirm(
+        'Regenerate this property\'s public token? Every previously issued inquiry link, QR code and public booking URL for this property will stop working immediately. This cannot be undone.',
+        { title: 'Regenerate Property Token', danger: true }
+    );
+    if (!ok) return;
+    try {
+        const res = await API.banquets.regenerateToken(banquetId);
+        renderPropertyToken(banquetId, res.data?.propertyToken);
+        Utils.toast('Property token regenerated — old links are now invalid', 'success');
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to regenerate property token', 'error');
+    }
 }
 
 async function loadDrawerReviews(banquetId) {

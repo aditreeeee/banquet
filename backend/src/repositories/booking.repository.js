@@ -52,7 +52,7 @@ const checkAvailabilityInTx = async (tx, opts) => {
         `SELECT COUNT(*) AS conflict_count
          FROM Bookings b WITH (UPDLOCK, ROWLOCK, HOLDLOCK)
          WHERE b.hall_id = @hallId
-           AND b.status NOT IN ('cancelled', 'draft')
+           AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')
            AND (@excludeId IS NULL OR b.booking_id <> @excludeId)
            AND (${OVERLAP_CONDITION})`,
         { hallId, excludeId: excludeBookingId || null, ...overlapParams(opts) }
@@ -69,7 +69,7 @@ const checkAvailability = async (opts) => {
         `SELECT COUNT(*) AS conflict_count
          FROM Bookings b
          WHERE b.hall_id = @hallId
-           AND b.status NOT IN ('cancelled', 'draft')
+           AND b.status NOT IN ('cancelled', 'draft', 'completed', 'archived')
            AND (@excludeId IS NULL OR b.booking_id <> @excludeId)
            AND (${OVERLAP_CONDITION})`,
         { hallId, excludeId: excludeBookingId || null, ...overlapParams(opts) }
@@ -87,7 +87,7 @@ const getBookedDates = async ({ hallId, fromDate, toDate, companyId }) => {
          WHERE hall_id    = @hallId
            AND company_id = @companyId
            AND event_date BETWEEN @fromDate AND @toDate
-           AND status NOT IN ('cancelled', 'draft')
+           AND status NOT IN ('cancelled', 'draft', 'completed', 'archived')
          ORDER BY booked_date`,
         {
             hallId,

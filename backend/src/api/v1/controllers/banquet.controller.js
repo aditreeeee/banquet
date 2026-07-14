@@ -17,5 +17,11 @@ const remove     = async (req, res) => { await svc.remove(parseInt(req.params.id
 
 const getToken       = async (req, res) => response.success(res, await svc.getToken(parseInt(req.params.id, 10), req.companyId));
 const regenerateToken = async (req, res) => response.success(res, await svc.regenerateToken(parseInt(req.params.id, 10), actor(req)), 'Property token regenerated');
+const getTokenQrCode = async (req, res) => {
+    const { buffer } = await svc.getTokenQrCode(parseInt(req.params.id, 10), req.companyId);
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'no-store'); // always reflect the current token, never a stale regenerated one
+    return res.send(buffer);
+};
 
-module.exports = { getAll, getById, create, update, activate, deactivate, remove, getToken, regenerateToken };
+module.exports = { getAll, getById, create, update, activate, deactivate, remove, getToken, getTokenQrCode, regenerateToken };

@@ -27,6 +27,7 @@ router.delete('/:id',            requirePermission(PERMISSIONS.BANQUETS_DELETE),
 // already printed/distributed for this property; a routine branch-manager
 // edit permission shouldn't carry that blast radius.
 router.get('/:id/token',            requireRole('super_admin'), ctrl.getToken);
+router.get('/:id/token/qrcode',     requireRole('super_admin'), ctrl.getTokenQrCode);
 router.post('/:id/token/regenerate', requireRole('super_admin'), ctrl.regenerateToken);
 
 module.exports = router;

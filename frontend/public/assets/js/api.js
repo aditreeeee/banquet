@@ -241,6 +241,15 @@ const API = (() => {
             deactivate: (id)=> request('PATCH',  `/banquets/${id}/deactivate`),
             delete: (id)=> request('DELETE', `/banquets/${id}`),
             getToken: (id)=> request('GET',  `/banquets/${id}/token`),
+            // Returns an object-URL for an <img src> — a plain <img src="/api/...">
+            // can't carry the Authorization header this endpoint requires, so the
+            // PNG has to be fetched as a blob and wrapped in URL.createObjectURL.
+            // Caller is responsible for URL.revokeObjectURL(...) once done with it.
+            getTokenQrCode: async (id) => {
+                const res = await fetch(`${BASE_URL}/banquets/${id}/token/qrcode`, { headers: headers() });
+                if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Failed to load QR code');
+                return URL.createObjectURL(await res.blob());
+            },
             regenerateToken: (id)=> request('POST', `/banquets/${id}/token/regenerate`),
         },
 

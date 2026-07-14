@@ -3,11 +3,24 @@
  */
 'use strict';
 
+const QRCode = require('qrcode');
 const repo = require('../repositories/banquet.repository');
 const auditLogRepo = require('../repositories/auditLog.repository');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
 const { resolveBranchScope, resolveCompanyScope } = require('../utils/branchScope');
+
+/**
+ * The single place a property_token gets turned into a URL — every QR code
+ * and future public-facing integration should point here, never at a raw
+ * banquet_id. Points at the public token-resolution API (see
+ * public.routes.js) rather than a marketing page, since no public
+ * storefront page exists yet; a future one can reuse this same URL shape.
+ */
+const buildPropertyUrl = (token) => {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    return `${baseUrl}/api/v1/public/properties/${token}`;
+};
 
 const getAll = async (query, actor) => {
     const p = parsePagination(query, ['banquet_name', 'city', 'created_at']);
@@ -114,7 +127,21 @@ const remove = async (id, actor) => {
 const getToken = async (id, companyId) => {
     const row = await repo.getToken(id, companyId);
     if (!row) throw new NotFoundError('Banquet');
-    return { propertyToken: row.property_token, isActive: row.is_active };
+    return { propertyToken: row.property_token, isActive: row.is_active, propertyUrl: buildPropertyUrl(row.property_token) };
+};
+
+/**
+ * Renders the property's QR code as a PNG buffer. Generated on demand from
+ * the current token rather than stored — a stored image would go stale the
+ * instant the token is regenerated, and PNG encoding a short URL is cheap
+ * enough to not need caching.
+ */
+const getTokenQrCode = async (id, companyId) => {
+    const row = await repo.getToken(id, companyId);
+    if (!row) throw new NotFoundError('Banquet');
+    const url = buildPropertyUrl(row.property_token);
+    const buffer = await QRCode.toBuffer(url, { type: 'png', width: 400, margin: 2 });
+    return { buffer, url };
 };
 
 const regenerateToken = async (id, actor) => {
@@ -135,4 +162,4 @@ const regenerateToken = async (id, actor) => {
     return { propertyToken: newToken };
 };
 
-module.exports = { getAll, getById, create, update, setActive, remove, getToken, regenerateToken };
+module.exports = { getAll, getById, create, update, setActive, remove, getToken, getTokenQrCode, regenerateToken };

@@ -561,8 +561,42 @@ function renderPropertyToken(banquetId, token) {
     box.innerHTML = `
         <code style="flex:1;font-size:11px;padding:6px 10px;background:var(--bg-surface-2);border-radius:6px;overflow-x:auto;white-space:nowrap">${token}</code>
         <button class="btn-ghost" style="font-size:11.5px;padding:5px 10px;flex-shrink:0" onclick="copyPropertyToken('${token}')">Copy</button>
+        <button class="btn-ghost" style="font-size:11.5px;padding:5px 10px;flex-shrink:0" onclick="toggleQrCode(${banquetId})" id="qrToggleBtn">Show QR</button>
         <button class="btn-ghost" style="font-size:11.5px;padding:5px 10px;flex-shrink:0;color:var(--color-danger)" onclick="regeneratePropertyToken(${banquetId})">Regenerate</button>
     `;
+    // Any previously loaded QR image is for the token that was just replaced — drop it
+    // so the next "Show QR" click fetches a fresh one instead of showing a stale code.
+    const qrBox = document.getElementById('propertyQrBox');
+    if (qrBox) { qrBox.style.display = 'none'; qrBox.innerHTML = ''; }
+}
+
+let currentQrObjectUrl = null;
+async function toggleQrCode(banquetId) {
+    let qrBox = document.getElementById('propertyQrBox');
+    if (!qrBox) {
+        qrBox = document.createElement('div');
+        qrBox.id = 'propertyQrBox';
+        qrBox.style.cssText = 'display:none;margin-top:12px;text-align:center';
+        document.getElementById('propertyTokenBox').insertAdjacentElement('afterend', qrBox);
+    }
+    if (qrBox.style.display === 'none') {
+        qrBox.style.display = '';
+        qrBox.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        try {
+            if (currentQrObjectUrl) URL.revokeObjectURL(currentQrObjectUrl);
+            currentQrObjectUrl = await API.banquets.getTokenQrCode(banquetId);
+            qrBox.innerHTML = `
+                <img src="${currentQrObjectUrl}" alt="Property QR code" style="width:180px;height:180px;border-radius:8px;border:1px solid var(--border-color)">
+                <div style="margin-top:8px"><a href="${currentQrObjectUrl}" download="property-${banquetId}-qr.png" class="btn-ghost" style="font-size:11.5px;padding:5px 10px;text-decoration:none">Download PNG</a></div>
+            `;
+            document.getElementById('qrToggleBtn').textContent = 'Hide QR';
+        } catch (err) {
+            qrBox.innerHTML = `<span style="font-size:12px;color:var(--color-danger)">${err.message || 'Unable to load QR code'}</span>`;
+        }
+    } else {
+        qrBox.style.display = 'none';
+        document.getElementById('qrToggleBtn').textContent = 'Show QR';
+    }
 }
 
 function copyPropertyToken(token) {

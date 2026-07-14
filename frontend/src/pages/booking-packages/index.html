@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Booking Packages | Banquet System</title>
+<title>Packages & Promotions | Banquet System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="../../../public/assets/css/theme.css" rel="stylesheet">
@@ -14,6 +14,11 @@
 .pkg-icon.corporate { background:#DBEAFE;color:#2563EB }
 .pkg-icon.social    { background:#FCE7F3;color:#DB2777 }
 .pkg-icon.inactive  { background:#F1F5F9;color:#64748B }
+.settings-tabs { display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:20px;overflow-x:auto }
+.stab { background:none;border:none;padding:11px 20px;font-size:13.5px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;transition:.15s }
+.stab.active { color:var(--brand-primary);border-bottom-color:var(--brand-primary);font-weight:700 }
+.coupon-card { background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;gap:16px }
+.coupon-code-chip { font-family:var(--font-mono);font-weight:700;font-size:13px;background:var(--bg-surface-2);padding:3px 10px;border-radius:6px;letter-spacing:.03em }
 </style>
 </head>
 <body>
@@ -23,7 +28,7 @@
 <div class="main-content" id="mainContent">
     <header class="topbar">
         <button class="topbar-toggle" id="sidebarToggle"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></button>
-        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Booking Packages</li></ol></nav>
+        <nav class="breadcrumb-nav"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dashboard/index.html">Home</a></li><li class="breadcrumb-item active">Packages &amp; Promotions</li></ol></nav>
         <div class="topbar-actions">
             <button class="topbar-btn" id="themeToggle"><span id="themeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M20 15.5A8.5 8.5 0 1 1 8.5 4a7 7 0 0 0 11.5 11.5Z"></path></svg></span></button>
             <div class="dropdown"><button class="avatar-btn" data-bs-toggle="dropdown"><div class="avatar" data-user-avatar></div></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item danger" href="#" data-action="logout">Log Out</a></li></ul></div>
@@ -32,24 +37,43 @@
 
     <main class="page-content">
         <div class="page-header">
-            <div><h1 class="page-title">Booking Packages</h1><p class="page-subtitle">Configure hourly/half-day/full-day rental presets for corporate events and fixed-session packages for weddings/social events</p></div>
-            <button class="btn-primary-brand" data-require-perm="bookings:create" onclick="openCreateModal()">+ New Package</button>
+            <div><h1 class="page-title">Packages &amp; Promotions</h1><p class="page-subtitle">Manage booking packages and promotional coupons applied during checkout</p></div>
+            <button class="btn-primary-brand" id="tabAddBtn" data-require-perm="bookings:create" onclick="openCreateModal()">+ New Package</button>
         </div>
 
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-            <select class="form-select" id="categoryFilter" onchange="loadPackages()" style="width:auto">
-                <option value="">All Categories</option>
-                <option value="corporate">Corporate</option>
-                <option value="social">Social</option>
-            </select>
-            <select class="form-select" id="statusFilter" onchange="loadPackages()" style="width:auto">
-                <option value="">All Status</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
-            </select>
+        <div class="settings-tabs">
+            <button class="stab active" data-tab="packages" onclick="switchModuleTab('packages')">Booking Packages</button>
+            <button class="stab" data-tab="promotions" onclick="switchModuleTab('promotions')">Promotions &amp; Coupons</button>
         </div>
 
-        <div id="pkgList"><div class="text-center py-5"><span class="spinner-border" style="color:var(--brand-primary)"></span></div></div>
+        <div id="tab-packages">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+                <select class="form-select" id="categoryFilter" onchange="loadPackages()" style="width:auto">
+                    <option value="">All Categories</option>
+                    <option value="corporate">Corporate</option>
+                    <option value="social">Social</option>
+                </select>
+                <select class="form-select" id="statusFilter" onchange="loadPackages()" style="width:auto">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+
+            <div id="pkgList"><div class="text-center py-5"><span class="spinner-border" style="color:var(--brand-primary)"></span></div></div>
+        </div>
+
+        <div id="tab-promotions" style="display:none">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+                <select class="form-select" id="couponStatusFilter" onchange="loadCoupons()" style="width:auto">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="expired">Expired</option>
+                </select>
+            </div>
+            <div id="couponList"><div class="text-center py-5"><span class="spinner-border" style="color:var(--brand-primary)"></span></div></div>
+        </div>
     </main>
     <footer style="padding:16px 24px;border-top:1px solid var(--border-color);text-align:center;font-size:12px;color:var(--text-muted)">© 2026 BanquetPro</footer>
 </div>
@@ -92,6 +116,92 @@
             <div class="modal-footer">
                 <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn-primary-brand" id="confirmPkgBtn" onclick="submitPackage()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Coupon Modal -->
+<div class="modal fade" id="couponModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="couponModalTitle">New Coupon</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="cId">
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">Coupon Code *</label><input type="text" class="form-control" id="cCode" placeholder="e.g. WEDDING2026" style="text-transform:uppercase"></div>
+                    <div class="col-md-6"><label class="form-label">Coupon Name *</label><input type="text" class="form-control" id="cName" placeholder="e.g. Wedding Season Special"></div>
+                    <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" id="cDescription" rows="2"></textarea></div>
+                    <div class="col-md-4"><label class="form-label">Discount Type *</label>
+                        <select class="form-select" id="cDiscountType">
+                            <option value="percentage">Percentage</option>
+                            <option value="flat">Fixed Amount</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label">Discount Value *</label><input type="number" class="form-control" id="cDiscountValue" min="0" step="0.01"></div>
+                    <div class="col-md-4"><label class="form-label">Max Discount Amount</label><input type="number" class="form-control" id="cMaxDiscount" min="0" step="0.01" placeholder="No cap"></div>
+                    <div class="col-md-6"><label class="form-label">Minimum Booking Value</label><input type="number" class="form-control" id="cMinBooking" min="0" step="0.01" value="0"></div>
+                    <div class="col-md-3"><label class="form-label">Usage Limit (total)</label><input type="number" class="form-control" id="cUsageLimit" min="1" placeholder="Unlimited"></div>
+                    <div class="col-md-3"><label class="form-label">Per-Customer Limit</label><input type="number" class="form-control" id="cUsagePerUser" min="1" value="1"></div>
+                    <div class="col-md-6"><label class="form-label">Valid From *</label><input type="date" class="form-control" id="cValidFrom"></div>
+                    <div class="col-md-6"><label class="form-label">Valid To *</label><input type="date" class="form-control" id="cValidTo"></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Applicable Event Types <span style="font-weight:400;color:var(--text-muted)">(leave empty for all)</span></label>
+                        <select class="form-select" id="cEventTypes" multiple size="4"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Applicable Packages <span style="font-weight:400;color:var(--text-muted)">(leave empty for all)</span></label>
+                        <select class="form-select" id="cPackages" multiple size="4"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Applicable Branches <span style="font-weight:400;color:var(--text-muted)">(leave empty for all)</span></label>
+                        <select class="form-select" id="cBranches" multiple size="4"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Applicable Properties <span style="font-weight:400;color:var(--text-muted)">(leave empty for all)</span></label>
+                        <select class="form-select" id="cProperties" multiple size="4"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmCouponBtn" onclick="submitCoupon()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clone Coupon Modal -->
+<div class="modal fade" id="cloneCouponModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Clone Coupon</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="cloneSourceId">
+                <label class="form-label">New Coupon Code *</label>
+                <input type="text" class="form-control" id="cloneNewCode" style="text-transform:uppercase" placeholder="e.g. WEDDING2026-V2">
+                <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Everything else is copied from the source coupon — the clone starts inactive so you can review it first.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-primary-brand" id="confirmCloneBtn" onclick="submitClone()">Clone</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Coupon Usage History Modal -->
+<div class="modal fade" id="couponUsageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="couponUsageTitle">Usage History</h5><button class="btn-close" data-bs-dismiss="modal">×</button></div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead><tr><th>Booking</th><th>Customer</th><th>Discount</th><th>Used At</th></tr></thead>
+                        <tbody id="couponUsageBody"><tr><td colspan="4" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -266,6 +376,259 @@ async function deletePackage(id) {
         loadPackages();
     } catch (err) {
         Utils.toast(err.message || 'Failed to delete package', 'error');
+    }
+}
+
+/* ── Packages / Promotions tab switching ── */
+let couponsLoaded = false;
+function switchModuleTab(tab) {
+    document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.getElementById('tab-packages').style.display   = tab === 'packages'   ? '' : 'none';
+    document.getElementById('tab-promotions').style.display = tab === 'promotions' ? '' : 'none';
+    const addBtn = document.getElementById('tabAddBtn');
+    addBtn.textContent = tab === 'packages' ? '+ New Package' : '+ New Coupon';
+    addBtn.setAttribute('onclick', tab === 'packages' ? 'openCreateModal()' : 'openCreateCouponModal()');
+    if (tab === 'promotions' && !couponsLoaded) { couponsLoaded = true; loadCouponFormOptions(); loadCoupons(); }
+}
+
+/* ── Promotions & Coupons ── */
+const EVENT_TYPE_OPTIONS = ['Wedding','Reception','Birthday','Corporate Event','Conference / Seminar','Anniversary','Baby Shower','Engagement','Festival Celebration','Farewell / Get-Together','Cultural Show','Award Ceremony','Product Launch','Graduation Party','Other'];
+let allCoupons = [];
+
+async function loadCouponFormOptions() {
+    document.getElementById('cEventTypes').innerHTML = EVENT_TYPE_OPTIONS.map(t => `<option value="${t}">${t}</option>`).join('');
+    document.getElementById('cPackages').innerHTML = allPackages.map(p => `<option value="${p.package_id}">${Utils.escapeHtml(p.package_name)}</option>`).join('');
+    try {
+        const res = await API.branches.list();
+        document.getElementById('cBranches').innerHTML = (res.data || []).map(b => `<option value="${b.branch_id}">${Utils.escapeHtml(b.branch_name)}</option>`).join('');
+    } catch (_) { /* branch scoping stays optional if this fails */ }
+    try {
+        const res = await API.banquets.list({ limit: 100 });
+        const properties = res.data?.banquets || res.data || [];
+        document.getElementById('cProperties').innerHTML = properties.map(p => `<option value="${p.banquet_id}">${Utils.escapeHtml(p.banquet_name)}</option>`).join('');
+    } catch (_) { /* property scoping stays optional if this fails */ }
+}
+
+function couponStatusOf(c) {
+    if (!c.is_active) return { label: 'Inactive', cls: 'badge-cancelled' };
+    if (new Date(c.valid_to) < new Date()) return { label: 'Expired', cls: 'badge-cancelled' };
+    if (new Date(c.valid_from) > new Date()) return { label: 'Scheduled', cls: 'badge-pending' };
+    return { label: 'Active', cls: 'badge-confirmed' };
+}
+
+async function loadCoupons() {
+    const wrap = document.getElementById('couponList');
+    wrap.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></div>';
+    try {
+        const res = await API.coupons.list();
+        allCoupons = res.data || [];
+        renderCoupons();
+    } catch (err) {
+        Utils.toast(err.message || 'Unable to load coupons', 'error');
+        wrap.innerHTML = `<div class="empty-state" style="padding:48px">Unable to load coupons.</div>`;
+    }
+}
+
+function renderCoupons() {
+    const wrap = document.getElementById('couponList');
+    const filter = document.getElementById('couponStatusFilter').value;
+    const rows = allCoupons.filter(c => !filter || couponStatusOf(c).label.toLowerCase() === filter);
+    if (!rows.length) { wrap.innerHTML = '<div class="empty-state" style="padding:48px">No coupons found</div>'; return; }
+    wrap.innerHTML = rows.map(c => {
+        const status = couponStatusOf(c);
+        const discountLabel = c.discount_type === 'percentage' ? `${c.discount_value}% off` : `${Utils.formatCurrency(c.discount_value)} off`;
+        const usageLabel = c.usage_limit ? `${c.used_count}/${c.usage_limit} used` : `${c.used_count} used`;
+        return `
+        <div class="coupon-card" style="margin-bottom:10px">
+            <div class="pkg-icon corporate">🏷️</div>
+            <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span class="coupon-code-chip">${Utils.escapeHtml(c.coupon_code)}</span>
+                    <span style="font-weight:700;font-size:14px">${Utils.escapeHtml(c.coupon_name)}</span>
+                    <span class="badge-status ${status.cls}">${status.label}</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+                    ${discountLabel} · Min booking ${Utils.formatCurrency(c.min_booking_amount)} · ${usageLabel} · Valid ${Utils.formatDate(c.valid_from)} – ${Utils.formatDate(c.valid_to)}
+                </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+                <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick="viewCouponUsage(${c.coupon_id})">Usage</button>
+                <button class="btn-ghost" data-require-perm="coupons:update" style="font-size:12px;padding:5px 10px" onclick='openEditCouponModal(${JSON.stringify(c).replace(/'/g,"&apos;")})'>Edit</button>
+                <button class="btn-ghost" data-require-perm="coupons:create" style="font-size:12px;padding:5px 10px" onclick="openCloneCouponModal(${c.coupon_id})">Clone</button>
+                <button class="btn-ghost" data-require-perm="coupons:update" style="font-size:12px;padding:5px 10px;color:${c.is_active ? 'var(--color-danger)' : 'var(--color-success)'}" onclick="toggleCouponStatus(${c.coupon_id}, ${c.is_active})">${c.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button class="btn-ghost" data-require-perm="coupons:update" style="font-size:12px;padding:5px 10px;color:var(--color-danger)" onclick="deleteCoupon(${c.coupon_id})">Delete</button>
+            </div>
+        </div>`;
+    }).join('');
+    Auth.populateUserUI();
+}
+
+function setMultiSelect(id, values) {
+    const set = new Set((values || []).map(String));
+    [...document.getElementById(id).options].forEach(o => { o.selected = set.has(o.value); });
+}
+function getMultiSelectValues(id, numeric) {
+    const values = [...document.getElementById(id).selectedOptions].map(o => numeric ? parseInt(o.value, 10) : o.value);
+    return values.length ? values : undefined;
+}
+
+let couponModalInst, editingCouponId = null;
+function openCreateCouponModal() {
+    editingCouponId = null;
+    document.getElementById('couponModalTitle').textContent = 'New Coupon';
+    document.getElementById('cId').value = '';
+    document.getElementById('cCode').value = '';
+    document.getElementById('cName').value = '';
+    document.getElementById('cDescription').value = '';
+    document.getElementById('cDiscountType').value = 'percentage';
+    document.getElementById('cDiscountValue').value = '';
+    document.getElementById('cMaxDiscount').value = '';
+    document.getElementById('cMinBooking').value = 0;
+    document.getElementById('cUsageLimit').value = '';
+    document.getElementById('cUsagePerUser').value = 1;
+    document.getElementById('cValidFrom').value = todayISO();
+    document.getElementById('cValidTo').value = '';
+    setMultiSelect('cEventTypes', []);
+    setMultiSelect('cPackages', []);
+    setMultiSelect('cBranches', []);
+    setMultiSelect('cProperties', []);
+    couponModalInst = couponModalInst || new bootstrap.Modal(document.getElementById('couponModal'));
+    couponModalInst.show();
+}
+
+function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+function openEditCouponModal(c) {
+    editingCouponId = c.coupon_id;
+    document.getElementById('couponModalTitle').textContent = 'Edit Coupon';
+    document.getElementById('cId').value = c.coupon_id;
+    document.getElementById('cCode').value = c.coupon_code;
+    document.getElementById('cName').value = c.coupon_name;
+    document.getElementById('cDescription').value = c.description || '';
+    document.getElementById('cDiscountType').value = c.discount_type;
+    document.getElementById('cDiscountValue').value = c.discount_value;
+    document.getElementById('cMaxDiscount').value = c.max_discount_amount ?? '';
+    document.getElementById('cMinBooking').value = c.min_booking_amount;
+    document.getElementById('cUsageLimit').value = c.usage_limit ?? '';
+    document.getElementById('cUsagePerUser').value = c.usage_per_user;
+    document.getElementById('cValidFrom').value = String(c.valid_from).slice(0, 10);
+    document.getElementById('cValidTo').value = String(c.valid_to).slice(0, 10);
+    setMultiSelect('cEventTypes', c.applicable_events);
+    setMultiSelect('cPackages', c.applicable_packages);
+    setMultiSelect('cBranches', c.applicable_branches);
+    setMultiSelect('cProperties', c.applicable_properties);
+    couponModalInst = couponModalInst || new bootstrap.Modal(document.getElementById('couponModal'));
+    couponModalInst.show();
+}
+
+async function submitCoupon() {
+    const btn = document.getElementById('confirmCouponBtn');
+    const payload = {
+        couponCode: document.getElementById('cCode').value.trim().toUpperCase(),
+        couponName: document.getElementById('cName').value.trim(),
+        description: document.getElementById('cDescription').value.trim() || undefined,
+        discountType: document.getElementById('cDiscountType').value,
+        discountValue: parseFloat(document.getElementById('cDiscountValue').value) || 0,
+        maxDiscountAmount: document.getElementById('cMaxDiscount').value ? parseFloat(document.getElementById('cMaxDiscount').value) : null,
+        minBookingAmount: parseFloat(document.getElementById('cMinBooking').value) || 0,
+        usageLimit: document.getElementById('cUsageLimit').value ? parseInt(document.getElementById('cUsageLimit').value, 10) : null,
+        usagePerUser: parseInt(document.getElementById('cUsagePerUser').value, 10) || 1,
+        validFrom: document.getElementById('cValidFrom').value,
+        validTo: document.getElementById('cValidTo').value,
+        applicableEvents: getMultiSelectValues('cEventTypes', false) || null,
+        applicablePackages: getMultiSelectValues('cPackages', true) || null,
+        applicableBranches: getMultiSelectValues('cBranches', true) || null,
+        applicableProperties: getMultiSelectValues('cProperties', true) || null,
+    };
+    if (!payload.couponCode || !payload.couponName) { Utils.toast('Coupon code and name are required', 'error'); return; }
+    if (!(payload.discountValue > 0)) { Utils.toast('Discount value must be greater than 0', 'error'); return; }
+    if (!payload.validFrom || !payload.validTo) { Utils.toast('Valid From and Valid To are required', 'error'); return; }
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        if (editingCouponId) await API.coupons.update(editingCouponId, payload);
+        else await API.coupons.create(payload);
+        Utils.hideLoader(btn);
+        couponModalInst?.hide();
+        Utils.toast(editingCouponId ? 'Coupon updated' : 'Coupon created', 'success');
+        loadCoupons();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to save coupon', 'error');
+    }
+}
+
+async function toggleCouponStatus(id, isActive) {
+    const action = isActive ? 'deactivate' : 'activate';
+    const ok = await Utils.confirm(isActive ? 'Deactivate this coupon? It will no longer be applicable to new bookings.' : 'Activate this coupon?', { danger: isActive });
+    if (!ok) return;
+    try {
+        await API.coupons[action](id);
+        Utils.toast(`Coupon ${action}d`, isActive ? 'warning' : 'success');
+        loadCoupons();
+    } catch (err) {
+        Utils.toast(err.message || `Failed to ${action} coupon`, 'error');
+    }
+}
+
+async function deleteCoupon(id) {
+    const ok = await Utils.confirm('Permanently delete this coupon? Blocked if it has already been redeemed on a booking.', { title: 'Delete Coupon', danger: true });
+    if (!ok) return;
+    try {
+        await API.coupons.delete(id);
+        Utils.toast('Coupon deleted', 'success');
+        loadCoupons();
+    } catch (err) {
+        Utils.toast(err.message || 'Failed to delete coupon', 'error');
+    }
+}
+
+let cloneModalInst;
+function openCloneCouponModal(id) {
+    document.getElementById('cloneSourceId').value = id;
+    document.getElementById('cloneNewCode').value = '';
+    cloneModalInst = cloneModalInst || new bootstrap.Modal(document.getElementById('cloneCouponModal'));
+    cloneModalInst.show();
+}
+
+async function submitClone() {
+    const btn = document.getElementById('confirmCloneBtn');
+    const id = document.getElementById('cloneSourceId').value;
+    const newCode = document.getElementById('cloneNewCode').value.trim().toUpperCase();
+    if (!newCode) { Utils.toast('New coupon code is required', 'error'); return; }
+    Utils.showLoader(btn, 'Cloning…');
+    try {
+        await API.coupons.clone(id, newCode);
+        Utils.hideLoader(btn);
+        cloneModalInst?.hide();
+        Utils.toast('Coupon cloned — review and activate it when ready', 'success');
+        loadCoupons();
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to clone coupon', 'error');
+    }
+}
+
+let couponUsageModalInst;
+async function viewCouponUsage(id) {
+    const coupon = allCoupons.find(c => c.coupon_id === id);
+    document.getElementById('couponUsageTitle').textContent = `Usage History — ${coupon?.coupon_code || ''}`;
+    const body = document.getElementById('couponUsageBody');
+    body.innerHTML = '<tr><td colspan="4" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr>';
+    couponUsageModalInst = couponUsageModalInst || new bootstrap.Modal(document.getElementById('couponUsageModal'));
+    couponUsageModalInst.show();
+    try {
+        const res = await API.coupons.usage(id);
+        const rows = res.data || [];
+        if (!rows.length) { body.innerHTML = '<tr><td colspan="4"><div class="empty-state" style="padding:24px">Not redeemed yet</div></td></tr>'; return; }
+        body.innerHTML = rows.map(r => `
+            <tr>
+                <td><a href="../bookings/detail.html?id=${r.booking_id}" style="color:var(--brand-primary)">${Utils.escapeHtml(r.booking_ref)}</a></td>
+                <td>${Utils.escapeHtml(r.customer_name || '—')}</td>
+                <td>${Utils.formatCurrency(r.discount_amount)}</td>
+                <td>${Utils.formatDateTime ? Utils.formatDateTime(r.used_at) : Utils.formatDate(r.used_at)}</td>
+            </tr>`).join('');
+    } catch (err) {
+        body.innerHTML = `<tr><td colspan="4"><div class="empty-state">${err.message || 'Failed to load usage history'}</div></td></tr>`;
     }
 }
 

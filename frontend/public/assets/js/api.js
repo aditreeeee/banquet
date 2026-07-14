@@ -314,6 +314,11 @@ const API = (() => {
             create:   (d)  => request('POST', '/coupons',          { body: d }),
             update:   (id,d) => request('PUT', `/coupons/${id}`,   { body: d }),
             validate: (d)  => request('POST', '/coupons/validate', { body: d }),
+            delete:   (id) => request('DELETE', `/coupons/${id}`),
+            activate:   (id) => request('PATCH', `/coupons/${id}/activate`),
+            deactivate: (id) => request('PATCH', `/coupons/${id}/deactivate`),
+            clone:      (id, newCouponCode) => request('POST', `/coupons/${id}/clone`, { body: { newCouponCode } }),
+            usage:      (id) => request('GET', `/coupons/${id}/usage`),
         },
 
         /* ─ Payments ─ */

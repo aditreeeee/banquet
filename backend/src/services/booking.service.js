@@ -17,6 +17,7 @@ const bookingCateringRepo = require('../repositories/bookingCatering.repository'
 const bookingServicesRepo = require('../repositories/bookingServices.repository');
 const bookingPackageRepo = require('../repositories/bookingPackage.repository');
 const notifyService = require('./notify.service');
+const couponService = require('./coupon.service');
 const operationalChargeService = require('./operationalCharge.service');
 const paymentService = require('./payment.service');
 const settingsService = require('./settings.service');
@@ -173,6 +174,24 @@ const create = async (data, actor) => {
         data = applyPackageTiming(data, bookingPackage);
     }
 
+    // Coupon eligibility is re-checked here server-side — the wizard's own
+    // live validation (Step 8) is a UX convenience only, never trusted.
+    // Validated (not redeemed) BEFORE the booking is created so an invalid/
+    // expired/overused code fails the whole request cleanly instead of
+    // leaving an orphaned booking with no discount applied.
+    let couponResult = null;
+    if (data.couponCode) {
+        couponResult = await couponService.validate(companyId, data.couponCode, {
+            subtotal:   data.subtotal ?? data.totalAmount,
+            eventType:  data.eventType,
+            hallId:     data.hallId,
+            packageId:  bookingPackage?.package_id,
+            branchId,
+            propertyId: hall.banquet_id,
+            customerId: data.customerId,
+        });
+    }
+
     const prioritySurcharge = calculatePrioritySurcharge(data.totalAmount, data.isPriority);
     // Owner can override the auto-calculated deposit by passing advancePaid explicitly.
     const advancePaid = data.advancePaid != null
@@ -211,6 +230,41 @@ const create = async (data, actor) => {
         description: `Booking ${booking.booking_ref} created for ${booking.event_name || 'event'}`,
         newValues: { status: booking.status, event_date: booking.event_date, hall_id: booking.hall_id },
     });
+
+    // Redeem the coupon now that a real booking_id exists (CouponUsage FKs
+    // to Bookings). Re-validates rather than trusting couponResult from
+    // above, since a concurrent request could have exhausted usage_limit in
+    // the gap between that check and this one — apply() re-checks under a
+    // row lock. A failure here is intentionally non-fatal to the booking
+    // itself (the booking was already legitimately created; losing it over
+    // a rare redemption race would be worse for the customer than just
+    // proceeding without the discount reflected) but is surfaced loudly via
+    // logger.error, not swallowed silently.
+    if (couponResult) {
+        try {
+            await couponService.apply(companyId, {
+                couponCode: couponResult.couponCode,
+                bookingId:  booking.booking_id,
+                subtotal:   data.subtotal ?? data.totalAmount,
+                eventType:  data.eventType,
+                hallId:     data.hallId,
+                packageId:  bookingPackage?.package_id,
+                branchId,
+                propertyId: hall.banquet_id,
+                customerId: data.customerId,
+            }, { userId });
+            await bookingRepo.applyCoupon(booking.booking_id, companyId, {
+                couponId: couponResult.couponId,
+                couponCode: couponResult.couponCode,
+                discountAmount: couponResult.discountAmount,
+            });
+            booking.coupon_id = couponResult.couponId;
+            booking.coupon_code = couponResult.couponCode;
+            booking.discount_amount = couponResult.discountAmount;
+        } catch (err) {
+            logger.error('Coupon redemption failed after booking creation', { bookingId: booking.booking_id, couponCode: data.couponCode, error: err.message });
+        }
+    }
 
     // Send confirmation email (non-blocking)
     notif.sendBookingConfirmationEmail({
@@ -599,6 +653,15 @@ const cancel = async (bookingId, reason, actor, options = {}) => {
     const booking = await bookingRepo.cancel(bookingId, actor.companyId, reason, actor.userId, cancellationCharge);
     dashService.invalidateDashboardCache(actor.companyId);
     logger.info('Booking cancelled', { bookingId, companyId: actor.companyId, reason });
+
+    // Cancelling frees up the coupon's usage slot (global usage_limit and
+    // this customer's usage_per_user) — same "no explicit release step
+    // needed beyond what status-flip implies" principle as hall/resource
+    // availability, made explicit here since coupon usage is tracked in a
+    // separate history table, not just derived from booking status.
+    if (existing.coupon_id) {
+        couponService.release(bookingId).catch(err => logger.warn('Coupon usage release failed', { bookingId, error: err.message }));
+    }
 
     let refund = null;
     if (refundAmount > 0 && paymentId) {

@@ -30,6 +30,11 @@ const createSchema = Joi.object({
     usagePerUser: Joi.number().integer().positive(),
     validFrom: Joi.date().iso().required(),
     validTo:   Joi.date().iso().required(),
+    applicableHalls:      Joi.array().items(Joi.number().integer()).allow(null),
+    applicableEvents:     Joi.array().items(Joi.string()).allow(null),
+    applicablePackages:   Joi.array().items(Joi.number().integer()).allow(null),
+    applicableBranches:   Joi.array().items(Joi.number().integer()).allow(null),
+    applicableProperties: Joi.array().items(Joi.number().integer()).allow(null),
 }).unknown(true);
 
 const updateSchema = Joi.object({
@@ -44,6 +49,11 @@ const updateSchema = Joi.object({
     validFrom: Joi.date().iso(),
     validTo:   Joi.date().iso(),
     isActive:  Joi.boolean(),
+    applicableHalls:      Joi.array().items(Joi.number().integer()).allow(null),
+    applicableEvents:     Joi.array().items(Joi.string()).allow(null),
+    applicablePackages:   Joi.array().items(Joi.number().integer()).allow(null),
+    applicableBranches:   Joi.array().items(Joi.number().integer()).allow(null),
+    applicableProperties: Joi.array().items(Joi.number().integer()).allow(null),
 }).unknown(true);
 
 const validateCouponSchema = Joi.object({

@@ -71,6 +71,8 @@ const createSchema = Joi.object({
     asTentative:    Joi.boolean().optional().default(false),
     isPriority:     Joi.boolean().optional().default(false),
     packageId:      Joi.number().integer().positive().optional(),
+    couponCode:     Joi.string().max(50).optional(),
+    subtotal:       Joi.number().precision(2).min(0).optional(),
     ...eventDetailFields,
     resources:      Joi.array().items(
         Joi.object({

@@ -1989,6 +1989,48 @@ const seedExtendedDemoData = async (pool) => {
     `);
     ok('Notifications v2 (RBAC scoping, dedupe, preferences) ensured.');
 
+    // ── 3t. Promotion & Coupon Management — scoping columns, usage history,
+    // and applied-coupon linkage on Bookings. See database/migrations/020_coupon_promotions.sql. ─
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Coupons') AND name = 'applicable_packages')
+            ALTER TABLE Coupons ADD applicable_packages NVARCHAR(MAX) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Coupons') AND name = 'applicable_branches')
+            ALTER TABLE Coupons ADD applicable_branches NVARCHAR(MAX) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Coupons') AND name = 'applicable_properties')
+            ALTER TABLE Coupons ADD applicable_properties NVARCHAR(MAX) NULL;
+    `);
+    await pool.request().batch(`
+        IF OBJECT_ID(N'dbo.CouponUsage', N'U') IS NULL
+        BEGIN
+            CREATE TABLE CouponUsage (
+                usage_id         BIGINT          NOT NULL IDENTITY(1,1),
+                coupon_id        INT             NOT NULL,
+                company_id       INT             NOT NULL,
+                booking_id       BIGINT          NOT NULL,
+                customer_id      INT             NULL,
+                discount_amount  DECIMAL(14,2)   NOT NULL,
+                used_at          DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_coupon_usage PRIMARY KEY (usage_id),
+                CONSTRAINT FK_cu_coupon  FOREIGN KEY (coupon_id)  REFERENCES Coupons(coupon_id),
+                CONSTRAINT FK_cu_booking FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id),
+                CONSTRAINT FK_cu_customer FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
+                CONSTRAINT UQ_cu_booking UNIQUE (booking_id)
+            );
+            CREATE INDEX IX_cu_coupon_customer ON CouponUsage(coupon_id, customer_id);
+        END
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'coupon_id')
+            ALTER TABLE Bookings ADD coupon_id INT NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'coupon_code')
+            ALTER TABLE Bookings ADD coupon_code NVARCHAR(50) NULL;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_bookings_coupon')
+            ALTER TABLE Bookings ADD CONSTRAINT FK_bookings_coupon FOREIGN KEY (coupon_id) REFERENCES Coupons(coupon_id);
+    `);
+    ok('Promotion & Coupon Management (scoping, usage history, booking linkage) ensured.');
+
     // ── 4. Seed reference / lookup data ─────────────────────────────────────
     log('Seeding reference data …');
 

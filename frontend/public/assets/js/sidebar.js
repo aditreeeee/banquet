@@ -50,7 +50,7 @@ const Sidebar = (() => {
         ]},
         { group: 'Catalog & Inventory', items: [
             { label: 'Master Menu',       href: '../catering/menu.html',          icon: ICONS.menu,      perm: 'catering:read' },
-            { label: 'Booking Packages',  href: '../booking-packages/index.html', icon: ICONS.newBooking, perm: 'bookings:read' },
+            { label: 'Packages & Promotions', href: '../booking-packages/index.html', icon: ICONS.newBooking, perm: 'bookings:read' },
             { label: 'Decorations',       href: '../decorations/index.html',      icon: ICONS.decor,     perm: 'decorations:read' },
             { label: 'Inventory',         href: '../inventory/index.html',        icon: ICONS.inventory, perm: 'resources:read' },
         ]},

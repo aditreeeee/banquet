@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Command Center | BanquetPro</title>
+<!-- Shared sidebar CSS (theme.css defines the --bg-sidebar/--text-sidebar/etc.
+     variables app.css's .sidebar rules read) — linked before this page's own
+     <style> block so this page's own rules still win the cascade wherever
+     both define the same selector; only .sidebar/.sidebar-nav/.sidebar-link/
+     .nav-group* (sidebar.js's actual output classes) are new here. -->
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="../../../public/assets/css/kpi-typography.css" rel="stylesheet">
@@ -81,64 +88,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
   transform:translateY(-3px);
   border-color:rgba(197,160,89,.22);
 }
-#sidebar{
-  position:fixed;left:0;top:0;height:100vh;z-index:50;
-  background:linear-gradient(160deg,#1A2B4A 0%,#0D1929 55%,#060D18 100%);
-  box-shadow:4px 0 36px rgba(6,13,24,0.4);
-  display:flex;flex-direction:column;overflow:hidden;
-  transition:width .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);
-  width:260px;isolation:isolate;
-}
-#sidebar::before{
-  content:'';position:absolute;inset:0;
-  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events:none;z-index:0;
-}
-#sidebar>*{position:relative;z-index:1}
-#sidebar.collapsed{width:72px}
-#sidebar.mobile-hidden{transform:translateX(-100%);width:260px}
-.sb-label{transition:opacity .2s ease,max-width .32s ease;overflow:hidden;white-space:nowrap;max-width:200px}
-#sidebar.collapsed .sb-label{opacity:0;max-width:0}
-.sb-section{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
-  color:rgba(197,160,89,.38);padding:14px 24px 4px;white-space:nowrap;overflow:hidden;transition:opacity .2s ease}
-#sidebar.collapsed .sb-section{opacity:0}
-.sb-item{display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
-  margin:1px 8px;cursor:pointer;color:rgba(255,255,255,.52);font-size:13.5px;font-weight:500;
-  transition:background .18s ease,color .18s ease;text-decoration:none;white-space:nowrap;position:relative}
-.sb-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88)}
-.sb-item.active{background:rgba(197,160,89,.14);color:#C5A059}
-.sb-item.active::before{
-  content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
-  width:3px;height:58%;border-radius:0 3px 3px 0;
-  background:linear-gradient(180deg,#D4B478,#C5A059);box-shadow:0 0 9px rgba(197,160,89,.65);
-}
-.sb-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.sb-group-header{display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
-  margin:1px 8px;cursor:pointer;color:rgba(255,255,255,.52);font-size:13.5px;font-weight:500;
-  transition:background .18s ease,color .18s ease;user-select:none}
-.sb-group-header:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88)}
-.sb-group-header.has-active{color:#C5A059}
-.sb-group-chevron{margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  transition:transform .25s ease;opacity:.55}
-.sb-group-header.expanded .sb-group-chevron{transform:rotate(90deg);opacity:1}
-#sidebar.collapsed .sb-group-chevron{opacity:0;width:0;margin:0}
-#sidebar.collapsed .sb-item,
-#sidebar.collapsed .sb-group-header{justify-content:center;gap:0;padding-left:0;padding-right:0}
-.sb-group-children{max-height:0;overflow:hidden;transition:max-height .28s ease}
-.sb-group-children.expanded{max-height:400px}
-.sb-group-children .sb-item{padding-left:38px;font-size:12.5px}
-.sb-group-children .sb-icon{width:16px;height:16px}
-#sidebar.collapsed .sb-group-children{display:none}
-.sb-footer{margin-top:auto;border-top:1px solid rgba(197,160,89,.1);padding:14px 12px}
-.sb-avatar{width:34px;height:34px;border-radius:50%;background:rgba(197,160,89,.18);
-  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
-  color:#C5A059;flex-shrink:0;border:1.5px solid rgba(197,160,89,.32)}
-#overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:45;backdrop-filter:blur(3px);display:none}
-#overlay.show{display:block}
-#main{height:100vh;display:flex;flex-direction:column;overflow:hidden;
-  transition:margin-left .32s cubic-bezier(.4,0,.2,1);margin-left:260px}
-#main.collapsed{margin-left:72px}
-#main.mobile{margin-left:0}
+/* Sidebar/overlay markup, RBAC-filtered nav content, accordion, and
+   active-page highlighting all now come from the single shared component
+   (sidebar.js -> .sidebar/.sidebar-nav/.sidebar-link/.nav-group* classes,
+   styled by app.css) — this page no longer defines its own #sidebar / .sb-
+   / #overlay rules. Only the content-pane's own scroll-clipping behavior
+   stays page-specific. */
+#mainContent{height:100vh;overflow:hidden}
 #topbar{
   flex-shrink:0;height:62px;background:var(--topbar-bg);
   backdrop-filter:blur(24px) saturate(200%);-webkit-backdrop-filter:blur(24px) saturate(200%);
@@ -169,7 +125,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 .scroll-y{overflow-y:auto}
 .scroll-y::-webkit-scrollbar{width:4px}
 .scroll-y::-webkit-scrollbar-thumb{background:rgba(197,160,89,.2);border-radius:9999px}
-#content{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px}
+#content{flex:1;min-height:0;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .fu{animation:fadeUp .4s cubic-bezier(.25,.46,.45,.94) forwards}
 .fu-1{animation-delay:.04s;opacity:0}.fu-2{animation-delay:.08s;opacity:0}
@@ -209,14 +165,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
   .split-view{grid-template-columns:1fr!important}
 }
 @media(max-width:768px){
-  #main{margin-left:0!important}
+  #mainContent{margin-left:0!important}
   .hide-mobile{display:none!important}
   #content{padding:14px;gap:14px}
 }
 </style>
 </head>
 <body>
-<div id="overlay" onclick="window.__closeSidebar&&window.__closeSidebar()"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="window.__closeSidebar&&window.__closeSidebar()"></div>
+<aside class="sidebar" id="sidebar"></aside>
 <div id="root"></div>
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -225,7 +182,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
-<script src="../../../public/assets/js/dashboard-nav.js"></script>
+<!-- Single shared sidebar — see frontend/public/assets/js/sidebar.js and the
+     matching comment in dashboard/index.html. -->
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
 <script type="text/babel">
@@ -280,9 +240,6 @@ const I = {
   brand: (p={}) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 21h18M5 21V9l7-6 7 6v12"/><path d="M9 21v-5a1 1 0 011-1h4a1 1 0 011 1v5"/><path d="M10 6h4M12 4v4"/></svg>),
 };
 
-/* Shared across dashboard pages — see dashboard-nav.js */
-const NAV = getDashboardNav(I);
-
 const fmtS = n => n>=10000000?'₹'+(n/10000000).toFixed(1)+'Cr':n>=100000?'₹'+(n/100000).toFixed(1)+'L':n>=1000?'₹'+(n/1000).toFixed(0)+'K':'₹'+(n||0);
 const ini  = n => (n||'').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
 const toISO = d => { const x=new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
@@ -307,102 +264,6 @@ const hourOf = t => { const [h]=timeHM(t).split(':'); return parseInt(h,10)||0; 
 const Card = ({ children, className='', hover=false, style={}, onClick }) => (
   <div className={`g-card${hover?' hoverable':''} ${className}`} style={style} onClick={onClick}>{children}</div>
 );
-
-/* ── Sidebar (identical shell to Dashboard) ── */
-const SIDEBAR_EXPANDED_KEY = 'bp_sidebar_expanded';
-const loadSidebarExpanded = () => { try { return JSON.parse(sessionStorage.getItem(SIDEBAR_EXPANDED_KEY)) || {}; } catch { return {}; } };
-const saveSidebarExpanded = (state) => { try { sessionStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify(state)); } catch {} };
-const isActiveNavHref = (href) => {
-  try {
-    const u = new URL(href, location.href);
-    return u.pathname === location.pathname && u.search === location.search;
-  } catch { return false; }
-};
-
-const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
-  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'Suresh',last_name:'Mehta',role_slug:'super_admin'};
-  const name = `${user.first_name} ${user.last_name}`;
-  const canSee = (perm) => !perm || (typeof Auth==='undefined') || Auth.hasPermission(perm);
-  const [expandedMap, setExpandedMap] = useState(loadSidebarExpanded);
-  // #sidebar.collapsed .sb-group-children{display:none} forces the children
-  // hidden regardless of the expanded state while collapsed — toggling
-  // expandedMap there was a silent no-op with no flyout to fall back on, so
-  // a multi-item group's icon did nothing while collapsed (same bug fixed
-  // in sidebar.js's toggleGroup for every other page). Navigate to the
-  // group's first visible item instead when collapsed.
-  const toggleGroup = (groupName, defaultOpen, firstItemHref) => {
-    if (collapsed && !isMobile && firstItemHref) {
-      window.location.href = firstItemHref;
-      return;
-    }
-    setExpandedMap(prev => {
-      const current = prev[groupName] ?? defaultOpen;
-      const next = { ...prev, [groupName]: !current };
-      saveSidebarExpanded(next);
-      return next;
-    });
-  };
-  return (
-    <aside id="sidebar" className={[collapsed&&!isMobile?'collapsed':'',isMobile&&!mobileOpen?'mobile-hidden':''].filter(Boolean).join(' ')}>
-      <div style={{padding:'18px 14px 10px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-        <div style={{width:40,height:40,borderRadius:12,background:'rgba(197,160,89,.15)',display:'flex',alignItems:'center',justifyContent:'center',color:'#C5A059',flexShrink:0,border:'1px solid rgba(197,160,89,.3)',boxShadow:'0 4px 14px rgba(197,160,89,.18), inset 0 1px 0 rgba(255,255,255,.1)'}}>{I.brand()}</div>
-        <span className="sb-label" style={{fontWeight:700,fontSize:17,color:'white',letterSpacing:'-.01em',fontFamily:"'Playfair Display', serif"}}>BanquetPro</span>
-        {!isMobile&&(
-          <button onClick={onCollapse} title={collapsed?'Expand':'Collapse'} style={{marginLeft:'auto',background:'rgba(255,255,255,.1)',border:'none',width:26,height:26,borderRadius:6,cursor:'pointer',color:'rgba(255,255,255,.6)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            {collapsed ? I.chevronRight() : I.chevronLeft()}
-          </button>
-        )}
-      </div>
-      <nav style={{flex:1,overflowY:'auto',overflowX:'hidden',paddingBottom:8}}>
-        {NAV.map(sec=>{
-          const visibleItems = sec.items.filter(it => canSee(it.perm));
-          if (!visibleItems.length) return null;
-          const hasActive = visibleItems.some(it => isActiveNavHref(it.href));
-          const isExpanded = expandedMap[sec.s] ?? hasActive;
-          // A single-item group (e.g. Settings) is just one destination —
-          // a flat link reads better than a 1-item accordion the user has
-          // to expand first to reach the only thing inside it.
-          if (visibleItems.length === 1) {
-            const item = visibleItems[0];
-            return (
-              <a key={sec.s} href={item.href} className={`sb-item ${isActiveNavHref(item.href)?'active':''}`} title={collapsed?sec.s:undefined}>
-                <span className="sb-icon">{item.icon()}</span>
-                <span className="sb-label">{sec.s}</span>
-              </a>
-            );
-          }
-          return (
-            <div key={sec.s} className="nav-group">
-              <div className={`sb-group-header ${isExpanded?'expanded':''} ${hasActive?'has-active':''}`}
-                onClick={() => toggleGroup(sec.s, hasActive, visibleItems[0].href)} title={collapsed?sec.s:undefined}>
-                <span className="sb-icon">{visibleItems[0].icon()}</span>
-                <span className="sb-label">{sec.s}</span>
-                <span className="sb-group-chevron">{I.chevronRight({width:14,height:14})}</span>
-              </div>
-              <div className={`sb-group-children ${isExpanded?'expanded':''}`}>
-                {visibleItems.map(item=>(
-                  <a key={item.id} href={item.href} className={`sb-item ${isActiveNavHref(item.href)?'active':''}`} title={collapsed?item.label:undefined}>
-                    <span className="sb-icon">{item.icon()}</span>
-                    <span className="sb-label">{item.label}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </nav>
-      <div className="sb-footer">
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div className="sb-avatar">{ini(name)}</div>
-          <div className="sb-label" style={{minWidth:0,flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</div>
-            <div style={{fontSize:11,color:C.gold,marginTop:1,textTransform:'capitalize'}}>{(user.role_slug||'').replace(/_/g,' ')}</div>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-};
 
 /* ── Topbar (simplified: no period filter — Command Center is always "now") ── */
 const Topbar = ({ onMenu, darkMode, setDarkMode }) => {
@@ -1130,25 +991,45 @@ const App = () => {
     return()=>window.removeEventListener('resize',h);
   },[]);
 
+  // Sidebar nav content/RBAC/accordion/active-highlight now comes from the
+  // single shared component (sidebar.js), rendered into the static
+  // <aside id="sidebar"> outside this React root — see the matching effect
+  // in dashboard/index.html for why the mobile check here is a fresh
+  // window.innerWidth read (1024px, matching app.css/app.js) rather than
+  // this page's own 768px content-layout isMobile state.
   useEffect(()=>{
-    const sb=document.getElementById('sidebar');
-    const main=document.getElementById('main');
-    const ov=document.getElementById('overlay');
-    if(!sb||!main||!ov) return;
-    if(isMobile){ sb.className=mobOpen?'':'mobile-hidden'; main.className='mobile'; ov.className=mobOpen?'show':''; }
-    else { sb.className=collapsed?'collapsed':''; main.className=collapsed?'collapsed':''; ov.className=''; }
-  },[collapsed,isMobile,mobOpen]);
+    const applySidebarClasses = () => {
+      const sb=document.getElementById('sidebar');
+      const main=document.getElementById('mainContent');
+      const ov=document.getElementById('sidebarOverlay');
+      if(!sb||!main||!ov) return;
+      const sidebarIsMobile = window.innerWidth < 1024;
+      if(sidebarIsMobile){
+        sb.classList.toggle('mobile-open', mobOpen);
+        sb.classList.remove('collapsed');
+        main.classList.remove('sidebar-collapsed');
+        ov.classList.toggle('active', mobOpen);
+      } else {
+        sb.classList.toggle('collapsed', collapsed);
+        sb.classList.remove('mobile-open');
+        main.classList.toggle('sidebar-collapsed', collapsed);
+        ov.classList.remove('active');
+      }
+    };
+    applySidebarClasses();
+    window.addEventListener('resize', applySidebarClasses);
+    return () => window.removeEventListener('resize', applySidebarClasses);
+  },[collapsed,mobOpen]);
 
   window.__closeSidebar=()=>setMobOpen(false);
-  function onMenu(){ isMobile?setMobOpen(o=>!o):setCollapsed(c=>!c); }
+  function onMenu(){ (window.innerWidth<1024)?setMobOpen(o=>!o):setCollapsed(c=>!c); }
 
   const impersonationState = typeof API!=='undefined' && API.Impersonation ? API.Impersonation.get() : null;
 
   return (
     <>
       {impersonationState && <ImpersonationBanner state={impersonationState}/>}
-      <Sidebar collapsed={collapsed} onCollapse={()=>setCollapsed(c=>!c)} isMobile={isMobile} mobileOpen={mobOpen}/>
-      <div id="main">
+      <div className="main-content" id="mainContent">
         <Topbar onMenu={onMenu} darkMode={darkMode} setDarkMode={setDarkMode}/>
         <div id="content"><CommandCenterView/></div>
       </div>

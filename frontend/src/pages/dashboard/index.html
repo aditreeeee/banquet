@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard | BanquetPro</title>
+<!-- Shared sidebar CSS (theme.css defines the --bg-sidebar/--text-sidebar/etc.
+     variables app.css's .sidebar rules read) — linked before this page's own
+     <style> block so this page's own rules still win the cascade wherever
+     both define the same selector; only .sidebar/.sidebar-nav/.sidebar-link/
+     .nav-group* (sidebar.js's actual output classes) are new here. -->
+<link href="../../../public/assets/css/theme.css" rel="stylesheet">
+<link href="../../../public/assets/css/app.css"   rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -95,80 +102,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────── */
-#sidebar{
-  position:fixed;left:0;top:0;height:100vh;z-index:50;
-  background:linear-gradient(160deg,#1A2B4A 0%,#0D1929 55%,#060D18 100%);
-  box-shadow:4px 0 36px rgba(6,13,24,0.4);
-  display:flex;flex-direction:column;overflow:hidden;
-  transition:width .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);
-  width:260px;
-  isolation:isolate;
-}
-/* Subtle noise texture overlay */
-#sidebar::before{
-  content:'';position:absolute;inset:0;
-  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events:none;z-index:0;
-}
-#sidebar>*{position:relative;z-index:1}
-#sidebar.collapsed{width:72px}
-#sidebar.mobile-hidden{transform:translateX(-100%);width:260px}
-
-.sb-label{transition:opacity .2s ease,max-width .32s ease;overflow:hidden;white-space:nowrap;max-width:200px}
-#sidebar.collapsed .sb-label{opacity:0;max-width:0}
-.sb-section{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
-  color:rgba(197,160,89,.38);padding:14px 24px 4px;white-space:nowrap;overflow:hidden;
-  transition:opacity .2s ease}
-#sidebar.collapsed .sb-section{opacity:0}
-.sb-item{display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
-  margin:1px 8px;cursor:pointer;color:rgba(255,255,255,.52);font-size:13.5px;font-weight:500;
-  transition:background .18s ease,color .18s ease;text-decoration:none;white-space:nowrap;position:relative}
-.sb-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88)}
-/* Gold active indicator */
-.sb-item.active{background:rgba(197,160,89,.14);color:#C5A059}
-.sb-item.active::before{
-  content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
-  width:3px;height:58%;border-radius:0 3px 3px 0;
-  background:linear-gradient(180deg,#D4B478,#C5A059);
-  box-shadow:0 0 9px rgba(197,160,89,.65);
-}
-.sb-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.sb-group-header{display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
-  margin:1px 8px;cursor:pointer;color:rgba(255,255,255,.52);font-size:13.5px;font-weight:500;
-  transition:background .18s ease,color .18s ease;user-select:none}
-.sb-group-header:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.88)}
-.sb-group-header.has-active{color:#C5A059}
-.sb-group-chevron{margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  transition:transform .25s ease;opacity:.55}
-.sb-group-header.expanded .sb-group-chevron{transform:rotate(90deg);opacity:1}
-#sidebar.collapsed .sb-group-chevron{opacity:0;width:0;margin:0}
-/* Collapsed rail is icon-only — .sb-label already zeroes its own width, but
-   .sb-item/.sb-group-header still centered their flex content around
-   whatever space was left after the gap to a chevron/label that no longer
-   has any, so the icon sat left-of-center instead of centered in the 72px
-   rail. justify-content:center (plus the chevron's width zeroed above)
-   actually centers it now. */
-#sidebar.collapsed .sb-item,
-#sidebar.collapsed .sb-group-header{justify-content:center;gap:0;padding-left:0;padding-right:0}
-.sb-group-children{max-height:0;overflow:hidden;transition:max-height .28s ease}
-.sb-group-children.expanded{max-height:400px}
-.sb-group-children .sb-item{padding-left:38px;font-size:12.5px}
-.sb-group-children .sb-icon{width:16px;height:16px}
-#sidebar.collapsed .sb-group-children{display:none}
-.sb-footer{margin-top:auto;border-top:1px solid rgba(197,160,89,.1);padding:14px 12px}
-.sb-avatar{width:34px;height:34px;border-radius:50%;background:rgba(197,160,89,.18);
-  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
-  color:#C5A059;flex-shrink:0;border:1.5px solid rgba(197,160,89,.32)}
-
-/* Overlay */
-#overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:45;backdrop-filter:blur(3px);display:none}
-#overlay.show{display:block}
-
-/* Main */
-#main{height:100vh;display:flex;flex-direction:column;overflow:hidden;
-  transition:margin-left .32s cubic-bezier(.4,0,.2,1);margin-left:260px}
-#main.collapsed{margin-left:72px}
-#main.mobile{margin-left:0}
+/* The sidebar/overlay markup, RBAC-filtered nav content, accordion, and
+   active-page highlighting all now come from the single shared component
+   (sidebar.js -> .sidebar/.sidebar-nav/.sidebar-link/.nav-group* classes,
+   styled by app.css) — this page no longer defines its own #sidebar / .sb-
+   / #overlay rules. Only the content-pane's own scroll-clipping behavior
+   (independent of collapse width, which app.css's .main-content already
+   handles) stays page-specific. */
+#mainContent{height:100vh;overflow:hidden}
 
 /* ── Topbar ──────────────────────────────────────────────────── */
 #topbar{
@@ -255,7 +196,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 .scroll-y{overflow-y:auto}
 .scroll-y::-webkit-scrollbar{width:4px}
 .scroll-y::-webkit-scrollbar-thumb{background:rgba(197,160,89,.2);border-radius:9999px}
-#content{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+#content{flex:1;min-height:0;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
 
 /* ── Animations ──────────────────────────────────────────────── */
 @keyframes skeletonPulse{0%,100%{opacity:.55}50%{opacity:1}}
@@ -270,7 +211,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 .fu-5{animation-delay:.20s;opacity:0}.fu-6{animation-delay:.24s;opacity:0}
 
 @media(max-width:768px){
-  #main{margin-left:0!important}
+  #mainContent{margin-left:0!important}
   .hide-mobile{display:none!important}
   #content{padding:14px;gap:14px}
   .kpi-val{font-size:22px}
@@ -285,7 +226,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 </style>
 </head>
 <body>
-<div id="overlay" onclick="window.__closeSidebar&&window.__closeSidebar()"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="window.__closeSidebar&&window.__closeSidebar()"></div>
+<aside class="sidebar" id="sidebar"></aside>
 <div id="root"></div>
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -296,7 +238,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg-start);background-attach
 <script src="../../../public/assets/js/api.js"></script>
 <script src="../../../public/assets/js/utils.js"></script>
 <script src="../../../public/assets/js/auth.js"></script>
-<script src="../../../public/assets/js/dashboard-nav.js"></script>
+<!-- Single shared sidebar (nav items, RBAC filtering, accordion, active-page
+     highlighting, branding) — see frontend/public/assets/js/sidebar.js.
+     Rendered synchronously into the static <aside> above, before the React
+     app mounts, exactly like every other page in the app. Only the
+     collapse/mobile-open class toggling (driven by App's own state below,
+     since the topbar hamburger button is part of the React-rendered Topbar)
+     stays page-specific — the nav content itself now has a single source. -->
+<script src="../../../public/assets/js/sidebar.js"></script>
+<script>Sidebar.render();</script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
 <script type="text/babel">
@@ -503,9 +453,6 @@ const I = {
   ),
 };
 
-/* ── Navigation config (shared across dashboard pages — see dashboard-nav.js) ── */
-const NAV = getDashboardNav(I);
-
 /* ── Demo Data ───────────────────────────────────────────────── */
 /* Empty defaults shown until live data loads — never fabricated numbers. */
 const EMPTY_KPI = {bookings:0, revenue:0, pending:0, occ:0, bd:null, rd:null, pd:null, od:null};
@@ -683,115 +630,6 @@ const Skeleton = ({ width='100%', height=14, radius=8, style={} }) => (
 );
 
 /* ════════════════════════════════════════════════════════════════
-   SIDEBAR
-   ════════════════════════════════════════════════════════════════ */
-const SIDEBAR_EXPANDED_KEY = 'bp_sidebar_expanded';
-const loadSidebarExpanded = () => { try { return JSON.parse(sessionStorage.getItem(SIDEBAR_EXPANDED_KEY)) || {}; } catch { return {}; } };
-const saveSidebarExpanded = (state) => { try { sessionStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify(state)); } catch {} };
-
-const isActiveNavHref = (href) => {
-  try {
-    const u = new URL(href, location.href);
-    return u.pathname === location.pathname && u.search === location.search;
-  } catch { return false; }
-};
-
-const Sidebar = ({ collapsed, onCollapse, isMobile, mobileOpen }) => {
-  const user = (typeof Auth!=='undefined'?Auth.getUser():null)||{first_name:'',last_name:'',role_slug:null};
-  const name = `${user.first_name} ${user.last_name}`.trim() || '—';
-  const canSee = (perm) => !perm || (typeof Auth==='undefined') || Auth.hasPermission(perm);
-  const [expandedMap, setExpandedMap] = useState(loadSidebarExpanded);
-
-  // #sidebar.collapsed .sb-group-children{display:none} forces the children
-  // hidden regardless of the expanded state while collapsed — toggling
-  // expandedMap there was a silent no-op with no flyout to fall back on, so
-  // a multi-item group's icon did nothing while collapsed (same bug fixed
-  // in sidebar.js's toggleGroup for every other page). Navigate to the
-  // group's first visible item instead when collapsed.
-  const toggleGroup = (groupName, defaultOpen, firstItemHref) => {
-    if (collapsed && !isMobile && firstItemHref) {
-      window.location.href = firstItemHref;
-      return;
-    }
-    setExpandedMap(prev => {
-      const current = prev[groupName] ?? defaultOpen;
-      const next = { ...prev, [groupName]: !current };
-      saveSidebarExpanded(next);
-      return next;
-    });
-  };
-
-  return (
-    <aside id="sidebar" className={[collapsed&&!isMobile?'collapsed':'',isMobile&&!mobileOpen?'mobile-hidden':''].filter(Boolean).join(' ')}>
-      {/* Brand */}
-      <div style={{padding:'18px 14px 10px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-        <div style={{width:40,height:40,borderRadius:12,background:'rgba(197,160,89,.15)',display:'flex',alignItems:'center',justifyContent:'center',color:'#C5A059',flexShrink:0,border:'1px solid rgba(197,160,89,.3)',boxShadow:'0 4px 14px rgba(197,160,89,.18), inset 0 1px 0 rgba(255,255,255,.1)'}}>
-          {I.brand()}
-        </div>
-        <span className="sb-label" style={{fontWeight:700,fontSize:17,color:'white',letterSpacing:'-.01em',fontFamily:"'Playfair Display', serif"}}>BanquetPro</span>
-        {!isMobile&&(
-          <button onClick={onCollapse} title={collapsed?'Expand':'Collapse'}
-            style={{marginLeft:'auto',background:'rgba(255,255,255,.1)',border:'none',width:26,height:26,
-              borderRadius:6,cursor:'pointer',color:'rgba(255,255,255,.6)',display:'flex',
-              alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            {collapsed ? I.chevronRight() : I.chevronLeft()}
-          </button>
-        )}
-      </div>
-      {/* Nav */}
-      <nav style={{flex:1,overflowY:'auto',overflowX:'hidden',paddingBottom:8}}>
-        {NAV.map(sec=>{
-          const visibleItems = sec.items.filter(it => canSee(it.perm));
-          if (!visibleItems.length) return null;
-          const hasActive = visibleItems.some(it => isActiveNavHref(it.href));
-          const isExpanded = expandedMap[sec.s] ?? hasActive;
-          // A single-item group (e.g. Settings) is just one destination —
-          // a flat link reads better than a 1-item accordion the user has
-          // to expand first to reach the only thing inside it.
-          if (visibleItems.length === 1) {
-            const item = visibleItems[0];
-            return (
-              <a key={sec.s} href={item.href} className={`sb-item ${isActiveNavHref(item.href)?'active':''}`} title={collapsed?sec.s:undefined}>
-                <span className="sb-icon">{item.icon()}</span>
-                <span className="sb-label">{sec.s}</span>
-              </a>
-            );
-          }
-          return (
-            <div key={sec.s} className="nav-group">
-              <div className={`sb-group-header ${isExpanded?'expanded':''} ${hasActive?'has-active':''}`}
-                onClick={() => toggleGroup(sec.s, hasActive, visibleItems[0].href)} title={collapsed?sec.s:undefined}>
-                <span className="sb-icon">{visibleItems[0].icon()}</span>
-                <span className="sb-label">{sec.s}</span>
-                <span className="sb-group-chevron">{I.chevronRight({width:14,height:14})}</span>
-              </div>
-              <div className={`sb-group-children ${isExpanded?'expanded':''}`}>
-                {visibleItems.map(item=>(
-                  <a key={item.id} href={item.href} className={`sb-item ${isActiveNavHref(item.href)?'active':''}`} title={collapsed?item.label:undefined}>
-                    <span className="sb-icon">{item.icon()}</span>
-                    <span className="sb-label">{item.label}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </nav>
-      {/* Footer */}
-      <div className="sb-footer">
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div className="sb-avatar">{ini(name)}</div>
-          <div className="sb-label" style={{minWidth:0,flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:'white',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</div>
-            <div style={{fontSize:11,color:C.gold,marginTop:1,textTransform:'capitalize'}}>{(user.role_slug||'').replace(/_/g,' ')}</div>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-};
-
-/* ════════════════════════════════════════════════════════════════
    TOPBAR
    ════════════════════════════════════════════════════════════════ */
 const Topbar = ({ onMenu, period, setPeriod, searchQuery, setSearchQuery, darkMode, setDarkMode, notifications, unreadCount, notifOpen, setNotifOpen, onMarkNotificationRead, onMarkAllNotificationsRead }) => {
@@ -910,7 +748,7 @@ const KPICard = ({ IconEl, label, value, delta, color, anim, href, desc, blurb, 
             </span>
           )}
         </div>
-        {blurb && <div style={{fontSize:10,color:'#9ca3af',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'Times New Roman', Times, serif",fontStyle:'italic'}} title={blurb}>{blurb}</div>}
+        {blurb && <div style={{fontSize:10,color:'#9ca3af',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:"'Times New Roman', Times, serif",fontStyle:'normal'}} title={blurb}>{blurb}</div>}
       </div>
     </Card>
   );
@@ -925,9 +763,9 @@ const CTip = ({ active, payload, label, fmt }) => {
   return (
     <div style={{background:'rgba(255,255,255,0.96)',borderRadius:12,padding:'10px 14px',
       boxShadow:'0 10px 24px rgba(15,23,42,.12)',border:'1px solid rgba(100,116,139,.15)',fontSize:12.5,fontFamily:'Inter,sans-serif'}}>
-      <p style={{color:C.navy,fontWeight:700,marginBottom:6}}>{label}</p>
+      <p style={{color:'var(--text-primary)',fontWeight:700,marginBottom:6}}>{label}</p>
       {payload.map((p,i)=>(
-        <p key={i} style={{color:p.color||C.navy,margin:'2px 0'}}>
+        <p key={i} style={{color:p.color||'var(--text-primary)',margin:'2px 0'}}>
           <span style={{opacity:.7}}>{p.name}: </span><b>{f(p.value)}</b>
         </p>
       ))}
@@ -972,7 +810,7 @@ const StatusDonut = ({ data }) => {
     <div style={{position:'relative'}}>
       <div style={{position:'absolute',top:0,left:0,right:0,height:188,display:'flex',flexDirection:'column',
         alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
-        <span style={{fontSize:24,fontWeight:800,color:C.navy}}>{total}</span>
+        <span style={{fontSize:24,fontWeight:800,color:'var(--text-primary)'}}>{total}</span>
         <span style={{fontSize:11,color:'#9ca3af'}}>Bookings</span>
       </div>
       <ResponsiveContainer width="100%" height={188}>
@@ -993,7 +831,7 @@ const StatusDonut = ({ data }) => {
           <div key={i} style={{display:'flex',alignItems:'center',gap:6,fontSize:12}}>
             <span style={{width:8,height:8,borderRadius:'50%',background:d.c,flexShrink:0}}/>
             <span style={{color:'#6b7280',flex:1}}>{d.n}</span>
-            <b style={{color:C.navy}}>{d.v}</b>
+            <b style={{color:'var(--text-primary)'}}>{d.v}</b>
           </div>
         ))}
       </div>
@@ -1040,7 +878,7 @@ const DayPopover = ({ events, style, onEnter, onLeave, onOpenBooking }) => React
     style={{position:'fixed',zIndex:1000,width:320,maxHeight:380,overflowY:'auto',
     background:'var(--surface-strong)',border:'1px solid var(--border-color)',borderRadius:14,
     boxShadow:'0 20px 48px rgba(0,0,0,.25)',padding:14,pointerEvents:'auto',...style}}>
-    <div style={{fontWeight:700,fontSize:14,color:C.navy,marginBottom:10}}>
+    <div style={{fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:10}}>
       {events.length} booking{events.length===1?'':'s'} on {dL(events[0].date)}
     </div>
     <div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -1052,7 +890,7 @@ const DayPopover = ({ events, style, onEnter, onLeave, onOpenBooking }) => React
           <div key={i} onClick={()=>onOpenBooking(b.id)}
             style={{borderLeft:`3px solid ${sC(b.status)}`,paddingLeft:10,cursor:'pointer'}}>
             <div style={{display:'flex',justifyContent:'space-between',gap:6}}>
-              <span style={{fontWeight:700,fontSize:13.5,color:C.navy}}>{b.event}</span>
+              <span style={{fontWeight:700,fontSize:13.5,color:'var(--text-primary)'}}>{b.event}</span>
               <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:10.5}}>{sL(b.status)}</span>
             </div>
             <div style={{fontSize:11.5,color:'#9ca3af',marginTop:2}}>Booking #{b.ref}</div>
@@ -1160,7 +998,7 @@ const MiniCalendar = ({ selected, onSelect, onOpenBooking }) => {
           <button onClick={()=>setCur(new Date(y,m-1,1))} className="tb-btn" title="Previous month" style={{width:26,height:26,borderRadius:7}}>{I.chevronLeft()}</button>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:9}}>
-          <span style={{fontWeight:700,fontSize:16,color:C.navy}}>{MON[m]} {y}</span>
+          <span style={{fontWeight:700,fontSize:16,color:'var(--text-primary)'}}>{MON[m]} {y}</span>
           <button onClick={goToday} className="tb-btn" title="Jump to today" style={{fontSize:11.5,fontWeight:700,padding:'4px 10px',borderRadius:999,color:C.gold}}>Today</button>
           {loading && <span style={{width:11,height:11,border:'2px solid rgba(197,160,89,.35)',borderTopColor:C.gold,borderRadius:'50%',display:'inline-block',animation:'spin .7s linear infinite'}}/>}
         </div>
@@ -1266,7 +1104,7 @@ const UpcomingList = ({ bookings, selected, onOpenBooking, now }) => {
           <span style={{width:8,height:8,borderRadius:'50%',background:sC(b.status),flexShrink:0,marginTop:5}}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-              <span style={{fontWeight:700,fontSize:12.5,color:C.navy,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.event}</span>
+              <span style={{fontWeight:700,fontSize:12.5,color:'var(--text-primary)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.event}</span>
               {b.isPriority && (
                 <span className="spill" style={{background:`${C.gold}20`,color:C.gold,fontSize:9.5,padding:'1px 7px',flexShrink:0}}>★ VIP</span>
               )}
@@ -1276,11 +1114,11 @@ const UpcomingList = ({ bookings, selected, onOpenBooking, now }) => {
             <div style={{display:'flex',gap:5,marginTop:4,flexWrap:'wrap'}}>
               <span className="spill" style={{background:`${sC(b.status)}18`,color:sC(b.status),fontSize:9.5}}>{sL(b.status)}</span>
               <span className="spill" style={{background:`${pay.color}18`,color:pay.color,fontSize:9.5}}>{pay.label}</span>
-              {now && <span className="spill" style={{background:'rgba(61,84,127,.08)',color:C.navy,fontSize:9.5}}>{countdownOf(b.date, now)}</span>}
+              {now && <span className="spill" style={{background:'rgba(61,84,127,.08)',color:'var(--text-primary)',fontSize:9.5}}>{countdownOf(b.date, now)}</span>}
             </div>
           </div>
           <div style={{textAlign:'right',flexShrink:0}}>
-            <div style={{fontWeight:700,fontSize:12.5,color:C.navy}}>{fmtS(b.amt)}</div>
+            <div style={{fontWeight:700,fontSize:12.5,color:'var(--text-primary)'}}>{fmtS(b.amt)}</div>
           </div>
         </a>
         );
@@ -1297,7 +1135,7 @@ const OccupancyBars = ({ halls }) => (
     {halls.map((h,i)=>(
       <div key={i}>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,alignItems:'center'}}>
-          <span style={{fontSize:11.5,fontWeight:500,color:C.navy}}>{h.n}</span>
+          <span style={{fontSize:11.5,fontWeight:500,color:'var(--text-primary)'}}>{h.n}</span>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             <span style={{fontSize:10.5,color:'#9ca3af'}}>{h.bk} bookings · {fmtS(h.rev||0)}</span>
             <b style={{fontSize:11.5,color:occC(h.occ)}}>{h.occ}%</b>
@@ -1329,7 +1167,7 @@ const ActivityFeed = ({ items }) => (
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:'flex',justifyContent:'space-between',gap:8}}>
-              <span style={{fontWeight:600,fontSize:12,color:C.navy,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.a}</span>
+              <span style={{fontWeight:600,fontSize:12,color:'var(--text-primary)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.a}</span>
               <span style={{fontSize:10.5,color:'#9ca3af',flexShrink:0,whiteSpace:'nowrap'}}>{a.t}</span>
             </div>
             <div style={{fontSize:11,color:'#6b7280',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.d}</div>
@@ -1355,8 +1193,8 @@ const BookingsTable = ({ bookings, onOpenBooking }) => (
       <tbody>
         {bookings.map(b=>(
           <tr key={b.id} className="t-row" onClick={()=>onOpenBooking?.(b.id)}>
-            <td><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{fontFamily:'monospace',fontSize:11.5,background:'rgba(61,84,127,.07)',padding:'2px 7px',borderRadius:5,color:C.navy,textDecoration:'none',display:'inline-block'}}>{b.ref||b.id}</a></td>
-            <td style={{fontWeight:600}}><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{color:C.navy,textDecoration:'none'}}>{b.customer}</a></td>
+            <td><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{fontFamily:'monospace',fontSize:11.5,background:'rgba(61,84,127,.07)',padding:'2px 7px',borderRadius:5,color:'var(--text-primary)',textDecoration:'none',display:'inline-block'}}>{b.ref||b.id}</a></td>
+            <td style={{fontWeight:600}}><a href={`../bookings/detail.html?id=${b.id}`} onClick={(e)=>{e.preventDefault(); onOpenBooking?.(b.id);}} style={{color:'var(--text-primary)',textDecoration:'none'}}>{b.customer}</a></td>
             <td style={{color:'#6b7280'}}>{b.event}</td>
             <td style={{color:'#6b7280',fontSize:12}}>{b.hall}</td>
             <td style={{fontSize:12,color:'#6b7280'}}>{dL(b.date)}</td>
@@ -1509,7 +1347,7 @@ const DashboardView = ({ period, searchQuery }) => {
       {isSuperAdmin && !isImpersonating && (
         <div className="fu fu-1" style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
           background:'rgba(124,58,237,.08)',border:'1px solid rgba(124,58,237,.25)',borderRadius:10,marginBottom:4}}>
-          <span style={{fontSize:12.5,color:C.navy}}>
+          <span style={{fontSize:12.5,color:'var(--text-primary)'}}>
             Showing data across every tenant. To view one company's numbers instead, impersonate it from{' '}
             <a href="../platform/tenants.html" style={{color:'#7C3AED',fontWeight:700,textDecoration:'none'}}>Platform → Tenants</a>.
           </span>
@@ -1518,7 +1356,7 @@ const DashboardView = ({ period, searchQuery }) => {
       {/* Greeting */}
       <div className="fu fu-1" style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
         <div>
-          <h1 style={{fontSize:22,fontWeight:700,color:C.navy,lineHeight:1.15,fontFamily:"'Playfair Display', serif"}}>Hello, {firstName}</h1>
+          <h1 style={{fontSize:22,fontWeight:700,color:'var(--text-primary)',lineHeight:1.15,fontFamily:"'Playfair Display', serif"}}>Hello, {firstName}</h1>
           <p style={{fontSize:12.5,color:'#9ca3af',marginTop:2}}>
             {now.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit',hour12:true})}, {now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
           </p>
@@ -1533,7 +1371,7 @@ const DashboardView = ({ period, searchQuery }) => {
           </a>
           <button onClick={()=>window.print()}
             style={{padding:'8px 14px',background:'rgba(61,84,127,.08)',border:'1.5px solid rgba(61,84,127,.15)',
-              borderRadius:9999,color:C.navy,fontWeight:600,fontSize:13,cursor:'pointer',
+              borderRadius:9999,color:'var(--text-primary)',fontWeight:600,fontSize:13,cursor:'pointer',
               display:'flex',alignItems:'center',gap:6}}>
             {I.download()}Export
           </button>
@@ -1561,7 +1399,7 @@ const DashboardView = ({ period, searchQuery }) => {
         <Card hover style={{padding:'12px 16px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
             <div>
-              <h3 style={{fontSize:13,fontWeight:700,color:C.navy}}>Revenue vs Target</h3>
+              <h3 style={{fontSize:13,fontWeight:700,color:'var(--text-primary)'}}>Revenue vs Target</h3>
               <p style={{fontSize:11,color:'#9ca3af',marginTop:1}}>{fmtS(kpi.revenue)} collected this period</p>
             </div>
             {kpi.rd!=null && (
@@ -1575,11 +1413,11 @@ const DashboardView = ({ period, searchQuery }) => {
             <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8,padding:'7px 10px',background:'rgba(61,84,127,.04)',borderRadius:10}}>
               <div>
                 <div style={{fontSize:10,color:'#9ca3af'}}>Target</div>
-                <div style={{fontSize:12.5,fontWeight:700,color:C.navy}}>{fmtS(kpi.revenueTarget)}</div>
+                <div style={{fontSize:12.5,fontWeight:700,color:'var(--text-primary)'}}>{fmtS(kpi.revenueTarget)}</div>
               </div>
               <div>
                 <div style={{fontSize:10,color:'#9ca3af'}}>Achieved</div>
-                <div style={{fontSize:12.5,fontWeight:700,color:kpi.revenueAchievedPct>=100?C.green:C.navy}}>{kpi.revenueAchievedPct}%</div>
+                <div style={{fontSize:12.5,fontWeight:700,color:kpi.revenueAchievedPct>=100?C.green:'var(--text-primary)'}}>{kpi.revenueAchievedPct}%</div>
               </div>
               <div>
                 <div style={{fontSize:10,color:'#9ca3af'}}>Remaining</div>
@@ -1597,7 +1435,7 @@ const DashboardView = ({ period, searchQuery }) => {
           {isLoading ? <Skeleton height={200}/> : <RevenueChart data={rev}/>}
         </Card>
         <Card hover style={{padding:'12px 16px'}}>
-          <h3 style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:6}}>Booking Status</h3>
+          <h3 style={{fontSize:13,fontWeight:700,color:'var(--text-primary)',marginBottom:6}}>Booking Status</h3>
           {isLoading ? <Skeleton height={200} radius="50%" style={{maxWidth:200,margin:'0 auto',aspectRatio:'1'}}/> : <StatusDonut data={sts}/>}
         </Card>
       </div>
@@ -1605,7 +1443,7 @@ const DashboardView = ({ period, searchQuery }) => {
       {/* Calendar + Upcoming */}
       <div className="resp-2 fu fu-4" style={{display:'grid',gridTemplateColumns:'3fr 2fr',gap:12}}>
         <Card hover style={{padding:'12px 16px',height:460,display:'flex',flexDirection:'column'}}>
-          <h3 style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:8,display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+          <h3 style={{fontSize:13,fontWeight:700,color:'var(--text-primary)',marginBottom:8,display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
             {I.calendarDays({width:16,height:16})}
             Booking Calendar
             {selDate&&<span style={{fontWeight:500,fontSize:12,color:C.gold}}>· {dL(selDate)}</span>}
@@ -1616,9 +1454,9 @@ const DashboardView = ({ period, searchQuery }) => {
         </Card>
         <Card hover style={{padding:'12px 16px',display:'flex',flexDirection:'column',height:460}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexShrink:0}}>
-            <h3 style={{fontSize:13,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
+            <h3 style={{fontSize:13,fontWeight:700,color:'var(--text-primary)',display:'flex',alignItems:'center',gap:8}}>
               Upcoming Bookings
-              <span style={{background:'rgba(61,84,127,.1)',color:C.navy,padding:'2px 8px',borderRadius:9999,fontSize:11,fontWeight:600}}>
+              <span style={{background:'rgba(61,84,127,.1)',color:'var(--text-primary)',padding:'2px 8px',borderRadius:9999,fontSize:11,fontWeight:600}}>
                 {filteredBookings.length}
               </span>
             </h3>
@@ -1638,7 +1476,7 @@ const DashboardView = ({ period, searchQuery }) => {
       <div className="resp-2 fu fu-5" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
         <Card hover style={{padding:'12px 16px',height:380,display:'flex',flexDirection:'column'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexWrap:'wrap',gap:8,flexShrink:0}}>
-            <h3 style={{fontSize:13,fontWeight:700,color:C.navy,display:'flex',alignItems:'center',gap:8}}>
+            <h3 style={{fontSize:13,fontWeight:700,color:'var(--text-primary)',display:'flex',alignItems:'center',gap:8}}>
               {I.building({width:16,height:16})} Hall Occupancy
             </h3>
             <ViewAllLink href="../reports/occupancy.html"/>
@@ -1679,7 +1517,7 @@ const DashboardView = ({ period, searchQuery }) => {
           </div>
         </Card>
         <Card hover style={{padding:'12px 16px',display:'flex',flexDirection:'column',height:380}}>
-          <h3 style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:6,flexShrink:0}}>Recent Activity</h3>
+          <h3 style={{fontSize:13,fontWeight:700,color:'var(--text-primary)',marginBottom:6,flexShrink:0}}>Recent Activity</h3>
           {isLoading ? (
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {[1,2,3,4].map(i => <Skeleton key={i} height={32}/>)}
@@ -1691,7 +1529,7 @@ const DashboardView = ({ period, searchQuery }) => {
       {/* Bookings table */}
       <Card hover style={{overflow:'hidden'}} className="fu fu-6">
         <div style={{padding:'14px 20px',borderBottom:'1px solid rgba(229,231,235,.6)',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-          <h3 style={{fontSize:14,fontWeight:700,color:C.navy}}>Recent Bookings</h3>
+          <h3 style={{fontSize:14,fontWeight:700,color:'var(--text-primary)'}}>Recent Bookings</h3>
           <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
             <span style={{fontSize:12,color:'#6b7280'}}>Showing {filteredBookings.length} result{filteredBookings.length===1?'':'s'}</span>
             <select className="fpill" value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:'5px 10px'}}>
@@ -1795,39 +1633,67 @@ const App = () => {
     return()=>window.removeEventListener('resize',h);
   },[]);
 
+  // The sidebar itself (nav content/RBAC/accordion/active-highlight) is now
+  // rendered once by the shared Sidebar.render() (sidebar.js) into the
+  // static <aside id="sidebar"> outside this React root — this page no
+  // longer owns that markup. Collapse/mobile-open state still lives here
+  // because the hamburger button is part of the React-rendered Topbar;
+  // this effect just toggles the same classes app.css already defines for
+  // every other page (.collapsed / .mobile-open / .active / .sidebar-collapsed),
+  // additively via classList so it never clobbers the base classes already
+  // present on the static elements.
+  //
+  // Deliberately NOT reusing this page's own `isMobile` state (768px — its
+  // own KPI-grid/content reflow breakpoint) here: app.css's .sidebar mobile
+  // behavior switches at 1024px (matching app.js's isMobile() everywhere
+  // else), so using the narrower 768px threshold would leave a stale
+  // desktop margin-left applied to #mainContent in the 768–1024px range
+  // while the sidebar itself was already off-canvas per CSS.
   useEffect(()=>{
-    const sb=document.getElementById('sidebar');
-    const main=document.getElementById('main');
-    const ov=document.getElementById('overlay');
-    if(!sb||!main||!ov) return;
-    if(isMobile){
-      sb.className=mobOpen?'':'mobile-hidden';
-      main.className='mobile';
-      ov.className=mobOpen?'show':'';
-    } else {
-      sb.className=collapsed?'collapsed':'';
-      main.className=collapsed?'collapsed':'';
-      ov.className='';
-    }
+    const applySidebarClasses = () => {
+      const sb=document.getElementById('sidebar');
+      const main=document.getElementById('mainContent');
+      const ov=document.getElementById('sidebarOverlay');
+      if(!sb||!main||!ov) return;
+      const sidebarIsMobile = window.innerWidth < 1024;
+      if(sidebarIsMobile){
+        sb.classList.toggle('mobile-open', mobOpen);
+        sb.classList.remove('collapsed');
+        main.classList.remove('sidebar-collapsed');
+        ov.classList.toggle('active', mobOpen);
+      } else {
+        sb.classList.toggle('collapsed', collapsed);
+        sb.classList.remove('mobile-open');
+        main.classList.toggle('sidebar-collapsed', collapsed);
+        ov.classList.remove('active');
+      }
+    };
+    applySidebarClasses();
+    // Re-applies on any resize, not just when collapsed/mobOpen state
+    // changes — a resize crossing the 1024px sidebar breakpoint without
+    // crossing this page's own 768px content breakpoint wouldn't otherwise
+    // re-trigger this effect.
+    window.addEventListener('resize', applySidebarClasses);
+    return () => window.removeEventListener('resize', applySidebarClasses);
+  },[collapsed,mobOpen]);
+
+  useEffect(()=>{
     const ms=document.getElementById('mob-period');
     if(ms) ms.style.display=isMobile?'block':'none';
-  },[collapsed,isMobile,mobOpen]);
+  },[isMobile]);
 
   window.__closeSidebar=()=>setMobOpen(false);
 
-  function onMenu(){ isMobile?setMobOpen(o=>!o):setCollapsed(c=>!c); }
+  function onMenu(){ (window.innerWidth<1024)?setMobOpen(o=>!o):setCollapsed(c=>!c); }
   const unreadCount = notifications.filter(n=>!n.is_read).length;
   const markNotificationRead = id => setNotifications(list => list.map(n => n.id === id ? { ...n, is_read: true } : n));
   const markAllNotificationsRead = () => { setNotifications(list => list.map(n => ({ ...n, is_read: true }))); setNotifOpen(false); };
 
   return (
-    <>
-      <Sidebar collapsed={collapsed} onCollapse={()=>setCollapsed(c=>!c)} isMobile={isMobile} mobileOpen={mobOpen}/>
-      <div id="main">
-        <Topbar onMenu={onMenu} period={period} setPeriod={setPeriod} searchQuery={searchQuery} setSearchQuery={setSearchQuery} darkMode={darkMode} setDarkMode={setDarkMode} notifications={notifications} unreadCount={unreadCount} notifOpen={notifOpen} setNotifOpen={setNotifOpen} onMarkNotificationRead={markNotificationRead} onMarkAllNotificationsRead={markAllNotificationsRead}/>
-        <div id="content"><DashboardView period={period} searchQuery={searchQuery}/></div>
-      </div>
-    </>
+    <div className="main-content" id="mainContent">
+      <Topbar onMenu={onMenu} period={period} setPeriod={setPeriod} searchQuery={searchQuery} setSearchQuery={setSearchQuery} darkMode={darkMode} setDarkMode={setDarkMode} notifications={notifications} unreadCount={unreadCount} notifOpen={notifOpen} setNotifOpen={setNotifOpen} onMarkNotificationRead={markNotificationRead} onMarkAllNotificationsRead={markAllNotificationsRead}/>
+      <div id="content"><DashboardView period={period} searchQuery={searchQuery}/></div>
+    </div>
   );
 };
 

@@ -184,7 +184,7 @@ const create = async (data) => {
                 company_id, branch_id, hall_id, customer_id, booking_ref,
                 event_date, event_time_start, event_time_end,
                 event_name, event_type, guest_count,
-                total_amount, advance_paid, amount_paid,
+                total_amount, advance_paid, amount_paid, discount_amount, coupon_id, coupon_code,
                 notes, status, is_priority, priority_surcharge, parent_booking_id,
                 theme, decoration_notes, staff_count, event_end_date,
                 setup_minutes, cleanup_minutes, cooloff_minutes, cleanup_charge, late_exit_charge,
@@ -198,7 +198,7 @@ const create = async (data) => {
                 @companyId, @branchId, @hallId, @customerId, @bookingRef,
                 @eventDate, @eventTimeStart, @eventTimeEnd,
                 @eventName, @eventType, @guestCount,
-                @totalAmount, @advancePaid, @amountPaid,
+                @totalAmount, @advancePaid, @amountPaid, @discountAmount, @couponId, @couponCode,
                 @notes, @status, @isPriority, @prioritySurcharge, @parentBookingId,
                 @theme, @decorationNotes, @staffCount, @eventEndDate,
                 @setupMinutes, @cleanupMinutes, @cooloffMinutes, @cleanupCharge, @lateExitCharge,
@@ -222,6 +222,9 @@ const create = async (data) => {
                 totalAmount:    data.totalAmount,
                 advancePaid:    data.advancePaid    || 0,
                 amountPaid:     data.amountPaid     || 0,
+                discountAmount: data.discountAmount || 0,
+                couponId:       data.couponId       || null,
+                couponCode:     data.couponCode     || null,
                 notes:          data.notes          || null,
                 status:         data.asTentative ? 'tentative' : 'confirmed',
                 isPriority:         !!data.isPriority,
@@ -544,6 +547,29 @@ const updateTotalAmount = async (bookingId, companyId, totalAmount) => {
 };
 
 /**
+ * Persist a redeemed coupon's linkage + the backend-computed (never
+ * client-trusted) discount amount — called right after
+ * couponService.apply() has validated + recorded the redemption against
+ * this booking. Does NOT touch total_amount: that figure was already set
+ * at booking creation time from the wizard's own grand total (subtotal +
+ * tax - discount, computed client-side same as every other line item at
+ * creation), and this repo has no visibility into the tax portion to
+ * recompute it correctly — recalculateBookingTotal() is the one place
+ * total_amount ever gets authoritatively rebuilt from scratch.
+ */
+const applyCoupon = async (bookingId, companyId, { couponId, couponCode, discountAmount }) => {
+    await executeQuery(
+        `UPDATE Bookings
+         SET coupon_id       = @couponId,
+             coupon_code     = @couponCode,
+             discount_amount = @discountAmount,
+             updated_at      = GETUTCDATE()
+         WHERE booking_id = @bookingId AND company_id = @companyId`,
+        { bookingId, companyId, couponId, couponCode, discountAmount }
+    );
+};
+
+/**
  * Update booking status
  */
 const updateStatus = async (bookingId, companyId, status, updatedBy) => {
@@ -623,6 +649,7 @@ module.exports = {
     findChildren,
     update,
     updateTotalAmount,
+    applyCoupon,
     reschedule,
     updateStatus,
     cancel,

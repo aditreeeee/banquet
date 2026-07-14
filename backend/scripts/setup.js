@@ -2043,6 +2043,15 @@ const seedExtendedDemoData = async (pool) => {
     `);
     ok('Property Token (public identifier on Banquets) ensured.');
 
+    // ── 3v. Public property inquiries — Leads.created_by relaxed to nullable
+    // so unauthenticated QR/property-token submissions can be recorded. See
+    // database/migrations/022_public_inquiries.sql. ──────────────────────────
+    await pool.request().batch(`
+        IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'created_by' AND is_nullable = 0)
+            ALTER TABLE Leads ALTER COLUMN created_by INT NULL;
+    `);
+    ok('Public property inquiries (nullable Leads.created_by) ensured.');
+
     // ── 4. Seed reference / lookup data ─────────────────────────────────────
     log('Seeding reference data …');
 

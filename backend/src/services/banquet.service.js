@@ -13,13 +13,15 @@ const { resolveBranchScope, resolveCompanyScope } = require('../utils/branchScop
 /**
  * The single place a property_token gets turned into a URL — every QR code
  * and future public-facing integration should point here, never at a raw
- * banquet_id. Points at the public token-resolution API (see
- * public.routes.js) rather than a marketing page, since no public
- * storefront page exists yet; a future one can reuse this same URL shape.
+ * banquet_id. Points at the human-facing /inquiry/:token redirect (see
+ * app.js) — a scanned QR code should land a person on the public inquiry
+ * page, not a raw JSON API response. That redirect route itself forwards to
+ * frontend/src/pages/public/inquiry.html?token=..., which calls the
+ * GET /api/v1/public/properties/:token API directly.
  */
 const buildPropertyUrl = (token) => {
     const baseUrl = process.env.APP_URL || 'http://localhost:3000';
-    return `${baseUrl}/api/v1/public/properties/${token}`;
+    return `${baseUrl}/inquiry/${token}`;
 };
 
 const getAll = async (query, actor) => {

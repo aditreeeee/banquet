@@ -9,6 +9,23 @@ const router           = Router();
 const { executeQuery } = require('../../../config/database');
 const response         = require('../../../utils/response');
 const quotationService = require('../../../services/quotation.service');
+const leadService      = require('../../../services/lead.service');
+const banquetRepo      = require('../../../repositories/banquet.repository');
+const { ValidationError } = require('../middleware/errorHandler');
+const rateLimit         = require('express-rate-limit');
+
+// Anonymous IP is the only signal available on this route (no req.user), so
+// this is IP-keyed rather than reusing rateLimiter.js's user-or-IP limiters.
+// 5/15min matches the existing passwordReset limiter's order of magnitude —
+// generous for a real customer filling out one form, tight against a script
+// hammering a property's QR endpoint with junk leads.
+const inquiryLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, statusCode: 429, code: 'RATE_LIMIT_EXCEEDED', message: 'Too many inquiries submitted. Please try again later.' },
+});
 
 /**
  * GET /api/v1/public/companies
@@ -99,19 +116,27 @@ router.get('/halls/:id/availability', async (req, res) => {
  */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-router.get('/properties/:token', async (req, res) => {
+const NOT_FOUND = { success: false, statusCode: 404, code: 'NOT_FOUND', message: 'Property not found' };
+
+/**
+ * Shared by every public route keyed on a property_token — resolves and
+ * validates in one place so the malformed-token/inactive-property 404
+ * behavior (and its reasoning, see below) can't drift between endpoints.
+ */
+const resolveActiveProperty = async (token) => {
     // A malformed token isn't just "not found" — passed straight to a
     // UNIQUEIDENTIFIER comparison it throws a SQL conversion error (500),
     // leaking that the lookup reached the database at all. Reject the shape
     // before querying so every invalid input gets the same generic 404.
-    if (!UUID_RE.test(req.params.token)) {
-        return res.status(404).json({ success: false, statusCode: 404, code: 'NOT_FOUND', message: 'Property not found' });
-    }
-    const banquetRepo = require('../../../repositories/banquet.repository');
-    const banquet = await banquetRepo.findByToken(req.params.token);
-    if (!banquet || !banquet.is_active) {
-        return res.status(404).json({ success: false, statusCode: 404, code: 'NOT_FOUND', message: 'Property not found' });
-    }
+    if (!UUID_RE.test(token)) return null;
+    const banquet = await banquetRepo.findByToken(token);
+    if (!banquet || !banquet.is_active) return null;
+    return banquet;
+};
+
+router.get('/properties/:token', async (req, res) => {
+    const banquet = await resolveActiveProperty(req.params.token);
+    if (!banquet) return res.status(404).json(NOT_FOUND);
     // Only what a public inquiry/booking form needs — never company_id,
     // banquet_id, financial fields, or anything else BASE_SELECT joins in.
     return response.success(res, {
@@ -128,6 +153,68 @@ router.get('/properties/:token', async (req, res) => {
         avgRating:     banquet.avg_rating,
         totalReviews:  banquet.total_reviews,
     });
+});
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^[0-9+\-\s()]{7,20}$/;
+const LEAD_SOURCES = ['Direct', 'Website', 'QR Code', 'Referral', 'Social Media', 'Other'];
+
+/**
+ * POST /api/v1/public/properties/:token/inquiry
+ * Public inquiry form submission — the landing point for a property's QR
+ * code / public link. Creates (or, if phone/email matches an existing open
+ * lead, merges into) a Lead scoped to that property's company/branch, with
+ * no created_by (see lead.service.js createPublic / migration 022).
+ * Rate-limited per IP since there's no authenticated user to key on.
+ */
+router.post('/properties/:token/inquiry', inquiryLimiter, async (req, res) => {
+    const banquet = await resolveActiveProperty(req.params.token);
+    if (!banquet) return res.status(404).json(NOT_FOUND);
+
+    const {
+        contactName, contactPhone, contactEmail, eventType, preferredDate,
+        guestCount, estimatedBudget, leadSource, message,
+        // Honeypot — a real visitor never sees or fills this field (hidden via
+        // CSS on the form); a bot filling every input blind trips it. Cheaper
+        // than a CAPTCHA integration and needs no third-party site/secret keys,
+        // which nobody has supplied — wiring an actual reCAPTCHA/hCaptcha check
+        // in here later just means validating a token in this same spot.
+        website,
+    } = req.body || {};
+
+    if (website) return response.created(res, { leadId: null }, 'Thank you — your inquiry has been received. The venue will contact you shortly.');
+
+    if (!contactName || !contactName.trim()) throw new ValidationError('Name is required');
+    if (!contactPhone || !String(contactPhone).trim()) throw new ValidationError('Phone number is required');
+    if (!PHONE_RE.test(String(contactPhone).trim())) throw new ValidationError('Please enter a valid phone number');
+    if (contactEmail && !EMAIL_RE.test(contactEmail)) throw new ValidationError('Please enter a valid email address');
+    if (guestCount != null && guestCount !== '' && (isNaN(guestCount) || guestCount < 0)) throw new ValidationError('Guest count must be a positive number');
+    if (estimatedBudget != null && estimatedBudget !== '' && (isNaN(estimatedBudget) || estimatedBudget < 0)) throw new ValidationError('Estimated budget must be a positive number');
+    if (preferredDate && isNaN(Date.parse(preferredDate))) throw new ValidationError('Please enter a valid preferred date');
+    if (leadSource && !LEAD_SOURCES.includes(leadSource)) throw new ValidationError('Invalid lead source');
+
+    const { lead, duplicate } = await leadService.createPublic(
+        {
+            contactName:     contactName.trim().slice(0, 150),
+            contactPhone:    String(contactPhone).trim().slice(0, 20),
+            contactEmail:    contactEmail ? String(contactEmail).trim().slice(0, 150) : null,
+            eventType:       eventType ? String(eventType).trim().slice(0, 50) : null,
+            preferredDate:   preferredDate || null,
+            guestCount:      guestCount ? parseInt(guestCount, 10) : null,
+            estimatedBudget: estimatedBudget ? parseFloat(estimatedBudget) : null,
+            leadSource:      leadSource || null,
+            message:         message ? String(message).trim().slice(0, 2000) : null,
+        },
+        { companyId: banquet.company_id, branchId: banquet.branch_id }
+    );
+
+    return response.created(
+        res,
+        { leadId: lead.lead_id, duplicate },
+        duplicate
+            ? 'Thank you — we found your earlier inquiry and added these details to it. The venue will contact you shortly.'
+            : 'Thank you — your inquiry has been received. The venue will contact you shortly.'
+    );
 });
 
 /**

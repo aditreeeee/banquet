@@ -113,6 +113,17 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
     etag: true,
 }));
 
+// ─── Pretty public inquiry URL ────────────────────────────────────────────────
+// The frontend is a separate static site with no server-side router, so
+// /inquiry/:token (the URL printed on signage / encoded in the property QR
+// code) is a thin redirect into the real page rather than a rendered route.
+// Kept top-level (not under /api/v1) since it's meant to be typed/scanned by
+// a human, not called by client code.
+app.get('/inquiry/:token', (req, res) => {
+    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+    res.redirect(302, `${frontendUrl}/src/pages/public/inquiry.html?token=${encodeURIComponent(req.params.token)}`);
+});
+
 // ─── API Routes ──────────────────────────────────────────────────────────────
 app.use('/api/v1', routes);
 

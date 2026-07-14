@@ -102,6 +102,103 @@ const create = async (data, actor) => {
     return lead;
 };
 
+const PUBLIC_LEAD_SOURCES = ['Direct', 'Website', 'QR Code', 'Referral', 'Social Media', 'Other'];
+
+/**
+ * A Lead submitted anonymously from a property's public inquiry page (reached
+ * via its property_token URL / QR code) — no authenticated actor, so
+ * companyId/branchId come from the resolved Banquet instead of req.user, and
+ * created_by is left NULL (see migration 022).
+ *
+ * De-dupes on phone/email within the company: a matching still-open lead
+ * (not completed/lost) gets this submission appended to its notes as an
+ * interaction entry instead of splitting the same prospect across two
+ * pipeline cards. Nothing here trusts the caller's guestCount/budget for
+ * anything security-sensitive — they only ever feed the same non-critical
+ * score heuristic staff-entered leads use.
+ */
+const createPublic = async (data, { companyId, branchId }) => {
+    const source = PUBLIC_LEAD_SOURCES.includes(data.leadSource) ? data.leadSource : 'QR Code';
+    const score = calculateScore({ estimatedBudget: data.estimatedBudget, guestCount: data.guestCount });
+
+    const duplicate = await leadRepo.findDuplicate(companyId, data.contactPhone, data.contactEmail);
+    if (duplicate) {
+        const entry = [
+            `[${new Date().toISOString()}] Repeat inquiry via ${source}`,
+            data.eventType ? `Event: ${data.eventType}` : null,
+            data.preferredDate ? `Preferred date: ${data.preferredDate}` : null,
+            data.guestCount != null ? `Guests: ${data.guestCount}` : null,
+            data.estimatedBudget != null ? `Budget: ₹${data.estimatedBudget}` : null,
+            data.message ? `Message: ${data.message}` : null,
+        ].filter(Boolean).join(' — ');
+
+        const lead = await leadRepo.appendInteraction(duplicate.lead_id, companyId, {
+            entry,
+            eventType:       data.eventType,
+            preferredDate:   data.preferredDate,
+            guestCount:      data.guestCount,
+            estimatedBudget: data.estimatedBudget,
+            score,
+        });
+
+        await auditLogRepo.log({
+            companyId,
+            userId: null,
+            action: 'lead.duplicate_merged',
+            entityType: 'lead',
+            entityId: lead.lead_id,
+            description: `Repeat public inquiry from ${lead.contact_name} merged into existing lead #${lead.lead_id} (matched on phone/email)`,
+            newValues: { source, stage: lead.stage },
+        });
+
+        notifyService.notify({
+            companyId, branchId,
+            category: 'lead', type: 'lead.updated',
+            title: 'Repeat inquiry',
+            body: `${lead.contact_name} enquired again — merged into their existing lead`,
+            referenceType: 'lead', referenceId: lead.lead_id,
+        }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
+        return { lead, duplicate: true };
+    }
+
+    const lead = await leadRepo.create({
+        contactName:     data.contactName,
+        contactPhone:    data.contactPhone,
+        contactEmail:    data.contactEmail,
+        eventType:       data.eventType,
+        preferredDate:   data.preferredDate,
+        guestCount:      data.guestCount,
+        estimatedBudget: data.estimatedBudget,
+        notes:           data.message,
+        companyId,
+        branchId,
+        score,
+        source,
+        createdBy:       null,
+    });
+
+    await auditLogRepo.log({
+        companyId,
+        userId: null,
+        action: 'lead.created',
+        entityType: 'lead',
+        entityId: lead.lead_id,
+        description: `Public inquiry submitted by ${lead.contact_name} via ${source} (${score} value)`,
+        newValues: { stage: lead.stage, score, source },
+    });
+
+    notifyService.notify({
+        companyId, branchId,
+        category: 'lead', type: 'lead.created',
+        title: 'New public inquiry',
+        body: `${lead.contact_name} — submitted via ${source}`,
+        referenceType: 'lead', referenceId: lead.lead_id,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
+    return { lead, duplicate: false };
+};
+
 const update = async (leadId, data, actor) => {
     const existing = await getById(leadId, actor.companyId);
     if (['completed', 'lost'].includes(existing.stage)) {
@@ -177,4 +274,4 @@ const convertToBooking = async (leadId, bookingData, actor) => {
     return { lead: updatedLead, booking };
 };
 
-module.exports = { list, getById, create, update, advanceStage, convertToBooking, calculateScore };
+module.exports = { list, getById, create, createPublic, update, advanceStage, convertToBooking, calculateScore };

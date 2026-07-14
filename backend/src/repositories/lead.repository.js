@@ -69,7 +69,7 @@ const create = async (data) => {
             stage:          data.stage           || 'inquiry',
             assignedTo:     data.assignedTo      || null,
             notes:          data.notes           || null,
-            createdBy:      data.createdBy,
+            createdBy:      data.createdBy       || null,
         }
     );
     return findById(result[0].id, data.companyId);
@@ -129,4 +129,57 @@ const markConverted = async (leadId, companyId, bookingId) => {
     return findById(leadId, companyId);
 };
 
-module.exports = { list, findById, create, update, updateStage, markConverted };
+/**
+ * Find an existing, still-open lead for this company matching either the
+ * phone or the email of a new inquiry — used so a repeat public submission
+ * (e.g. someone filling the form twice, or scanning the QR again after an
+ * earlier visit) appends to the same lead instead of fragmenting the pipeline
+ * across duplicates. Deliberately excludes 'completed'/'lost' leads: those
+ * are closed pipeline history, not something a new inquiry should reopen.
+ */
+const findDuplicate = async (companyId, phone, email) => {
+    if (!phone && !email) return null;
+    const rows = await executeQuery(
+        `${BASE_SELECT}
+         WHERE l.company_id = @companyId
+           AND l.stage NOT IN ('completed', 'lost')
+           AND ((@phone IS NOT NULL AND l.contact_phone = @phone)
+             OR (@email IS NOT NULL AND l.contact_email = @email))
+         ORDER BY l.created_at DESC`,
+        { companyId, phone: phone || null, email: email || null }
+    );
+    return rows[0] || null;
+};
+
+/**
+ * Prepends a timestamped entry to notes rather than overwriting it — the
+ * closest this schema has to a real interaction-history table without
+ * introducing a new one. Also re-scores/refreshes the fields a repeat
+ * inquiry commonly updates (event type, date, guest count, budget) when the
+ * new submission provided them, without clobbering existing values with
+ * blanks.
+ */
+const appendInteraction = async (leadId, companyId, { entry, eventType, preferredDate, guestCount, estimatedBudget, score }) => {
+    await executeQuery(
+        `UPDATE Leads
+         SET notes            = LEFT(CONCAT(@entry, CHAR(10), CHAR(10), ISNULL(notes, '')), 2000),
+             event_type       = ISNULL(@eventType,       event_type),
+             preferred_date   = ISNULL(@preferredDate,   preferred_date),
+             guest_count      = ISNULL(@guestCount,      guest_count),
+             estimated_budget = ISNULL(@estimatedBudget, estimated_budget),
+             score            = ISNULL(@score,           score),
+             updated_at       = SYSUTCDATETIME()
+         WHERE lead_id = @leadId AND company_id = @companyId`,
+        {
+            leadId, companyId, entry,
+            eventType:       eventType       || null,
+            preferredDate:   preferredDate ? new Date(preferredDate) : null,
+            guestCount:      guestCount      || null,
+            estimatedBudget: estimatedBudget || null,
+            score:           score           || null,
+        }
+    );
+    return findById(leadId, companyId);
+};
+
+module.exports = { list, findById, create, update, updateStage, markConverted, findDuplicate, appendInteraction };

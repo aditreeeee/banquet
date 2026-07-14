@@ -7,6 +7,7 @@ const payRepo     = require('../repositories/payment.repository');
 const bookingRepo = require('../repositories/booking.repository');
 const dashService = require('./dashboard.service');
 const auditLogRepo = require('../repositories/auditLog.repository');
+const notifyService = require('./notify.service');
 const settingsService = require('./settings.service');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
@@ -138,6 +139,16 @@ const create = async (data, actor) => {
         description: `Payment of ${data.amount} recorded for booking ${bookingId}`,
         newValues:  { amount: data.amount, paymentMethod, paymentType, bookingId },
     });
+
+    notifyService.notify({
+        companyId: actor.companyId, branchId: booking.branch_id, propertyId: booking.banquet_id,
+        category: 'payment', type: 'payment.recorded',
+        title: 'Payment received',
+        body: `₹${data.amount} received for booking ${booking.booking_ref}`,
+        referenceType: 'payment', referenceId: payment.payment_id,
+        excludeUserId: actor.userId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
     return payment;
 };
 
@@ -195,6 +206,16 @@ const refund = async (paymentId, { refundAmount, reason, method }, actor) => {
         oldValues:  { status: payment.status, amount: payment.amount },
         newValues:  { refundAmount, reason },
     });
+
+    notifyService.notify({
+        companyId: actor.companyId, branchId: actor.branchId,
+        category: 'refund', type: 'payment.refunded',
+        title: 'Refund processed',
+        body: `₹${refundAmount} refunded for payment #${paymentId}${reason ? ` — ${reason}` : ''}`,
+        referenceType: 'payment', referenceId: paymentId,
+        excludeUserId: actor.userId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
     return result;
 };
 

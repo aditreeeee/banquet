@@ -437,9 +437,12 @@ const API = (() => {
 
         /* ─ Notifications ─ */
         notifications: {
-            list:      ()    => request('GET',  '/notifications'),
-            markRead:  (ids) => request('PUT',  '/notifications/read', { body: { ids } }),
-            markAllRead:()   => request('PUT',  '/notifications/read-all'),
+            list:        (unreadOnly) => request('GET',   '/notifications', { params: unreadOnly ? { unread: 'true' } : undefined }),
+            unreadCount: ()           => request('GET',   '/notifications/unread-count'),
+            markRead:    (id)         => request('PATCH', `/notifications/${id}/read`),
+            markAllRead: ()           => request('PATCH', '/notifications/mark-all-read'),
+            preferences: ()           => request('GET',   '/notifications/preferences'),
+            updatePreferences: (preferences) => request('PUT', '/notifications/preferences', { body: { preferences } }),
         },
 
         /* ─ Settings ─ */

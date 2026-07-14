@@ -7,6 +7,7 @@ const userRepo    = require('../repositories/user.repository');
 const companyRepo = require('../repositories/company.repository');
 const bookingStaffRepo = require('../repositories/bookingStaff.repository');
 const auditLogRepo = require('../repositories/auditLog.repository');
+const notifyService = require('./notify.service');
 const { hashPassword } = require('../utils/encryption');
 const { NotFoundError, ConflictError, ForbiddenError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
@@ -217,6 +218,16 @@ const create = async (data, actor) => {
         description: `User ${user.email} created`,
         newValues:  { role_id: user.role_id, role_ids: data.roleIds ?? data.role_ids ?? [user.role_id], company_id: companyId, branch_id: branchId },
     });
+
+    notifyService.notify({
+        companyId, branchId,
+        category: 'user_management', type: 'user.created',
+        title: 'New staff account created',
+        body: `${user.first_name} ${user.last_name} (${user.email}) was added${user.role_name ? ` as ${user.role_name}` : ''}`,
+        referenceType: 'user', referenceId: user.user_id,
+        excludeUserId: actor.userId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
     return mapUser(user);
 };
 
@@ -308,6 +319,17 @@ const approve = async (id, actor) => {
         entityId:   id,
         description: `Registration approved for ${updated.email}`,
     });
+
+    notifyService.notify({
+        companyId: existing.company_id, branchId: existing.branch_id, propertyId: existing.property_id,
+        category: 'approval', type: 'user.approved',
+        title: 'Account approved',
+        body: `Your account (${updated.email}) has been approved. You can now sign in.`,
+        referenceType: 'user', referenceId: id,
+        specificUserIds: [id],
+        excludeUserId: actor.userId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
     return mapUser(updated);
 };
 
@@ -325,6 +347,17 @@ const reject = async (id, actor) => {
         entityId:   id,
         description: `Registration rejected for ${updated.email}`,
     });
+
+    notifyService.notify({
+        companyId: existing.company_id, branchId: existing.branch_id, propertyId: existing.property_id,
+        category: 'approval', type: 'user.rejected',
+        title: 'Account registration rejected',
+        body: `Your account registration (${updated.email}) was not approved.`,
+        referenceType: 'user', referenceId: id,
+        specificUserIds: [id],
+        excludeUserId: actor.userId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
     return mapUser(updated);
 };
 

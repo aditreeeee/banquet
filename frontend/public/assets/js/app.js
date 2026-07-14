@@ -19,6 +19,9 @@
         Auth.highlightNav();
         Utils.loadCurrencySetting();
         loadNotifications();
+        // Poll for new notifications so the bell badge stays in sync across
+        // tabs/devices without a full page reload.
+        setInterval(loadNotifications, 45000);
 
         // Bootstrap tooltips
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
@@ -214,7 +217,7 @@
                 saveStoredNotifications(updated);
                 renderNotifications(updated);
                 setNotificationBadge(updated.filter(n => !n.is_read).length);
-                try { await API.notifications?.markRead?.([id]); } catch (_) {}
+                try { await API.notifications?.markRead?.(id); } catch (_) {}
             });
         });
     }

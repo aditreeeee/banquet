@@ -16,7 +16,7 @@ const bookingStaffRepo = require('../repositories/bookingStaff.repository');
 const bookingCateringRepo = require('../repositories/bookingCatering.repository');
 const bookingServicesRepo = require('../repositories/bookingServices.repository');
 const bookingPackageRepo = require('../repositories/bookingPackage.repository');
-const notificationRepo = require('../repositories/notification.repository');
+const notifyService = require('./notify.service');
 const operationalChargeService = require('./operationalCharge.service');
 const paymentService = require('./payment.service');
 const settingsService = require('./settings.service');
@@ -219,9 +219,9 @@ const create = async (data, actor) => {
         booking,
     }).catch(err => logger.warn('Confirmation email failed', { error: err.message }));
 
-    notificationRepo.notifyManagers({
-        companyId, branchId,
-        type: 'booking_created',
+    notifyService.notify({
+        companyId, branchId, propertyId: hall.banquet_id,
+        category: 'booking', type: 'booking.created',
         title: 'New booking created',
         body: `${booking.booking_ref} — ${booking.event_name || 'Event'} on ${new Date(booking.event_date).toLocaleDateString('en-IN')}`,
         referenceType: 'booking',
@@ -553,9 +553,9 @@ const updateStatus = async (bookingId, newStatus, actor) => {
     });
 
     if (newStatus === 'confirmed') {
-        notificationRepo.notifyManagers({
-            companyId: actor.companyId, branchId: actor.branchId,
-            type: 'booking_confirmed',
+        notifyService.notify({
+            companyId: actor.companyId, branchId: actor.branchId, propertyId: existing.banquet_id,
+            category: 'booking', type: 'booking.confirmed',
             title: 'Booking confirmed',
             body: `${existing.booking_ref} — ${existing.event_name || 'Event'} is now confirmed`,
             referenceType: 'booking',
@@ -618,9 +618,9 @@ const cancel = async (bookingId, reason, actor, options = {}) => {
         newValues:  { status: 'cancelled', reason: reason || null, cancellationCharge: cancellationCharge || 0, refundAmount: refundAmount || 0 },
     });
 
-    notificationRepo.notifyManagers({
-        companyId: actor.companyId, branchId: actor.branchId,
-        type: 'booking_cancelled',
+    notifyService.notify({
+        companyId: actor.companyId, branchId: actor.branchId, propertyId: existing.banquet_id,
+        category: 'cancellation', type: 'booking.cancelled',
         title: 'Booking cancelled',
         body: `${existing.booking_ref} — ${existing.event_name || 'Event'} was cancelled${reason ? `: ${reason}` : ''}`,
         referenceType: 'booking',
@@ -672,6 +672,24 @@ const updateResourceAllocations = async (bookingId, companyId, resources, actor)
         description: `Inventory allocation updated for booking ${booking.booking_ref}`,
         newValues:  { resources },
     });
+
+    // Inventory alert — any resource now fully reserved for this event date
+    // (0 remaining) gets a one-time notification per (resource, date), so
+    // operations/staff can react before the next booking hits the same
+    // shortage instead of discovering it at check-in.
+    resourceRepo.getInventorySnapshot(companyId, booking.event_date)
+        .then(snapshot => {
+            const shortages = snapshot.filter(s => s.is_shortage && resources.some(r => r.resourceId === s.resource_id));
+            return Promise.all(shortages.map(s => notifyService.notify({
+                companyId, branchId: booking.branch_id, propertyId: booking.banquet_id,
+                category: 'inventory', type: 'inventory.shortage',
+                title: 'Inventory shortage',
+                body: `"${s.resource_name}" is fully reserved for ${new Date(booking.event_date).toLocaleDateString('en-IN')}`,
+                referenceType: 'resource', referenceId: s.resource_id,
+                dedupeKeySuffix: String(booking.event_date).slice(0, 10),
+            })));
+        })
+        .catch(err => logger.warn('Inventory alert check failed', { error: err.message }));
 
     return resourceRepo.getAllocationsForBooking(bookingId, companyId);
 };
@@ -794,6 +812,17 @@ const assignStaff = async (bookingId, companyId, actorUserId, { userId, roleNote
         description: `Staff member assigned to booking ${booking.booking_ref}${roleNote ? ` (${roleNote})` : ''}`,
         newValues: { assigned_user_id: userId, role_note: roleNote || null },
     });
+
+    notifyService.notify({
+        companyId, branchId: booking.branch_id, propertyId: booking.banquet_id,
+        category: 'staff_assignment', type: 'booking.staff_assigned',
+        title: 'New assignment',
+        body: `You've been assigned to booking ${booking.booking_ref} — ${booking.event_name || 'Event'}${roleNote ? ` (${roleNote})` : ''}`,
+        referenceType: 'booking', referenceId: bookingId,
+        specificUserIds: [userId],
+        excludeUserId: actorUserId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
     return assignment;
 };
 

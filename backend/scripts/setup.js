@@ -1943,6 +1943,52 @@ const seedExtendedDemoData = async (pool) => {
     `);
     ok('Booking staff assignments table ensured.');
 
+    // ── 3s. Notifications v2 — RBAC scoping (branch/property), dedupe, and
+    // per-category email/in-app preferences. See database/migrations/019_notifications_v2.sql. ─
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Notifications') AND name = 'branch_id')
+            ALTER TABLE Notifications ADD branch_id INT NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Notifications') AND name = 'property_id')
+            ALTER TABLE Notifications ADD property_id INT NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Notifications') AND name = 'category')
+            ALTER TABLE Notifications ADD category NVARCHAR(30) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Notifications') AND name = 'dedupe_key')
+            ALTER TABLE Notifications ADD dedupe_key NVARCHAR(200) NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Notifications') AND name = 'email_sent')
+            ALTER TABLE Notifications ADD email_sent BIT NOT NULL DEFAULT 0;
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Notifications') AND name = 'email_sent_at')
+            ALTER TABLE Notifications ADD email_sent_at DATETIME2 NULL;
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_notif_branch')
+            ALTER TABLE Notifications ADD CONSTRAINT FK_notif_branch FOREIGN KEY (branch_id) REFERENCES Branches(branch_id);
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_notif_property')
+            ALTER TABLE Notifications ADD CONSTRAINT FK_notif_property FOREIGN KEY (property_id) REFERENCES Banquets(banquet_id);
+    `);
+    await pool.request().batch(`
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_notif_user_dedupe')
+            CREATE UNIQUE INDEX UQ_notif_user_dedupe ON Notifications(user_id, dedupe_key) WHERE dedupe_key IS NOT NULL;
+    `);
+    await pool.request().batch(`
+        IF OBJECT_ID(N'dbo.NotificationPreferences', N'U') IS NULL
+        BEGIN
+            CREATE TABLE NotificationPreferences (
+                preference_id   INT             NOT NULL IDENTITY(1,1),
+                user_id         INT             NOT NULL,
+                category        NVARCHAR(30)    NOT NULL,
+                in_app_enabled  BIT             NOT NULL DEFAULT 1,
+                email_enabled   BIT             NOT NULL DEFAULT 1,
+                updated_at      DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+                CONSTRAINT PK_notification_preferences PRIMARY KEY (preference_id),
+                CONSTRAINT FK_np_user FOREIGN KEY (user_id) REFERENCES Users(user_id),
+                CONSTRAINT UQ_np_user_category UNIQUE (user_id, category)
+            );
+        END
+    `);
+    ok('Notifications v2 (RBAC scoping, dedupe, preferences) ensured.');
+
     // ── 4. Seed reference / lookup data ─────────────────────────────────────
     log('Seeding reference data …');
 

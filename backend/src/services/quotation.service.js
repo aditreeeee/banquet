@@ -14,6 +14,8 @@ const leadRepo = require('../repositories/lead.repository');
 const bookingService = require('./booking.service');
 const invoiceService = require('./invoice.service');
 const auditLogRepo = require('../repositories/auditLog.repository');
+const notifyService = require('./notify.service');
+const logger = require('../utils/logger');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { parsePagination, buildMeta } = require('../utils/pagination');
 
@@ -92,6 +94,15 @@ const create = async (data, actor) => {
         description: `Quotation ${quotation.quotation_number} created${lead ? ` from lead ${lead.contact_name}` : ''}`,
         newValues: { grand_total: priced.grand_total },
     });
+
+    notifyService.notify({
+        companyId: actor.companyId, branchId: actor.branchId,
+        category: 'quotation', type: 'quotation.created',
+        title: 'New quotation',
+        body: `${quotation.quotation_number} — ${quotation.event_name || 'Event'} (₹${priced.grand_total})`,
+        referenceType: 'quotation', referenceId: quotation.quotation_id,
+        excludeUserId: actor.userId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
 
     if (lead) {
         // Advance the lead's pipeline stage to reflect a quotation now exists
@@ -192,6 +203,17 @@ const updateStatus = async (quotationId, newStatus, actor) => {
         description: `Quotation ${q.quotation_number} status changed from ${q.status} to ${newStatus}`,
         oldValues: { status: q.status }, newValues: { status: newStatus },
     });
+
+    if (['accepted', 'rejected'].includes(newStatus)) {
+        notifyService.notify({
+            companyId: actor.companyId, branchId: actor.branchId,
+            category: 'quotation', type: `quotation.${newStatus}`,
+            title: `Quotation ${newStatus}`,
+            body: `${q.quotation_number} — ${q.event_name || 'Event'} was ${newStatus}`,
+            referenceType: 'quotation', referenceId: quotationId,
+            excludeUserId: actor.userId,
+        }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+    }
 
     return updated;
 };

@@ -6,6 +6,8 @@
 const { withTransaction } = require('../config/database');
 const invoiceRepo = require('../repositories/invoice.repository');
 const auditLogRepo = require('../repositories/auditLog.repository');
+const notifyService = require('./notify.service');
+const logger = require('../utils/logger');
 const settingsService = require('./settings.service');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 
@@ -84,7 +86,7 @@ const buildHsnSacBreakdown = async (tx, bookingId, companyId, taxableAmount, fla
  * for both.
  */
 const generateForBooking = async (bookingId, actor) => {
-    return withTransaction(async (tx) => {
+    const result = await withTransaction(async (tx) => {
         const bookingRows = await tx.execute(
             `SELECT b.booking_id, b.total_amount, b.booking_ref, b.customer_id
              FROM Bookings b WITH (UPDLOCK, HOLDLOCK)
@@ -132,8 +134,19 @@ const generateForBooking = async (bookingId, actor) => {
             newValues: { invoiceNumber, bookingId: b.booking_id, taxableAmount, cgstAmount, sgstAmount, grandTotal },
         });
 
-        return { invoice_id: invoiceId, invoice_number: invoiceNumber };
+        return { invoice_id: invoiceId, invoice_number: invoiceNumber, booking_ref: b.booking_ref, grand_total: grandTotal };
     });
+
+    notifyService.notify({
+        companyId: actor.companyId,
+        category: 'invoice', type: 'invoice.generated',
+        title: 'Invoice generated',
+        body: `${result.invoice_number} — ${result.booking_ref} (₹${result.grand_total})`,
+        referenceType: 'invoice', referenceId: result.invoice_id,
+        excludeUserId: actor.userId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
+
+    return { invoice_id: result.invoice_id, invoice_number: result.invoice_number };
 };
 
 const createForBookingRef = async ({ bookingId, booking_ref: bookingRef }, actor) => {

@@ -9,6 +9,8 @@
 const leadRepo = require('../repositories/lead.repository');
 const bookingService = require('./booking.service');
 const auditLogRepo = require('../repositories/auditLog.repository');
+const notifyService = require('./notify.service');
+const logger = require('../utils/logger');
 const { NotFoundError, ValidationError } = require('../api/v1/middleware/errorHandler');
 const { resolveCompanyScope } = require('../utils/branchScope');
 
@@ -87,6 +89,15 @@ const create = async (data, actor) => {
         description: `Lead created for ${lead.contact_name} (${score} value)`,
         newValues: { stage: lead.stage, score },
     });
+
+    notifyService.notify({
+        companyId: actor.companyId, branchId: actor.branchId,
+        category: 'lead', type: 'lead.created',
+        title: 'New lead',
+        body: `${lead.contact_name} — estimated ${lead.estimated_budget ? `₹${lead.estimated_budget}` : 'budget not set'}`,
+        referenceType: 'lead', referenceId: lead.lead_id,
+        excludeUserId: actor.userId,
+    }).catch(err => logger.warn('Notification dispatch failed', { error: err.message }));
 
     return lead;
 };

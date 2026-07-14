@@ -254,7 +254,19 @@
         <!-- Notifications Tab -->
         <div id="tab-notifications" class="settings-panel" style="display:none">
             <div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-color)">
-                <div style="font-size:13px;font-weight:700;margin-bottom:4px">Email Notifications</div>
+                <div style="font-size:13px;font-weight:700;margin-bottom:4px">My Notification Preferences</div>
+                <div style="font-size:12px;color:var(--text-muted)">Choose how you personally get notified for each category — applies only to your account</div>
+            </div>
+            <div class="table-responsive" style="margin-bottom:20px">
+                <table class="table" style="font-size:13px">
+                    <thead><tr><th>Category</th><th style="width:110px;text-align:center">In-App</th><th style="width:110px;text-align:center">Email</th></tr></thead>
+                    <tbody id="myNotifPrefsBody"><tr><td colspan="3" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></td></tr></tbody>
+                </table>
+            </div>
+            <button class="btn-primary-brand" id="saveNotifPrefsBtn" onclick="saveMyNotificationPreferences()">Save My Preferences</button>
+
+            <div style="margin:24px 0 16px;padding-bottom:12px;border-bottom:1px solid var(--border-color)">
+                <div style="font-size:13px;font-weight:700;margin-bottom:4px">Email Notifications (Company-wide)</div>
                 <div style="font-size:12px;color:var(--text-muted)">Sent via SMTP / Transactional email service</div>
             </div>
             <div class="settings-row">
@@ -542,6 +554,50 @@ function switchTab(tab) {
     document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = p.id === `tab-${tab}` ? '' : 'none');
     if (tab === 'charges' && !chargesLoaded) { chargesLoaded = true; loadCharges(); }
+    if (tab === 'notifications' && !notifPrefsLoaded) { notifPrefsLoaded = true; loadMyNotificationPreferences(); }
+}
+
+/* ── My Notification Preferences (per-user, In-App/Email per category) ── */
+let notifPrefsLoaded = false;
+const NOTIF_CATEGORY_LABELS = {
+    booking: 'Bookings', lead: 'Leads', quotation: 'Quotations', payment: 'Payments',
+    invoice: 'Invoices', refund: 'Refunds', cancellation: 'Cancellations',
+    staff_assignment: 'Staff Assignments', inventory: 'Inventory Alerts',
+    approval: 'Approvals', user_management: 'User Management',
+};
+
+async function loadMyNotificationPreferences() {
+    const body = document.getElementById('myNotifPrefsBody');
+    try {
+        const res = await API.notifications.preferences();
+        const prefs = res.data || [];
+        body.innerHTML = prefs.map(p => `
+            <tr data-category="${p.category}">
+                <td>${NOTIF_CATEGORY_LABELS[p.category] || p.category}</td>
+                <td style="text-align:center"><label class="toggle-switch"><input type="checkbox" class="pref-in-app" ${p.in_app_enabled ? 'checked' : ''}><span class="toggle-slider"></span></label></td>
+                <td style="text-align:center"><label class="toggle-switch"><input type="checkbox" class="pref-email" ${p.email_enabled ? 'checked' : ''}><span class="toggle-slider"></span></label></td>
+            </tr>`).join('');
+    } catch (err) {
+        body.innerHTML = `<tr><td colspan="3" class="text-center py-3" style="color:var(--color-danger)">${err.message || 'Failed to load preferences'}</td></tr>`;
+    }
+}
+
+async function saveMyNotificationPreferences() {
+    const btn = document.getElementById('saveNotifPrefsBtn');
+    const preferences = [...document.querySelectorAll('#myNotifPrefsBody tr[data-category]')].map(row => ({
+        category: row.dataset.category,
+        inAppEnabled: row.querySelector('.pref-in-app').checked,
+        emailEnabled: row.querySelector('.pref-email').checked,
+    }));
+    Utils.showLoader(btn, 'Saving…');
+    try {
+        await API.notifications.updatePreferences(preferences);
+        Utils.hideLoader(btn);
+        Utils.toast('Notification preferences saved', 'success');
+    } catch (err) {
+        Utils.hideLoader(btn);
+        Utils.toast(err.message || 'Failed to save preferences', 'error');
+    }
 }
 
 async function saveCurrentTab() {

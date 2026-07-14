@@ -81,8 +81,9 @@
                         <h6>Event Details</h6>
                         <div class="detail-row"><span class="detail-label">Event Name</span><span class="detail-value" id="dEventName">—</span></div>
                         <div class="detail-row"><span class="detail-label">Event Type</span><span class="detail-value" id="dEventType">—</span></div>
-                        <div class="detail-row"><span class="detail-label">Event Date</span><span class="detail-value" id="dEventDate">—</span></div>
-                        <div class="detail-row"><span class="detail-label">Time Slot</span><span class="detail-value" id="dSlot">—</span></div>
+                        <div class="detail-row"><span class="detail-label">Start Date &amp; Time</span><span class="detail-value" id="dStartDateTime">—</span></div>
+                        <div class="detail-row"><span class="detail-label">End Date &amp; Time</span><span class="detail-value" id="dEndDateTime">—</span></div>
+                        <div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value" id="dDuration">—</span></div>
                         <div class="detail-row"><span class="detail-label">Guest Count</span><span class="detail-value" id="dGuests">—</span></div>
                         <div class="detail-row"><span class="detail-label">Special Requests</span><span class="detail-value" id="dRequests" style="max-width:220px;text-align:right">—</span></div>
                     </div>
@@ -485,13 +486,20 @@ function render(b) {
     document.getElementById('breadcrumbRef').textContent = b.booking_ref;
     document.getElementById('bookingRef').textContent    = b.booking_ref;
     document.getElementById('statusBadge').innerHTML     = Utils.statusBadge(b.status);
-    document.getElementById('eventSummary').textContent  = `${b.event_type || ''} · ${Utils.formatDate(b.event_date)} · ${b.hall_name}`;
+    const summaryIsMultiDay = b.event_end_date && Utils.formatDate(b.event_end_date) !== Utils.formatDate(b.event_date);
+    document.getElementById('eventSummary').textContent  = `${b.event_type || ''} · ${Utils.formatDate(b.event_date)}${summaryIsMultiDay ? ' – ' + Utils.formatDate(b.event_end_date) : ''} · ${b.hall_name}`;
 
     // Event
     set('dEventName', b.event_name);
     set('dEventType', b.event_type);
-    set('dEventDate', Utils.formatDate(b.event_date));
-    set('dSlot',      b.event_time_start && b.event_time_end ? `${Utils.formatTime(b.event_time_start)} – ${Utils.formatTime(b.event_time_end)}` : '—');
+    // Multi-day bookings must show BOTH ends of the range, not just the start
+    // date — event_end_date is only present/different from event_date for
+    // multi-day events, so this collapses back to the old single-day display
+    // when there's nothing to add.
+    const isMultiDay = b.event_end_date && Utils.formatDate(b.event_end_date) !== Utils.formatDate(b.event_date);
+    set('dStartDateTime', `${Utils.formatDate(b.event_date)}${b.event_time_start ? ', ' + Utils.formatTime(b.event_time_start) : ''}`);
+    set('dEndDateTime',   `${Utils.formatDate(isMultiDay ? b.event_end_date : b.event_date)}${b.event_time_end ? ', ' + Utils.formatTime(b.event_time_end) : ''}`);
+    set('dDuration',      formatBookingDuration(b));
     set('dGuests',    Utils.formatNumber(b.guest_count) + ' guests');
     set('dRequests',  b.special_requests || 'None');
     set('dBanquet',   b.banquet_name);
@@ -548,6 +556,31 @@ function render(b) {
 }
 
 function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; }
+
+/* Human-readable event duration ("2 hours" / "3 days, 10 hours") spanning
+   event_date+event_time_start through event_end_date (or event_date, for a
+   single-day booking)+event_time_end. Reads HH:MM directly off the ISO
+   string rather than via Date/timezone math, matching the same
+   timezone-safety approach used server-side for TIME columns. */
+function formatBookingDuration(b) {
+    if (!b.event_date || !b.event_time_start || !b.event_time_end) return '—';
+    const hm = (t) => { const m = String(t).match(/T(\d{2}):(\d{2})/); return m ? [parseInt(m[1],10), parseInt(m[2],10)] : [0,0]; };
+    const [sh, sm] = hm(b.event_time_start);
+    const [eh, em] = hm(b.event_time_end);
+    const startDay = new Date(String(b.event_date).slice(0,10) + 'T00:00:00Z');
+    const endDay   = new Date(String(b.event_end_date || b.event_date).slice(0,10) + 'T00:00:00Z');
+    const dayCount = Math.round((endDay - startDay) / 86400000);
+    const totalMinutes = dayCount * 24 * 60 + (eh*60+em) - (sh*60+sm);
+    if (totalMinutes <= 0) return '—';
+    const days = Math.floor(totalMinutes / (24*60));
+    const hours = Math.floor((totalMinutes % (24*60)) / 60);
+    const mins = totalMinutes % 60;
+    const parts = [];
+    if (days)  parts.push(`${days} day${days===1?'':'s'}`);
+    if (hours) parts.push(`${hours} hour${hours===1?'':'s'}`);
+    if (mins)  parts.push(`${mins} min${mins===1?'':'s'}`);
+    return parts.join(', ') || '—';
+}
 
 function dotTypeForAction(action) {
     if (action.includes('cancel') || action.includes('expired')) return 'cancelled';

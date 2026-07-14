@@ -116,7 +116,7 @@
                             <th>Customer</th>
                             <th>Event</th>
                             <th>Type</th>
-                            <th>Date</th>
+                            <th>Date &amp; Time</th>
                             <th>Hall</th>
                             <th>Guests</th>
                             <th>Amount</th>
@@ -285,7 +285,10 @@ function renderTable(bookings) {
         <td><div style="font-weight:500">${b.customer_name}</div></td>
         <td><div style="max-width:160px" title="${b.event_name}">${Utils.truncate(b.event_name, 22)}</div></td>
         <td style="font-size:12px;color:var(--text-muted)">${b.event_type ? Utils.titleCase(b.event_type) : '—'}</td>
-        <td style="white-space:nowrap">${Utils.formatDate(b.event_date)}</td>
+        <td style="white-space:nowrap">
+            <div>${b.event_end_date && Utils.formatDate(b.event_end_date) !== Utils.formatDate(b.event_date) ? `${Utils.formatDate(b.event_date)} – ${Utils.formatDate(b.event_end_date)}` : Utils.formatDate(b.event_date)}</div>
+            ${b.event_time_start && b.event_time_end ? `<div style="font-size:11px;color:var(--text-muted)">${Utils.formatTime(b.event_time_start)} – ${Utils.formatTime(b.event_time_end)}</div>` : ''}
+        </td>
         <td>${Utils.truncate(b.hall_name || '—', 18)}</td>
         <td>${Utils.formatNumber(b.guest_count)}</td>
         <td style="white-space:nowrap;font-weight:600">${Utils.formatCurrency(b.total_amount)}</td>

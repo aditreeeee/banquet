@@ -94,10 +94,11 @@
 }
 
 /* Descriptions, trend indicators, percentage changes, secondary stats —
-   regular weight, italic to visually subordinate them to titles/values. */
+   regular weight, same upright Times New Roman as the rest of the card
+   (previously italic, which hurt readability at small sizes). */
 .kpi-delta,
 .kpi-change,
 .kpi-sub,
 .metric-sub {
-    font-style: italic;
+    font-style: normal;
 }

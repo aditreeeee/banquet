@@ -514,7 +514,7 @@ const QuickDrawer = ({ bookingId, onClose, onChanged }) => {
               <div className="drawer-row"><span className="k">Customer</span><span>{booking.customer_name}</span></div>
               <div className="drawer-row"><span className="k">Event</span><span>{booking.event_name || '—'}</span></div>
               <div className="drawer-row"><span className="k">Hall</span><span>{booking.hall_name}</span></div>
-              <div className="drawer-row"><span className="k">Date</span><span>{Utils.formatDate(booking.event_date)}</span></div>
+              <div className="drawer-row"><span className="k">Date</span><span>{Utils.formatDate(booking.event_date)}{booking.event_end_date && Utils.formatDate(booking.event_end_date)!==Utils.formatDate(booking.event_date) ? ` – ${Utils.formatDate(booking.event_end_date)}` : ''}</span></div>
               <div className="drawer-row"><span className="k">Time</span><span>{timeHM(booking.event_time_start)} – {timeHM(booking.event_time_end)}</span></div>
               <div className="drawer-row"><span className="k">Guests</span><span>{booking.guest_count ?? '—'}</span></div>
               <div className="drawer-row"><span className="k">Status</span>{Utils.statusBadge ? <span dangerouslySetInnerHTML={{__html: Utils.statusBadge(booking.status)}}/> : <span>{booking.status}</span>}</div>
@@ -756,13 +756,26 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
                 })}
                 {granularity==='hourly'
                   ? hallBookings.filter(b=>spansDate(b,anchorDate)).map(b=>{
-                      const startH = hourOf(b.event_time_start), endH = Math.max(startH+1, hourOf(b.event_time_end)||24);
-                      // Setup/cleanup/cool-off buffers reserve the hall before/after the event itself —
-                      // shown as a lighter extension of the same bar so conflicts during buffers are visible too.
-                      const setupH   = (b.setup_minutes||0)/60;
-                      const teardownH = ((b.cleanup_minutes||0)+(b.cooloff_minutes||0))/60;
+                      // A multi-day/overnight booking occupies this hall on more than
+                      // one calendar day — which hour-range applies to the day currently
+                      // being viewed depends on whether anchorDate is the booking's
+                      // first day, a middle day (fully occupied, midnight to midnight),
+                      // or its last day. Using the raw event_time_start/end on every
+                      // day (the old behavior) produced an inverted/nonsensical
+                      // gridColumn span on any day that wasn't the start day.
+                      const endDateIso = b.event_end_date_iso || b.event_date_iso;
+                      const isFirstDay = anchorDate === b.event_date_iso;
+                      const isLastDay  = anchorDate === endDateIso;
+                      const startH = isFirstDay ? hourOf(b.event_time_start) : 0;
+                      const rawEndH = isLastDay ? hourOf(b.event_time_end) : 24;
+                      const endH = isLastDay ? Math.max(startH+1, rawEndH||24) : 24;
+                      // Setup/cleanup/cool-off buffers only apply on the actual first/last
+                      // day of the event, not on fully-occupied middle days.
+                      const setupH   = isFirstDay ? (b.setup_minutes||0)/60 : 0;
+                      const teardownH = isLastDay ? ((b.cleanup_minutes||0)+(b.cooloff_minutes||0))/60 : 0;
                       const bufStart = Math.max(0, Math.floor(startH - setupH));
                       const bufEnd   = Math.min(24, Math.ceil(endH + teardownH));
+                      const isMultiDay = endDateIso !== b.event_date_iso;
                       return (
                         <React.Fragment key={b.booking_id}>
                           {setupH>0 && (
@@ -773,16 +786,20 @@ const ResourceMatrix = ({ halls, bookings, granularity, setGranularity, anchorDa
                           <div className={`matrix-bar${b.is_priority?' vip':''}`}
                             style={{gridColumn:`${startH+1} / ${endH+1}`,background:STATUS_COLOR[b.status]||C.slate,position:'relative',
                               opacity:drag?.booking?.booking_id===b.booking_id?0.4:1,cursor:'grab'}}
-                            title={`${b.event_name||b.booking_ref} · ${b.customer_name} — drag to reschedule, or drag an edge to resize`}
+                            title={`${b.event_name||b.booking_ref} · ${b.customer_name}${isMultiDay?` — ${Utils.formatDate(b.event_date_iso)} ${timeHM(b.event_time_start)} to ${Utils.formatDate(endDateIso)} ${timeHM(b.event_time_end)}`:''} — drag to reschedule, or drag an edge to resize`}
                             draggable
                             onDragStart={startDrag(b,'move')} onDragEnd={endDrag}
                             onMouseEnter={()=>onHoverBooking(b)} onMouseLeave={()=>onHoverBooking(null)}
                             onClick={()=>onSelectBooking(b.booking_id)}>
-                            <span draggable onDragStart={startDrag(b,'resize-start')} onDragEnd={endDrag} onClick={e=>e.stopPropagation()}
-                              style={{position:'absolute',left:0,top:0,bottom:0,width:5,cursor:'ew-resize'}}/>
-                            {b.event_name || b.booking_ref}
-                            <span draggable onDragStart={startDrag(b,'resize-end')} onDragEnd={endDrag} onClick={e=>e.stopPropagation()}
-                              style={{position:'absolute',right:0,top:0,bottom:0,width:5,cursor:'ew-resize'}}/>
+                            {isFirstDay && (
+                              <span draggable onDragStart={startDrag(b,'resize-start')} onDragEnd={endDrag} onClick={e=>e.stopPropagation()}
+                                style={{position:'absolute',left:0,top:0,bottom:0,width:5,cursor:'ew-resize'}}/>
+                            )}
+                            {b.event_name || b.booking_ref}{isMultiDay && !isFirstDay ? ' (cont’d)' : ''}
+                            {isLastDay && (
+                              <span draggable onDragStart={startDrag(b,'resize-end')} onDragEnd={endDrag} onClick={e=>e.stopPropagation()}
+                                style={{position:'absolute',right:0,top:0,bottom:0,width:5,cursor:'ew-resize'}}/>
+                            )}
                           </div>
                           {teardownH>0 && (
                             <div style={{gridColumn:`${endH+1} / ${bufEnd+1}`,background:STATUS_COLOR[b.status]||C.slate,
